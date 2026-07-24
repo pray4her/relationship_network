@@ -93,6 +93,64 @@ class TenantMembership(Base):
 
 
 @final
+class Role(Base):
+    __tablename__ = "roles"
+    __table_args__ = (UniqueConstraint("tenant_id", "name", name="uq_roles_tenant_name"),)
+
+    id: Mapped[uuid.UUID] = mapped_column(Uuid, primary_key=True, default=uuid.uuid4)
+    tenant_id: Mapped[uuid.UUID] = mapped_column(
+        Uuid,
+        ForeignKey("tenants.id", ondelete="CASCADE"),
+        index=True,
+    )
+    name: Mapped[str] = mapped_column(String(50))
+    description: Mapped[str] = mapped_column(String(200), server_default="", default="")
+    is_active: Mapped[bool] = mapped_column(Boolean, server_default=true(), default=True)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        server_default=func.now(),
+    )
+
+
+@final
+class RolePermission(Base):
+    __tablename__ = "role_permissions"
+
+    role_id: Mapped[uuid.UUID] = mapped_column(
+        Uuid,
+        ForeignKey("roles.id", ondelete="CASCADE"),
+        primary_key=True,
+    )
+    permission: Mapped[str] = mapped_column(String(50), primary_key=True)
+    tenant_id: Mapped[uuid.UUID] = mapped_column(
+        Uuid,
+        ForeignKey("tenants.id", ondelete="CASCADE"),
+        index=True,
+    )
+
+
+@final
+class MembershipRoleAssignment(Base):
+    __tablename__ = "membership_roles"
+
+    membership_id: Mapped[uuid.UUID] = mapped_column(
+        Uuid,
+        ForeignKey("tenant_memberships.id", ondelete="CASCADE"),
+        primary_key=True,
+    )
+    role_id: Mapped[uuid.UUID] = mapped_column(
+        Uuid,
+        ForeignKey("roles.id", ondelete="CASCADE"),
+        primary_key=True,
+    )
+    tenant_id: Mapped[uuid.UUID] = mapped_column(
+        Uuid,
+        ForeignKey("tenants.id", ondelete="CASCADE"),
+        index=True,
+    )
+
+
+@final
 class AuthSession(Base):
     __tablename__ = "auth_sessions"
 

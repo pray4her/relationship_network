@@ -19,6 +19,7 @@ from relationship_network_api.main import create_app
 def make_authentication(*, with_membership: bool = True) -> Authentication:
     membership = (
         MembershipView(
+            membership_id=uuid.UUID("33333333-3333-3333-3333-333333333333"),
             tenant_id=uuid.UUID("11111111-1111-1111-1111-111111111111"),
             tenant_name="Acme 科技",
             tenant_slug="acme-1234abcd",

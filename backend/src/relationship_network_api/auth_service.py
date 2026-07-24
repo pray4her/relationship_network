@@ -8,6 +8,7 @@ from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError, SQLAlchemyError
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from relationship_network_api import tenant_context
 from relationship_network_api.models import (
     OWNER_ROLE,
     AuthSession,
@@ -53,6 +54,7 @@ class UserView:
 class MembershipView:
     """Tenant context granted by an active membership."""
 
+    membership_id: uuid.UUID
     tenant_id: uuid.UUID
     tenant_name: str
     tenant_slug: str
@@ -144,6 +146,7 @@ class AuthService:
             slug=generate_tenant_slug(resolved_tenant_name),
         )
         session.add(tenant)
+        await tenant_context.set_tenant_context(session, tenant.id)
         membership = TenantMembership(
             id=uuid.uuid4(),
             tenant_id=tenant.id,
@@ -177,6 +180,7 @@ class AuthService:
         if not user.is_active:
             raise InvalidCredentialsError
 
+        await tenant_context.set_user_context(session, user.id)
         membership, tenant = await self._load_membership(session, user.id)
         if membership is None or tenant is None:
             raise InvalidCredentialsError
@@ -222,6 +226,7 @@ class AuthService:
         if user is None or not user.is_active:
             return None
 
+        await tenant_context.set_user_context(session, user.id)
         membership, tenant = await self._load_membership(session, user.id)
 
         auth_session.last_used_at = now
@@ -280,6 +285,7 @@ def _user_view(user: User) -> UserView:
 
 def _membership_view(membership: TenantMembership, tenant: Tenant) -> MembershipView:
     return MembershipView(
+        membership_id=membership.id,
         tenant_id=tenant.id,
         tenant_name=tenant.name,
         tenant_slug=tenant.slug,

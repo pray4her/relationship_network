@@ -1,15 +1,33 @@
-from collections.abc import AsyncIterator
+from collections.abc import AsyncIterator, Callable, Coroutine
+from dataclasses import dataclass
 from typing import Annotated, Final
+from uuid import UUID
 
 from fastapi import Depends, HTTPException, Request, status
 from sqlalchemy.ext.asyncio import AsyncEngine, AsyncSession
 
-from relationship_network_api.auth_service import Authentication, AuthService
+from relationship_network_api import rbac_service, tenant_context
+from relationship_network_api.auth_service import Authentication, AuthService, MembershipView
 from relationship_network_api.config import AppSettings, load_app_settings
 from relationship_network_api.db import create_engine_from_settings, create_session_factory
+from relationship_network_api.membership_service import NO_ACTIVE_MEMBERSHIP_DETAIL
 
 SESSION_COOKIE_NAME: Final = "rn_session"
 NOT_AUTHENTICATED_DETAIL: Final = "not_authenticated"
+PERMISSION_DENIED_DETAIL: Final = "permission_denied"
+
+
+@dataclass(frozen=True)
+class TenantContext:
+    """Authenticated caller resolved into a tenant with effective permissions."""
+
+    authentication: Authentication
+    membership: MembershipView
+    permissions: frozenset[str]
+
+    @property
+    def tenant_id(self) -> UUID:
+        return self.membership.tenant_id
 
 
 def get_settings(request: Request) -> AppSettings:
@@ -65,3 +83,50 @@ def require_authentication(
             detail=NOT_AUTHENTICATED_DETAIL,
         )
     return authentication
+
+
+async def get_tenant_context(
+    session: Annotated[AsyncSession, Depends(get_db_session)],
+    authentication: Annotated[Authentication, Depends(require_authentication)],
+) -> TenantContext:
+    """Resolve the tenant context and pin the database session to the tenant.
+
+    Effective permissions are evaluated on every request, so role and
+    permission changes take effect on the next request.
+    """
+    membership = authentication.membership
+    if membership is None:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail=NO_ACTIVE_MEMBERSHIP_DETAIL,
+        )
+    await tenant_context.set_tenant_context(session, membership.tenant_id)
+    permissions = await rbac_service.resolve_permissions(
+        session,
+        tenant_id=membership.tenant_id,
+        membership_role=membership.role,
+        membership_id=membership.membership_id,
+    )
+    return TenantContext(
+        authentication=authentication,
+        membership=membership,
+        permissions=permissions,
+    )
+
+
+def require_permission(
+    permission: str,
+) -> Callable[[TenantContext], Coroutine[object, object, TenantContext]]:
+    """Build a dependency requiring a permission in the caller's tenant context."""
+
+    async def dependency(
+        context: Annotated[TenantContext, Depends(get_tenant_context)],
+    ) -> TenantContext:
+        if permission not in context.permissions:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail=PERMISSION_DENIED_DETAIL,
+            )
+        return context
+
+    return dependency

@@ -9,7 +9,7 @@ from _pytest.monkeypatch import MonkeyPatch
 from sqlalchemy.exc import IntegrityError, SQLAlchemyError
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from relationship_network_api import auth_service
+from relationship_network_api import auth_service, tenant_context
 from relationship_network_api.auth_service import (
     AuthService,
     DuplicateEmailError,
@@ -28,6 +28,15 @@ SESSION_TTL_SECONDS: Final = 1209600
 RENEWAL_WINDOW_SECONDS: Final = 86400
 
 pytestmark = pytest.mark.anyio
+
+
+@pytest.fixture(autouse=True)
+def _stub_rls_context(monkeypatch: MonkeyPatch) -> None:
+    async def _noop(*_args: object, **_kwargs: object) -> None:
+        return None
+
+    monkeypatch.setattr(tenant_context, "set_tenant_context", _noop)
+    monkeypatch.setattr(tenant_context, "set_user_context", _noop)
 
 
 @final

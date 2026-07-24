@@ -12,6 +12,7 @@ from relationship_network_api.health import (
 )
 from relationship_network_api.probes import build_dependency_checks
 from relationship_network_api.routers.auth import router as auth_router
+from relationship_network_api.routers.rbac import router as rbac_router
 from relationship_network_api.routers.tenants import router as tenants_router
 
 
@@ -30,6 +31,7 @@ def create_app(
     app.state.session_factory = session_factory
     app.include_router(auth_router)
     app.include_router(tenants_router)
+    app.include_router(rbac_router)
 
     @app.get("/health/live", tags=["health"])
     async def liveness() -> LiveStatus:

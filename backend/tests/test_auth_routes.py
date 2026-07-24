@@ -83,6 +83,7 @@ def make_settings() -> AppSettings:
 
 def make_membership_view(*, role: MembershipRole = "owner") -> MembershipView:
     return MembershipView(
+        membership_id=uuid.UUID("33333333-3333-3333-3333-333333333333"),
         tenant_id=uuid.UUID("11111111-1111-1111-1111-111111111111"),
         tenant_name="Acme 科技",
         tenant_slug="acme-1234abcd",
