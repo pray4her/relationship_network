@@ -15,6 +15,8 @@ dependencies = [
     "uvicorn[standard]>=0.35,<1",
     "anyio (==4.14)",
     "urllib3 (==2.7)",
+    "argon2-cffi (>=25.1.0,<26.0.0)",
+    "email-validator (>=2.3.0,<3.0.0)",
 ]
 
 [tool.poetry]
@@ -72,7 +74,7 @@ ignore = [
 ]
 
 [tool.ruff.lint.per-file-ignores]
-"tests/**/*.py" = ["ARG", "D", "PLR2004", "S101", "SLF001"]
+"tests/**/*.py" = ["ARG", "D", "PLR2004", "S101", "S105", "S106", "SLF001"]
 
 [tool.ruff.lint.pydocstyle]
 convention = "google"

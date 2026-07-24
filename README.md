@@ -82,6 +82,24 @@ bun ci
 API_INTERNAL_URL=http://localhost:8000 bun run dev
 ```
 
+## 认证与租户
+
+注册、登录和会话续期由后端 API 提供，会话通过名为 `rn_session` 的 HttpOnly Cookie 维持（Path=/、SameSite=Lax，Secure 由配置决定；数据库只保存令牌的 SHA-256 哈希）。
+
+- `POST /auth/register`：创建用户、租户和 owner 成员关系（单事务），返回 201 及 `{user, tenant, role}`，并种下会话 Cookie。邮箱重复返回 409 `email_already_registered`。未提供 `tenant_name` 时默认使用 `"{display_name} 的租户"`。
+- `POST /auth/login`：返回与注册相同的 JSON 结构并种下 Cookie。邮箱不存在与密码错误统一返回 401 `invalid_credentials`，不区分原因。
+- `POST /auth/logout`：删除服务端会话并以 `Max-Age=0` 清除 Cookie，无会话时也返回 204。
+- `GET /auth/me`：返回当前身份；未认证返回 401 `not_authenticated`。剩余有效期进入续期窗口时自动滑动续期并重写 Cookie。
+- `GET /tenants/current`：返回当前租户 `{id, name, slug, role}`；无有效成员关系返回 403。
+
+成员关系目前仅由注册流程写入（只创建租户所有者）；停用、降级、移除等变更必须经过 `membership_service`，该模块拒绝任何针对租户所有者的此类操作（并有对应单元测试）。
+
+相关环境变量（`RN_` 前缀，见 `backend/.env.example` 与根目录 `.env.example`）：
+
+- `RN_SESSION_TTL_SECONDS`：会话有效期，默认 1209600（14 天），同时作为 Cookie 的 Max-Age。
+- `RN_SESSION_RENEWAL_WINDOW_SECONDS`：滑动续期窗口，默认 86400（1 天）。
+- `RN_SESSION_COOKIE_SECURE`：会话 Cookie 是否带 Secure 标记，默认 false，生产环境应设为 true。
+
 ## 质量检查
 
 ```powershell

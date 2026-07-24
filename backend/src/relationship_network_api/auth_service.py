@@ -1,0 +1,287 @@
+import re
+import uuid
+from dataclasses import dataclass
+from datetime import UTC, datetime, timedelta
+from typing import Final, final
+
+from sqlalchemy import select
+from sqlalchemy.exc import IntegrityError, SQLAlchemyError
+from sqlalchemy.ext.asyncio import AsyncSession
+
+from relationship_network_api.models import (
+    OWNER_ROLE,
+    AuthSession,
+    MembershipRole,
+    Tenant,
+    TenantMembership,
+    User,
+)
+from relationship_network_api.security import (
+    DUMMY_PASSWORD_HASH,
+    generate_session_token,
+    hash_password,
+    hash_session_token,
+    verify_password,
+)
+
+_SLUG_SEPARATOR_RUN: Final = re.compile(r"[^a-z0-9]+")
+_SLUG_RANDOM_LENGTH: Final = 8
+
+
+@final
+class DuplicateEmailError(Exception):
+    """Raised when registration reuses an already registered email."""
+
+
+@final
+class InvalidCredentialsError(Exception):
+    """Raised when login credentials do not authenticate, without revealing why."""
+
+
+@final
+@dataclass(frozen=True)
+class UserView:
+    """Public identity of a user."""
+
+    id: uuid.UUID
+    email: str
+    display_name: str
+
+
+@final
+@dataclass(frozen=True)
+class MembershipView:
+    """Tenant context granted by an active membership."""
+
+    tenant_id: uuid.UUID
+    tenant_name: str
+    tenant_slug: str
+    role: MembershipRole
+
+
+@final
+@dataclass(frozen=True)
+class IssuedSession:
+    """Freshly issued opaque session token and its expiry."""
+
+    token: str
+    expires_at: datetime
+
+
+@final
+@dataclass(frozen=True)
+class AuthResult:
+    """Outcome of a successful registration or login."""
+
+    user: UserView
+    membership: MembershipView
+    session: IssuedSession
+
+
+@final
+@dataclass(frozen=True)
+class Authentication:
+    """Resolved caller identity for an authenticated request."""
+
+    user: UserView
+    membership: MembershipView | None
+    expires_at: datetime
+    renewed: bool
+
+
+def normalize_email(email: str) -> str:
+    """Normalize an email for storage and lookup."""
+    return email.strip().lower()
+
+
+def default_tenant_name(display_name: str) -> str:
+    """Derive the default tenant name from the owner's display name."""
+    return f"{display_name} 的租户"
+
+
+def generate_tenant_slug(name: str) -> str:
+    """Build a unique URL-safe slug from a tenant name."""
+    base = _SLUG_SEPARATOR_RUN.sub("-", name.lower()).strip("-") or "tenant"
+    return f"{base[:100]}-{uuid.uuid4().hex[:_SLUG_RANDOM_LENGTH]}"
+
+
+@final
+class AuthService:
+    """Registration, login, logout, and sliding session renewal."""
+
+    def __init__(self, *, session_ttl_seconds: int, session_renewal_window_seconds: int) -> None:
+        self._session_ttl = timedelta(seconds=session_ttl_seconds)
+        self._renewal_window = timedelta(seconds=session_renewal_window_seconds)
+
+    async def register(
+        self,
+        session: AsyncSession,
+        *,
+        email: str,
+        password: str,
+        display_name: str,
+        tenant_name: str | None,
+    ) -> AuthResult:
+        """Create user, tenant, owner membership, and session in one transaction."""
+        user = User(
+            id=uuid.uuid4(),
+            email=normalize_email(email),
+            display_name=display_name,
+            password_hash=hash_password(password),
+            is_active=True,
+        )
+        session.add(user)
+        try:
+            await session.flush()
+        except IntegrityError as error:
+            await session.rollback()
+            raise DuplicateEmailError from error
+
+        resolved_tenant_name = tenant_name or default_tenant_name(display_name)
+        tenant = Tenant(
+            id=uuid.uuid4(),
+            name=resolved_tenant_name,
+            slug=generate_tenant_slug(resolved_tenant_name),
+        )
+        session.add(tenant)
+        membership = TenantMembership(
+            id=uuid.uuid4(),
+            tenant_id=tenant.id,
+            user_id=user.id,
+            role=OWNER_ROLE,
+            is_active=True,
+        )
+        session.add(membership)
+        token, auth_session = self._build_session(user)
+        session.add(auth_session)
+        try:
+            await session.commit()
+        except SQLAlchemyError:
+            await session.rollback()
+            raise
+        return AuthResult(
+            user=_user_view(user),
+            membership=_membership_view(membership, tenant),
+            session=IssuedSession(token=token, expires_at=auth_session.expires_at),
+        )
+
+    async def login(self, session: AsyncSession, *, email: str, password: str) -> AuthResult:
+        """Authenticate credentials and issue a session, never revealing the failure cause."""
+        result = await session.execute(select(User).where(User.email == normalize_email(email)))
+        user = result.scalar_one_or_none()
+        if user is None:
+            _ = verify_password(password_hash=DUMMY_PASSWORD_HASH, password=password)
+            raise InvalidCredentialsError
+        if not verify_password(password_hash=user.password_hash, password=password):
+            raise InvalidCredentialsError
+        if not user.is_active:
+            raise InvalidCredentialsError
+
+        membership, tenant = await self._load_membership(session, user.id)
+        if membership is None or tenant is None:
+            raise InvalidCredentialsError
+        token, auth_session = self._build_session(user)
+        session.add(auth_session)
+        try:
+            await session.commit()
+        except SQLAlchemyError:
+            await session.rollback()
+            raise
+        return AuthResult(
+            user=_user_view(user),
+            membership=_membership_view(membership, tenant),
+            session=IssuedSession(token=token, expires_at=auth_session.expires_at),
+        )
+
+    async def logout(self, session: AsyncSession, *, token: str | None) -> None:
+        """Delete the session row for the token; idempotent for unknown tokens."""
+        if token is None:
+            return
+        result = await session.execute(
+            select(AuthSession).where(AuthSession.token_hash == hash_session_token(token))
+        )
+        auth_session = result.scalar_one_or_none()
+        if auth_session is None:
+            return
+        await session.delete(auth_session)
+        await session.commit()
+
+    async def authenticate(self, session: AsyncSession, *, token: str) -> Authentication | None:
+        """Resolve the caller identity, sliding the session expiry forward when due."""
+        result = await session.execute(
+            select(AuthSession).where(AuthSession.token_hash == hash_session_token(token))
+        )
+        auth_session = result.scalar_one_or_none()
+        if auth_session is None:
+            return None
+        now = datetime.now(UTC)
+        if auth_session.expires_at <= now:
+            return None
+        result = await session.execute(select(User).where(User.id == auth_session.user_id))
+        user = result.scalar_one_or_none()
+        if user is None or not user.is_active:
+            return None
+
+        membership, tenant = await self._load_membership(session, user.id)
+
+        auth_session.last_used_at = now
+        renewed = auth_session.expires_at - now < self._renewal_window
+        if renewed:
+            auth_session.expires_at = now + self._session_ttl
+        try:
+            await session.commit()
+        except SQLAlchemyError:
+            await session.rollback()
+            raise
+        return Authentication(
+            user=_user_view(user),
+            membership=(
+                _membership_view(membership, tenant)
+                if membership is not None and tenant is not None
+                else None
+            ),
+            expires_at=auth_session.expires_at,
+            renewed=renewed,
+        )
+
+    def _build_session(self, user: User) -> tuple[str, AuthSession]:
+        now = datetime.now(UTC)
+        token = generate_session_token()
+        return token, AuthSession(
+            id=uuid.uuid4(),
+            user_id=user.id,
+            token_hash=hash_session_token(token),
+            created_at=now,
+            expires_at=now + self._session_ttl,
+            last_used_at=now,
+        )
+
+    async def _load_membership(
+        self,
+        session: AsyncSession,
+        user_id: uuid.UUID,
+    ) -> tuple[TenantMembership | None, Tenant | None]:
+        result = await session.execute(
+            select(TenantMembership).where(
+                TenantMembership.user_id == user_id,
+                TenantMembership.is_active,
+            )
+        )
+        membership = result.scalar_one_or_none()
+        if membership is None:
+            return None, None
+        result = await session.execute(select(Tenant).where(Tenant.id == membership.tenant_id))
+        return membership, result.scalar_one_or_none()
+
+
+def _user_view(user: User) -> UserView:
+    return UserView(id=user.id, email=user.email, display_name=user.display_name)
+
+
+def _membership_view(membership: TenantMembership, tenant: Tenant) -> MembershipView:
+    return MembershipView(
+        tenant_id=tenant.id,
+        tenant_name=tenant.name,
+        tenant_slug=tenant.slug,
+        role=membership.role,
+    )

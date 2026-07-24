@@ -26,6 +26,9 @@ class AppSettings(DatabaseSettings):
     object_storage_secret_key: SecretStr = Field()
     object_storage_bucket: str = "relationship-network"
     object_storage_secure: bool = False
+    session_ttl_seconds: int = 1209600
+    session_renewal_window_seconds: int = 86400
+    session_cookie_secure: bool = False
 
 
 def load_app_settings() -> AppSettings:
