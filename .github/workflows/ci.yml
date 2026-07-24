@@ -1,0 +1,148 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  backend:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_DB: relationship_network
+          POSTGRES_PASSWORD: ci-password
+          POSTGRES_USER: relationship
+        options: >-
+          --health-cmd "pg_isready -U relationship -d relationship_network"
+          --health-interval 3s
+          --health-timeout 3s
+          --health-retries 20
+        ports:
+          - 5432:5432
+    env:
+      RN_DATABASE_URL: postgresql+asyncpg://relationship:ci-password@localhost:5432/relationship_network
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pipx install poetry==2.3.2
+      - run: poetry install --with dev
+        working-directory: backend
+      - run: poetry run ruff check .
+        working-directory: backend
+      - run: poetry run ruff format --check .
+        working-directory: backend
+      - run: poetry run basedpyright
+        working-directory: backend
+      - run: poetry run pytest -m "not integration"
+        working-directory: backend
+      - run: poetry run alembic upgrade head
+        working-directory: backend
+      - run: poetry run alembic downgrade base
+        working-directory: backend
+      - run: poetry run alembic upgrade head
+        working-directory: backend
+
+  frontend:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: 1.3.10
+      - run: bun ci
+        working-directory: frontend
+      - run: bun run lint
+        working-directory: frontend
+      - run: bun run typecheck
+        working-directory: frontend
+      - run: bun run test
+        working-directory: frontend
+      - run: bun run build
+        working-directory: frontend
+
+  compose:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: 1.3.10
+      - run: cp .env.example .env
+      - run: docker compose config --quiet
+      - run: docker compose up --build --wait --wait-timeout 240
+      - run: pipx install poetry==2.3.2
+      - run: poetry install --with dev
+        working-directory: backend
+      - name: Verify live dependency probes
+        env:
+          RN_DATABASE_URL: postgresql+asyncpg://relationship:replace-with-local-postgres-password@127.0.0.1:15432/relationship_network
+          RN_OBJECT_STORAGE_ACCESS_KEY: replace-with-local-minio-user
+          RN_OBJECT_STORAGE_BUCKET: relationship-network
+          RN_OBJECT_STORAGE_ENDPOINT: 127.0.0.1:9000
+          RN_OBJECT_STORAGE_SECRET_KEY: replace-with-local-minio-password
+          RN_OBJECT_STORAGE_SECURE: "false"
+          RN_REDIS_URL: redis://127.0.0.1:16379/0
+        run: poetry run pytest tests/integration/test_runtime_dependencies.py
+        working-directory: backend
+      - name: Verify Celery broker, worker, and result backend
+        run: >-
+          docker compose exec -T worker poetry run python -c
+          "from relationship_network_api.tasks import smoke;
+          result = smoke.delay('ci-smoke').get(timeout=15);
+          assert result == {'request_id': 'ci-smoke', 'status': 'ok'}, result"
+      - run: bun ci
+        working-directory: frontend/e2e
+      - run: bunx playwright install --with-deps chrome msedge
+        working-directory: frontend/e2e
+      - run: bun run test:healthy
+        env:
+          PLAYWRIGHT_BASE_URL: http://127.0.0.1:3000
+        working-directory: frontend/e2e
+      - name: Stop object storage and await degraded readiness
+        run: |
+          docker compose stop minio
+          for attempt in {1..30}; do
+            status="$(curl --silent --output /dev/null --write-out '%{http_code}' http://127.0.0.1:8000/health/ready)"
+            if [ "$status" = "503" ]; then
+              exit 0
+            fi
+            sleep 1
+          done
+          exit 1
+      - run: bun run test:degraded
+        env:
+          PLAYWRIGHT_BASE_URL: http://127.0.0.1:3000
+        working-directory: frontend/e2e
+      - name: Restore object storage and await readiness
+        if: always()
+        run: |
+          docker compose start minio
+          for attempt in {1..30}; do
+            status="$(curl --silent --output /dev/null --write-out '%{http_code}' http://127.0.0.1:8000/health/ready)"
+            if [ "$status" = "200" ]; then
+              exit 0
+            fi
+            sleep 1
+          done
+          exit 1
+      - if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: browser-verification
+          path: frontend/e2e/test-results
+          if-no-files-found: ignore
+      - if: always()
+        run: docker compose ps && docker compose logs --no-color
+      - if: always()
+        run: docker compose down --volumes

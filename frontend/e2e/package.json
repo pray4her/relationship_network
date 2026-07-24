@@ -1,0 +1,14 @@
+{
+  "name": "relationship-network-web-e2e",
+  "version": "0.1.0",
+  "private": true,
+  "packageManager": "bun@1.3.10",
+  "scripts": {
+    "test": "playwright test",
+    "test:degraded": "playwright test tests/degraded-health-page.spec.ts",
+    "test:healthy": "playwright test tests/health-page.spec.ts"
+  },
+  "devDependencies": {
+    "@playwright/test": "1.61.1"
+  }
+}
