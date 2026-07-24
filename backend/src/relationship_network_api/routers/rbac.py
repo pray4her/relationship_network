@@ -86,7 +86,7 @@ def _role_response(role: RoleView) -> RoleResponse:
     )
 
 
-def _member_response(member: MemberView) -> MemberResponse:
+def member_response(member: MemberView) -> MemberResponse:
     return MemberResponse(
         membership_id=member.membership_id,
         user_id=member.user_id,
@@ -178,7 +178,7 @@ async def update_role(
 @router.get("/members")
 async def list_members(context: MembersReadDep, session: DbSession) -> list[MemberResponse]:
     members = await rbac_service.list_members(session, tenant_id=context.tenant_id)
-    return [_member_response(member) for member in members]
+    return [member_response(member) for member in members]
 
 
 @router.put("/members/{membership_id}/roles")
@@ -209,6 +209,6 @@ async def assign_roles(
     # re-pin it before reading the updated membership back.
     await tenant_context.set_tenant_context(session, context.tenant_id)
     members = await rbac_service.list_members(session, tenant_id=context.tenant_id)
-    return _member_response(
+    return member_response(
         next(member for member in members if member.membership_id == membership_id)
     )

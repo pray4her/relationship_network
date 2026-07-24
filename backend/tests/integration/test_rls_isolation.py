@@ -7,7 +7,7 @@ from httpx import AsyncClient
 from sqlalchemy import select, text
 from sqlalchemy.exc import DBAPIError
 
-from relationship_network_api.models import Role, TenantMembership
+from relationship_network_api.models import Role, TenantInvitation, TenantMembership
 from relationship_network_api.tenant_context import set_tenant_context
 
 from .conftest import Stack, unique_email
@@ -144,3 +144,49 @@ async def test_rls_denies_all_access_without_tenant_context(
     # Then row level security denies every tenant-scoped row
     assert visible == []
     assert memberships == []
+
+
+async def create_invitation(stack: Stack, client: AsyncClient) -> str:
+    """Create one invitation in the caller's tenant; returns the invitation id."""
+    invitee = unique_email()
+    created = await client.post("/invitations", json={"email": invitee})
+    assert created.status_code == 201
+    stack.emails.append(invitee)
+    return cast("str", created.json()["invitation"]["id"])
+
+
+@pytest.mark.anyio
+@pytest.mark.integration
+async def test_rls_scopes_invitations_to_the_current_tenant(
+    stack: Stack, client: AsyncClient
+) -> None:
+    # Given two tenants that each own an invitation
+    tenant_a, _ = await register_tenant(stack, client)
+    invitation_a = await create_invitation(stack, client)
+    tenant_b, _ = await register_tenant(stack, client)
+    invitation_b = await create_invitation(stack, client)
+
+    # When tenant A queries the invitations table without any tenant filter
+    async with stack.session_factory() as session:
+        await set_tenant_context(session, tenant_a)
+        result = await session.execute(select(TenantInvitation.id))
+        visible = {row[0] for row in result.all()}
+
+    # Then row level security hides the other tenant's rows
+    assert uuid.UUID(invitation_a) in visible
+    assert uuid.UUID(invitation_b) not in visible
+
+    # When tenant B runs the same unfiltered query
+    async with stack.session_factory() as session:
+        await set_tenant_context(session, tenant_b)
+        result = await session.execute(select(TenantInvitation.id))
+        visible = {row[0] for row in result.all()}
+
+    # Then only tenant B rows are visible
+    assert uuid.UUID(invitation_b) in visible
+    assert uuid.UUID(invitation_a) not in visible
+
+    # And without any context nothing is visible
+    async with stack.session_factory() as session:
+        result = await session.execute(select(TenantInvitation.id))
+        assert result.all() == []

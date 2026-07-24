@@ -29,6 +29,15 @@ class AppSettings(DatabaseSettings):
     session_ttl_seconds: int = 1209600
     session_renewal_window_seconds: int = 86400
     session_cookie_secure: bool = False
+    invitation_ttl_seconds: int = 604800
+    mfa_challenge_ttl_seconds: int = 300
+    app_base_url: str = "http://localhost:3000"
+    smtp_host: str | None = None
+    smtp_port: int = 587
+    smtp_username: str | None = None
+    smtp_password: SecretStr | None = None
+    smtp_from: str = "no-reply@relationship-network.local"
+    smtp_use_tls: bool = True
 
 
 def load_app_settings() -> AppSettings:

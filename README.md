@@ -92,13 +92,19 @@ API_INTERNAL_URL=http://localhost:8000 bun run dev
 - `GET /auth/me`：返回当前身份；未认证返回 401 `not_authenticated`。剩余有效期进入续期窗口时自动滑动续期并重写 Cookie。
 - `GET /tenants/current`：返回当前租户 `{id, name, slug, role}`；无有效成员关系返回 403。
 
-成员关系目前仅由注册流程写入（只创建租户所有者）；停用、降级、移除等变更必须经过 `membership_service`，该模块拒绝任何针对租户所有者的此类操作（并有对应单元测试）。
+成员关系可由两条路径写入：注册流程（只创建租户所有者），以及邀请流程——注册时传入 `invite_token`，或已登录后调用 `POST /invitations/accept` 加入租户（同一用户同时只能持有一个活跃成员关系，冲突返回 409 `already_in_tenant`）。成员的停用、启用、移除由 `POST /members/{id}/deactivate`、`POST /members/{id}/activate`、`DELETE /members/{id}` 提供，停用、降级、移除等变更必须经过 `membership_service`：该模块拒绝任何针对租户所有者的此类操作（并有对应单元测试），启用前还会校验用户在其他租户没有活跃成员关系。邀请接口需要 `members:invite` 权限，租户设置（如 MFA 策略）需要 `tenant:manage` 权限。
+
+MFA 基于 TOTP：`POST /auth/mfa/setup` 生成密钥，`POST /auth/mfa/enable` 校验并启用（同时下发一次性恢复码），登录后由 `POST /auth/mfa/verify` 完成二次校验。租户开启 `mfa_required` 后，`get_tenant_context` 会拒绝未完成 MFA 的成员，返回 403 `mfa_required`。
 
 相关环境变量（`RN_` 前缀，见 `backend/.env.example` 与根目录 `.env.example`）：
 
 - `RN_SESSION_TTL_SECONDS`：会话有效期，默认 1209600（14 天），同时作为 Cookie 的 Max-Age。
 - `RN_SESSION_RENEWAL_WINDOW_SECONDS`：滑动续期窗口，默认 86400（1 天）。
 - `RN_SESSION_COOKIE_SECURE`：会话 Cookie 是否带 Secure 标记，默认 false，生产环境应设为 true。
+- `RN_INVITATION_TTL_SECONDS`：邀请有效期，默认 604800（7 天）。
+- `RN_MFA_CHALLENGE_TTL_SECONDS`：MFA 挑战有效期，默认 300（5 分钟）。
+- `RN_APP_BASE_URL`：邀请邮件中链接使用的前端地址，默认 http://localhost:3000。
+- `RN_SMTP_HOST` / `RN_SMTP_PORT` / `RN_SMTP_USERNAME` / `RN_SMTP_PASSWORD` / `RN_SMTP_FROM` / `RN_SMTP_USE_TLS`：邀请邮件的 SMTP 配置；未设置 host 时仅在 worker 日志中记录邀请链接。
 
 ## 质量检查
 

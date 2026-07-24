@@ -1,16 +1,19 @@
 import uuid
-from typing import Annotated, Final, final
+from datetime import datetime
+from typing import Annotated, Final, Literal, final
 
 from fastapi import APIRouter, Depends, HTTPException, Request, Response, status
 from pydantic import BaseModel, EmailStr, Field
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from relationship_network_api import invitation_service, rbac_service, tenant_context
 from relationship_network_api.auth_service import (
     Authentication,
     AuthService,
     DuplicateEmailError,
     InvalidCredentialsError,
     MembershipView,
+    MfaPending,
     UserView,
 )
 from relationship_network_api.config import AppSettings
@@ -41,6 +44,7 @@ class RegisterRequest(BaseModel):
     password: str = Field(min_length=8, max_length=128)
     display_name: str = Field(min_length=1, max_length=50)
     tenant_name: str | None = Field(default=None, min_length=1, max_length=100)
+    invite_token: str | None = Field(default=None, min_length=1, max_length=200)
 
 
 @final
@@ -68,6 +72,21 @@ class AuthResponse(BaseModel):
     user: UserResponse
     tenant: TenantResponse
     role: MembershipRole
+
+
+@final
+class MeResponse(BaseModel):
+    user: UserResponse
+    tenant: TenantResponse
+    role: MembershipRole
+    permissions: list[str]
+
+
+@final
+class MfaRequiredResponse(BaseModel):
+    mfa_required: Literal[True] = True
+    mfa_token: str
+    expires_at: datetime
 
 
 def build_auth_response(user: UserView, membership: MembershipView) -> AuthResponse:
@@ -111,11 +130,22 @@ async def register(
             password=payload.password,
             display_name=payload.display_name,
             tenant_name=payload.tenant_name,
+            invite_token=payload.invite_token,
         )
     except DuplicateEmailError as error:
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
             detail=DUPLICATE_EMAIL_DETAIL,
+        ) from error
+    except invitation_service.InvitationInvalidError as error:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=invitation_service.INVITATION_INVALID_DETAIL,
+        ) from error
+    except invitation_service.InvitationEmailMismatchError as error:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail=invitation_service.INVITATION_EMAIL_MISMATCH_DETAIL,
         ) from error
     set_session_cookie(response, settings=settings, token=result.session.token)
     return build_auth_response(result.user, result.membership)
@@ -128,7 +158,7 @@ async def login(
     session: DbSession,
     service: AuthServiceDep,
     settings: SettingsDep,
-) -> AuthResponse:
+) -> AuthResponse | MfaRequiredResponse:
     try:
         result = await service.login(session, email=payload.email, password=payload.password)
     except InvalidCredentialsError as error:
@@ -136,6 +166,8 @@ async def login(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail=INVALID_CREDENTIALS_DETAIL,
         ) from error
+    if isinstance(result, MfaPending):
+        return MfaRequiredResponse(mfa_token=result.mfa_token, expires_at=result.expires_at)
     set_session_cookie(response, settings=settings, token=result.session.token)
     return build_auth_response(result.user, result.membership)
 
@@ -157,8 +189,9 @@ async def read_current_identity(
     request: Request,
     response: Response,
     authentication: AuthenticatedDep,
+    session: DbSession,
     settings: SettingsDep,
-) -> AuthResponse:
+) -> MeResponse:
     membership = authentication.membership
     if membership is None:
         raise HTTPException(
@@ -169,4 +202,14 @@ async def read_current_identity(
         token = request.cookies.get(SESSION_COOKIE_NAME)
         if token:
             set_session_cookie(response, settings=settings, token=token)
-    return build_auth_response(authentication.user, membership)
+    # The authenticate call committed, ending the transaction-local tenant
+    # context; re-pin it before resolving permissions from RLS-scoped tables.
+    await tenant_context.set_tenant_context(session, membership.tenant_id)
+    permissions = await rbac_service.resolve_permissions(
+        session,
+        tenant_id=membership.tenant_id,
+        membership_role=membership.role,
+        membership_id=membership.membership_id,
+    )
+    auth_response = build_auth_response(authentication.user, membership)
+    return MeResponse(**auth_response.model_dump(), permissions=sorted(permissions))

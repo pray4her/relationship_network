@@ -4,6 +4,7 @@ from typing import Annotated, Final
 from uuid import UUID
 
 from fastapi import Depends, HTTPException, Request, status
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncEngine, AsyncSession
 
 from relationship_network_api import rbac_service, tenant_context
@@ -11,10 +12,12 @@ from relationship_network_api.auth_service import Authentication, AuthService, M
 from relationship_network_api.config import AppSettings, load_app_settings
 from relationship_network_api.db import create_engine_from_settings, create_session_factory
 from relationship_network_api.membership_service import NO_ACTIVE_MEMBERSHIP_DETAIL
+from relationship_network_api.models import Tenant, User
 
 SESSION_COOKIE_NAME: Final = "rn_session"
 NOT_AUTHENTICATED_DETAIL: Final = "not_authenticated"
 PERMISSION_DENIED_DETAIL: Final = "permission_denied"
+MFA_REQUIRED_DETAIL: Final = "mfa_required"
 
 
 @dataclass(frozen=True)
@@ -58,6 +61,7 @@ def get_auth_service(
     return AuthService(
         session_ttl_seconds=settings.session_ttl_seconds,
         session_renewal_window_seconds=settings.session_renewal_window_seconds,
+        mfa_challenge_ttl_seconds=settings.mfa_challenge_ttl_seconds,
     )
 
 
@@ -101,6 +105,11 @@ async def get_tenant_context(
             detail=NO_ACTIVE_MEMBERSHIP_DETAIL,
         )
     await tenant_context.set_tenant_context(session, membership.tenant_id)
+    await _enforce_mfa_policy(
+        session,
+        tenant_id=membership.tenant_id,
+        authentication=authentication,
+    )
     permissions = await rbac_service.resolve_permissions(
         session,
         tenant_id=membership.tenant_id,
@@ -112,6 +121,28 @@ async def get_tenant_context(
         membership=membership,
         permissions=permissions,
     )
+
+
+async def _enforce_mfa_policy(
+    session: AsyncSession,
+    *,
+    tenant_id: UUID,
+    authentication: Authentication,
+) -> None:
+    """Reject members without MFA when the tenant enforces an MFA policy."""
+    tenant = (
+        await session.execute(select(Tenant).where(Tenant.id == tenant_id))
+    ).scalar_one_or_none()
+    if tenant is None or not tenant.mfa_required:
+        return
+    user = (
+        await session.execute(select(User).where(User.id == authentication.user.id))
+    ).scalar_one_or_none()
+    if user is None or user.totp_enabled_at is None:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail=MFA_REQUIRED_DETAIL,
+        )
 
 
 def require_permission(

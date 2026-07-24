@@ -3,13 +3,20 @@ import Link from "next/link"
 
 import { logoutAction } from "@/app/actions/auth"
 import { Button } from "@/components/ui/button"
-import { createAuthTransport, loadAuthSession, SESSION_COOKIE_NAME } from "@/lib/auth-client"
+import { WorkspaceNav } from "@/components/workspace-nav"
+import {
+  createAuthTransport,
+  loadAuthSession,
+  loadCurrentTenant,
+  SESSION_COOKIE_NAME,
+} from "@/lib/auth-client"
 
 export async function AccountPanel() {
   const store = await cookies()
   const session = store.get(SESSION_COOKIE_NAME)?.value
+  const transport = createAuthTransport()
   const auth = session
-    ? await loadAuthSession(createAuthTransport(), session)
+    ? await loadAuthSession(transport, session)
     : ({ kind: "anonymous" } as const)
 
   if (auth.kind !== "authenticated") {
@@ -28,23 +35,37 @@ export async function AccountPanel() {
     )
   }
 
+  const tenant = session ? await loadCurrentTenant(transport, session) : null
+  const mfaGateActive = tenant?.kind === "mfaRequired"
+
   return (
-    <section className="account-bar" aria-label="账户">
-      <div className="account-identity">
-        <span className="account-label">当前用户</span>
-        <strong>{auth.view.user.display_name}</strong>
-        <span className="account-email">{auth.view.user.email}</span>
-      </div>
-      <div className="account-tenant">
-        <span className="account-label">租户</span>
-        <strong>{auth.view.tenant.name}</strong>
-        <span className="account-role">角色：租户所有者</span>
-      </div>
-      <form action={logoutAction}>
-        <Button mode="secondary" type="submit">
-          退出登录
-        </Button>
-      </form>
-    </section>
+    <header className="account-header">
+      <section className="account-bar" aria-label="账户">
+        <div className="account-identity">
+          <span className="account-label">当前用户</span>
+          <strong>{auth.view.user.display_name}</strong>
+          <span className="account-email">{auth.view.user.email}</span>
+        </div>
+        <div className="account-tenant">
+          <span className="account-label">租户</span>
+          <strong>{auth.view.tenant.name}</strong>
+          <span className="account-role">
+            角色：{auth.view.role === "owner" ? "租户所有者" : "成员"}
+          </span>
+        </div>
+        <form action={logoutAction}>
+          <Button mode="secondary" type="submit">
+            退出登录
+          </Button>
+        </form>
+      </section>
+      <WorkspaceNav permissions={auth.view.permissions} />
+      {mfaGateActive ? (
+        <p className="notice" role="alert">
+          租户已启用强制 MFA，请完成两步验证设置。
+          <Link href="/settings/security">前往安全设置</Link>
+        </p>
+      ) : null}
+    </header>
   )
 }

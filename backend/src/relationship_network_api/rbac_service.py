@@ -22,6 +22,8 @@ SYSTEM_PERMISSIONS: Final[dict[str, str]] = {
     "roles:manage": "创建、编辑与停用角色",
     "members:read": "查看租户成员及其角色",
     "members:manage": "为租户成员分配角色",
+    "members:invite": "邀请新成员加入租户",
+    "tenant:manage": "管理租户设置",
 }
 """System-defined permission catalog; codes are stable and assigned to roles."""
 

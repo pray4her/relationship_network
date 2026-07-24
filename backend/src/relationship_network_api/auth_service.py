@@ -8,11 +8,13 @@ from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError, SQLAlchemyError
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from relationship_network_api import tenant_context
+from relationship_network_api import invitation_service, tenant_context
 from relationship_network_api.models import (
+    MEMBER_ROLE,
     OWNER_ROLE,
     AuthSession,
     MembershipRole,
+    MfaChallenge,
     Tenant,
     TenantMembership,
     User,
@@ -82,6 +84,16 @@ class AuthResult:
 
 @final
 @dataclass(frozen=True)
+class MfaPending:
+    """Login outcome when the account requires a second factor."""
+
+    user: UserView
+    mfa_token: str
+    expires_at: datetime
+
+
+@final
+@dataclass(frozen=True)
 class Authentication:
     """Resolved caller identity for an authenticated request."""
 
@@ -111,11 +123,18 @@ def generate_tenant_slug(name: str) -> str:
 class AuthService:
     """Registration, login, logout, and sliding session renewal."""
 
-    def __init__(self, *, session_ttl_seconds: int, session_renewal_window_seconds: int) -> None:
+    def __init__(
+        self,
+        *,
+        session_ttl_seconds: int,
+        session_renewal_window_seconds: int,
+        mfa_challenge_ttl_seconds: int = 300,
+    ) -> None:
         self._session_ttl = timedelta(seconds=session_ttl_seconds)
         self._renewal_window = timedelta(seconds=session_renewal_window_seconds)
+        self._mfa_challenge_ttl = timedelta(seconds=mfa_challenge_ttl_seconds)
 
-    async def register(
+    async def register(  # noqa: PLR0913
         self,
         session: AsyncSession,
         *,
@@ -123,8 +142,21 @@ class AuthService:
         password: str,
         display_name: str,
         tenant_name: str | None,
+        invite_token: str | None = None,
     ) -> AuthResult:
-        """Create user, tenant, owner membership, and session in one transaction."""
+        """Create user, tenant, owner membership, and session in one transaction.
+
+        With an invite token, no tenant is created: the user joins the issuing
+        tenant as a plain member and the invitation is marked accepted.
+        """
+        invitation = None
+        if invite_token is not None:
+            invitation = await invitation_service.load_pending_invitation(
+                session,
+                token=invite_token,
+            )
+            if invitation.email != normalize_email(email):
+                raise invitation_service.InvitationEmailMismatchError
         user = User(
             id=uuid.uuid4(),
             email=normalize_email(email),
@@ -139,22 +171,35 @@ class AuthService:
             await session.rollback()
             raise DuplicateEmailError from error
 
-        resolved_tenant_name = tenant_name or default_tenant_name(display_name)
-        tenant = Tenant(
-            id=uuid.uuid4(),
-            name=resolved_tenant_name,
-            slug=generate_tenant_slug(resolved_tenant_name),
-        )
-        session.add(tenant)
-        await tenant_context.set_tenant_context(session, tenant.id)
-        membership = TenantMembership(
-            id=uuid.uuid4(),
-            tenant_id=tenant.id,
-            user_id=user.id,
-            role=OWNER_ROLE,
-            is_active=True,
-        )
-        session.add(membership)
+        if invitation is not None:
+            await tenant_context.set_user_context(session, user.id)
+            tenant = await self._load_tenant(session, invitation.tenant_id)
+            membership = TenantMembership(
+                id=uuid.uuid4(),
+                tenant_id=tenant.id,
+                user_id=user.id,
+                role=MEMBER_ROLE,
+                is_active=True,
+            )
+            session.add(membership)
+            invitation.accepted_at = datetime.now(UTC)
+        else:
+            resolved_tenant_name = tenant_name or default_tenant_name(display_name)
+            tenant = Tenant(
+                id=uuid.uuid4(),
+                name=resolved_tenant_name,
+                slug=generate_tenant_slug(resolved_tenant_name),
+            )
+            session.add(tenant)
+            await tenant_context.set_tenant_context(session, tenant.id)
+            membership = TenantMembership(
+                id=uuid.uuid4(),
+                tenant_id=tenant.id,
+                user_id=user.id,
+                role=OWNER_ROLE,
+                is_active=True,
+            )
+            session.add(membership)
         token, auth_session = self._build_session(user)
         session.add(auth_session)
         try:
@@ -168,8 +213,18 @@ class AuthService:
             session=IssuedSession(token=token, expires_at=auth_session.expires_at),
         )
 
-    async def login(self, session: AsyncSession, *, email: str, password: str) -> AuthResult:
-        """Authenticate credentials and issue a session, never revealing the failure cause."""
+    async def login(
+        self,
+        session: AsyncSession,
+        *,
+        email: str,
+        password: str,
+    ) -> AuthResult | MfaPending:
+        """Authenticate credentials and issue a session, never revealing the failure cause.
+
+        Accounts with MFA enabled get a pending challenge instead of a session;
+        the challenge must be completed through the MFA verify endpoint.
+        """
         result = await session.execute(select(User).where(User.email == normalize_email(email)))
         user = result.scalar_one_or_none()
         if user is None:
@@ -180,6 +235,48 @@ class AuthService:
         if not user.is_active:
             raise InvalidCredentialsError
 
+        if user.totp_enabled_at is not None:
+            now = datetime.now(UTC)
+            mfa_token = generate_session_token()
+            challenge = MfaChallenge(
+                id=uuid.uuid4(),
+                user_id=user.id,
+                token_hash=hash_session_token(mfa_token),
+                attempts=0,
+                created_at=now,
+                expires_at=now + self._mfa_challenge_ttl,
+            )
+            session.add(challenge)
+            try:
+                await session.commit()
+            except SQLAlchemyError:
+                await session.rollback()
+                raise
+            return MfaPending(
+                user=_user_view(user),
+                mfa_token=mfa_token,
+                expires_at=challenge.expires_at,
+            )
+
+        await tenant_context.set_user_context(session, user.id)
+        membership, tenant = await self._load_membership(session, user.id)
+        if membership is None or tenant is None:
+            raise InvalidCredentialsError
+        token, auth_session = self._build_session(user)
+        session.add(auth_session)
+        try:
+            await session.commit()
+        except SQLAlchemyError:
+            await session.rollback()
+            raise
+        return AuthResult(
+            user=_user_view(user),
+            membership=_membership_view(membership, tenant),
+            session=IssuedSession(token=token, expires_at=auth_session.expires_at),
+        )
+
+    async def complete_mfa_login(self, session: AsyncSession, *, user: User) -> AuthResult:
+        """Issue a session for a user whose MFA challenge was verified."""
         await tenant_context.set_user_context(session, user.id)
         membership, tenant = await self._load_membership(session, user.id)
         if membership is None or tenant is None:
@@ -275,8 +372,14 @@ class AuthService:
         membership = result.scalar_one_or_none()
         if membership is None:
             return None, None
-        result = await session.execute(select(Tenant).where(Tenant.id == membership.tenant_id))
-        return membership, result.scalar_one_or_none()
+        return membership, await self._load_tenant(session, membership.tenant_id)
+
+    async def _load_tenant(self, session: AsyncSession, tenant_id: uuid.UUID) -> Tenant:
+        result = await session.execute(select(Tenant).where(Tenant.id == tenant_id))
+        tenant = result.scalar_one_or_none()
+        if tenant is None:
+            raise InvalidCredentialsError
+        return tenant
 
 
 def _user_view(user: User) -> UserView:

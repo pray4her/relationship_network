@@ -1,0 +1,23 @@
+import Link from "next/link"
+
+type WorkspaceNavProps = {
+  readonly permissions: readonly string[]
+}
+
+export function WorkspaceNav({ permissions }: WorkspaceNavProps) {
+  return (
+    <nav className="workspace-nav" aria-label="工作区">
+      <Link className="workspace-nav-link" href="/">
+        首页
+      </Link>
+      {permissions.includes("members:read") ? (
+        <Link className="workspace-nav-link" href="/members">
+          成员
+        </Link>
+      ) : null}
+      <Link className="workspace-nav-link" href="/settings/security">
+        安全设置
+      </Link>
+    </nav>
+  )
+}

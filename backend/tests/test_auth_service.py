@@ -9,16 +9,24 @@ from _pytest.monkeypatch import MonkeyPatch
 from sqlalchemy.exc import IntegrityError, SQLAlchemyError
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from relationship_network_api import auth_service, tenant_context
+from relationship_network_api import auth_service, invitation_service, tenant_context
 from relationship_network_api.auth_service import (
+    AuthResult,
     AuthService,
     DuplicateEmailError,
     InvalidCredentialsError,
+    MfaPending,
+)
+from relationship_network_api.invitation_service import (
+    InvitationEmailMismatchError,
+    InvitationInvalidError,
 )
 from relationship_network_api.models import (
     AuthSession,
     MembershipRole,
+    MfaChallenge,
     Tenant,
+    TenantInvitation,
     TenantMembership,
     User,
 )
@@ -288,6 +296,7 @@ async def test_login_success_issues_session() -> None:
 
     # Then a session row is persisted and identity views reflect the owner membership
     assert spy.commit_calls == 1
+    assert isinstance(result, AuthResult)
     assert result.user.email == "owner@example.com"
     assert result.membership.role == "owner"
     assert result.membership.tenant_slug == "acme-1234abcd"
@@ -438,3 +447,160 @@ async def test_logout_is_idempotent_for_unknown_token() -> None:
 
     # Then nothing breaks and nothing is persisted
     assert spy.deleted == []
+
+
+async def test_register_with_invite_joins_issuing_tenant(monkeypatch: MonkeyPatch) -> None:
+    # Given a pending invitation for the registering email
+    service = make_service()
+    tenant = make_tenant()
+    invitation = TenantInvitation(
+        id=uuid.uuid4(),
+        tenant_id=tenant.id,
+        email="invitee@example.com",
+        token_hash="b" * 64,
+        invited_by=uuid.uuid4(),
+        expires_at=datetime.now(UTC) + timedelta(days=7),
+    )
+
+    async def fake_load_pending(_session: object, *, token: str) -> TenantInvitation:
+        assert token == "raw-invite-token"
+        return invitation
+
+    monkeypatch.setattr(invitation_service, "load_pending_invitation", fake_load_pending)
+    spy = SpySession(execute_results=[tenant])
+
+    # When registration succeeds with the invite token
+    result = await service.register(
+        as_session(spy),
+        email="Invitee@Example.com",
+        password="sup3r-secret",
+        display_name="受邀用户",
+        tenant_name=None,
+        invite_token="raw-invite-token",
+    )
+
+    # Then no tenant is created and the membership joins the issuing tenant as member
+    assert spy.commit_calls == 1
+    added_types = {type(instance) for instance in spy.added}
+    assert added_types == {User, TenantMembership, AuthSession}
+    membership = next(i for i in spy.added if isinstance(i, TenantMembership))
+    assert membership.tenant_id == tenant.id
+    assert membership.role == "member"
+    assert result.membership.role == "member"
+    assert result.membership.tenant_id == tenant.id
+    assert invitation.accepted_at is not None
+
+
+async def test_register_with_invite_rejects_email_mismatch(monkeypatch: MonkeyPatch) -> None:
+    # Given a pending invitation for another email
+    service = make_service()
+    invitation = TenantInvitation(
+        id=uuid.uuid4(),
+        tenant_id=uuid.uuid4(),
+        email="invitee@example.com",
+        token_hash="b" * 64,
+        invited_by=uuid.uuid4(),
+        expires_at=datetime.now(UTC) + timedelta(days=7),
+    )
+
+    async def fake_load_pending(_session: object, *, token: str) -> TenantInvitation:
+        del token
+        return invitation
+
+    monkeypatch.setattr(invitation_service, "load_pending_invitation", fake_load_pending)
+    spy = SpySession()
+
+    # When registration uses a different email
+    with pytest.raises(InvitationEmailMismatchError):
+        _ = await service.register(
+            as_session(spy),
+            email="other@example.com",
+            password="sup3r-secret",
+            display_name="冒名用户",
+            tenant_name=None,
+            invite_token="raw-invite-token",
+        )
+
+    # Then no user is created
+    assert spy.added == []
+    assert spy.commit_calls == 0
+
+
+async def test_register_with_invalid_invite_creates_nothing(monkeypatch: MonkeyPatch) -> None:
+    # Given the invitation service rejecting the token
+    service = make_service()
+
+    async def fake_load_pending(_session: object, *, token: str) -> TenantInvitation:
+        del token
+        raise InvitationInvalidError
+
+    monkeypatch.setattr(invitation_service, "load_pending_invitation", fake_load_pending)
+    spy = SpySession()
+
+    # When registration is attempted
+    with pytest.raises(InvitationInvalidError):
+        _ = await service.register(
+            as_session(spy),
+            email="invitee@example.com",
+            password="sup3r-secret",
+            display_name="受邀用户",
+            tenant_name=None,
+            invite_token="bad-token",
+        )
+
+    # Then no user is created
+    assert spy.added == []
+
+
+async def test_login_returns_mfa_pending_when_totp_enabled() -> None:
+    # Given a user with MFA enabled
+    service = make_service()
+    user = make_user()
+    user.totp_secret = "SECRET"
+    user.totp_enabled_at = datetime.now(UTC)
+    spy = SpySession(execute_results=[user])
+
+    # When the correct credentials are supplied
+    result = await service.login(
+        as_session(spy),
+        email="owner@example.com",
+        password="right-password-1",
+    )
+
+    # Then a pending challenge is stored instead of a session
+    assert isinstance(result, MfaPending)
+    assert result.mfa_token
+    assert result.expires_at > datetime.now(UTC)
+    challenge = next(i for i in spy.added if isinstance(i, MfaChallenge))
+    assert result.mfa_token not in challenge.token_hash
+    assert challenge.attempts == 0
+    assert all(not isinstance(i, AuthSession) for i in spy.added)
+    assert spy.commit_calls == 1
+
+
+async def test_complete_mfa_login_issues_session() -> None:
+    # Given a user whose challenge was verified
+    service = make_service()
+    user = make_user()
+    tenant = make_tenant()
+    membership = make_membership(user, tenant)
+    spy = SpySession(execute_results=[membership, tenant])
+
+    # When the login is completed
+    result = await service.complete_mfa_login(as_session(spy), user=user)
+
+    # Then a normal session is issued
+    assert result.user.email == "owner@example.com"
+    assert result.membership.tenant_slug == "acme-1234abcd"
+    assert result.session.token
+    assert spy.commit_calls == 1
+
+
+async def test_complete_mfa_login_without_membership_fails() -> None:
+    # Given a user without an active membership
+    service = make_service()
+    spy = SpySession(execute_results=[None])
+
+    # When the login is completed
+    with pytest.raises(InvalidCredentialsError):
+        _ = await service.complete_mfa_login(as_session(spy), user=make_user())

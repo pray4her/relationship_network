@@ -8,12 +8,17 @@ import {
   type CurrentTenant,
   currentTenantSchema,
   type LoginInput,
+  loginMfaRequiredSchema,
+  type MeView,
+  meViewSchema,
   type RegisterInput,
 } from "./auth-contract"
 
 const apiUrlSchema = z.url()
 
 export const SESSION_COOKIE_NAME = "rn_session"
+export const MFA_CHALLENGE_COOKIE_NAME = "rn_mfa_challenge"
+export const MFA_CHALLENGE_MAX_AGE = 300
 export const DEFAULT_SESSION_MAX_AGE = 1_209_600
 
 export type SessionCookie = {
@@ -161,6 +166,8 @@ export type RegisterResult =
       readonly session: SessionCookie | null
     }
   | { readonly kind: "duplicate" }
+  | { readonly kind: "invitationInvalid" }
+  | { readonly kind: "invitationEmailMismatch" }
   | { readonly kind: "rejected" }
   | { readonly kind: "unreachable" }
 
@@ -181,6 +188,18 @@ export async function registerAccount(
       const detail = readErrorDetail(response.body)
       return detail === "email_already_registered" ? { kind: "duplicate" } : { kind: "unreachable" }
     }
+    if (response.status === 404) {
+      const detail = readErrorDetail(response.body)
+      return detail === "invitation_invalid"
+        ? { kind: "invitationInvalid" }
+        : { kind: "unreachable" }
+    }
+    if (response.status === 403) {
+      const detail = readErrorDetail(response.body)
+      return detail === "invitation_email_mismatch"
+        ? { kind: "invitationEmailMismatch" }
+        : { kind: "unreachable" }
+    }
     if (response.status === 422) {
       return { kind: "rejected" }
     }
@@ -199,6 +218,11 @@ export type LoginResult =
       readonly view: AuthView
       readonly session: SessionCookie | null
     }
+  | {
+      readonly kind: "mfaRequired"
+      readonly mfaToken: string
+      readonly expiresAt: string
+    }
   | { readonly kind: "invalidCredentials" }
   | { readonly kind: "unreachable" }
 
@@ -209,6 +233,14 @@ export async function loginAccount(
   try {
     const response = await transport.login(input)
     if (response.status === 200) {
+      const mfaRequired = loginMfaRequiredSchema.safeParse(response.body)
+      if (mfaRequired.success) {
+        return {
+          kind: "mfaRequired",
+          expiresAt: mfaRequired.data.expires_at,
+          mfaToken: mfaRequired.data.mfa_token,
+        }
+      }
       return {
         kind: "authenticated",
         session: response.session,
@@ -230,7 +262,7 @@ export async function loginAccount(
 export type AuthSessionResult =
   | {
       readonly kind: "authenticated"
-      readonly view: AuthView
+      readonly view: MeView
       readonly renewedSession: SessionCookie | null
     }
   | { readonly kind: "anonymous" }
@@ -246,7 +278,7 @@ export async function loadAuthSession(
       return {
         kind: "authenticated",
         renewedSession: response.session,
-        view: authViewSchema.parse(response.body),
+        view: meViewSchema.parse(response.body),
       }
     }
     if (response.status === 401) {
@@ -265,6 +297,7 @@ export type CurrentTenantResult =
   | { readonly kind: "ok"; readonly tenant: CurrentTenant }
   | { readonly kind: "anonymous" }
   | { readonly kind: "forbidden" }
+  | { readonly kind: "mfaRequired" }
   | { readonly kind: "unreachable" }
 
 export async function loadCurrentTenant(
@@ -280,7 +313,9 @@ export async function loadCurrentTenant(
       return { kind: "anonymous" }
     }
     if (response.status === 403) {
-      return { kind: "forbidden" }
+      return readErrorDetail(response.body) === "mfa_required"
+        ? { kind: "mfaRequired" }
+        : { kind: "forbidden" }
     }
     return { kind: "unreachable" }
   } catch (error) {

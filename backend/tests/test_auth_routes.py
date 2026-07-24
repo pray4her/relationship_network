@@ -5,9 +5,11 @@ from types import SimpleNamespace
 from typing import Final, cast, final
 
 import pytest
+from _pytest.monkeypatch import MonkeyPatch
 from fastapi.testclient import TestClient
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from relationship_network_api import rbac_service, tenant_context
 from relationship_network_api.auth_service import (
     Authentication,
     AuthResult,
@@ -15,6 +17,7 @@ from relationship_network_api.auth_service import (
     InvalidCredentialsError,
     IssuedSession,
     MembershipView,
+    MfaPending,
     UserView,
 )
 from relationship_network_api.config import AppSettings
@@ -24,6 +27,10 @@ from relationship_network_api.deps import (
     get_authentication,
     get_db_session,
     get_settings,
+)
+from relationship_network_api.invitation_service import (
+    InvitationEmailMismatchError,
+    InvitationInvalidError,
 )
 from relationship_network_api.main import create_app
 from relationship_network_api.models import MembershipRole
@@ -40,8 +47,10 @@ class FakeAuthService:
         self.login_error: Exception | None = None
         self.logout_tokens: list[str | None] = []
         self.registered_tenant_names: list[str | None] = []
+        self.registered_invite_tokens: list[str | None] = []
+        self.login_result: AuthResult | MfaPending | None = None
 
-    async def register(
+    async def register(  # noqa: PLR0913
         self,
         session: AsyncSession,
         *,
@@ -49,17 +58,27 @@ class FakeAuthService:
         password: str,
         display_name: str,
         tenant_name: str | None,
+        invite_token: str | None = None,
     ) -> AuthResult:
         del session, password
         if self.register_error is not None:
             raise self.register_error
         self.registered_tenant_names.append(tenant_name)
+        self.registered_invite_tokens.append(invite_token)
         return make_auth_result(email=email, display_name=display_name)
 
-    async def login(self, session: AsyncSession, *, email: str, password: str) -> AuthResult:
+    async def login(
+        self,
+        session: AsyncSession,
+        *,
+        email: str,
+        password: str,
+    ) -> AuthResult | MfaPending:
         del session, password
         if self.login_error is not None:
             raise self.login_error
+        if self.login_result is not None:
+            return self.login_result
         return make_auth_result(email=email, display_name="Tenant Owner")
 
     async def logout(self, session: AsyncSession, *, token: str | None) -> None:
@@ -308,18 +327,40 @@ def test_logout_is_idempotent_without_cookie() -> None:
     assert service.logout_tokens == [None]
 
 
-def test_me_returns_current_identity() -> None:
+def stub_permission_resolution(
+    monkeypatch: MonkeyPatch,
+    *,
+    permissions: frozenset[str] | None = None,
+) -> None:
+    """Stub the tenant pin and permission lookup used by /auth/me."""
+    resolved = (
+        permissions if permissions is not None else frozenset({"members:read", "members:invite"})
+    )
+
+    async def fake_set_tenant_context(_session: object, _tenant_id: uuid.UUID) -> None:
+        return None
+
+    async def fake_resolve_permissions(_session: object, **_kwargs: object) -> frozenset[str]:
+        return resolved
+
+    monkeypatch.setattr(tenant_context, "set_tenant_context", fake_set_tenant_context)
+    monkeypatch.setattr(rbac_service, "resolve_permissions", fake_resolve_permissions)
+
+
+def test_me_returns_current_identity(monkeypatch: MonkeyPatch) -> None:
     # Given an authenticated session
+    stub_permission_resolution(monkeypatch)
     client = make_client(authentication=make_authentication())
     client.cookies.set(SESSION_COOKIE_NAME, "opaque-session-token")
 
     # When the current identity is requested
     response = client.get("/auth/me")
 
-    # Then the identity contract matches registration
+    # Then the identity contract matches registration with effective permissions
     assert response.status_code == 200
     assert response.json()["user"]["email"] == "owner@example.com"
     assert response.json()["role"] == "owner"
+    assert response.json()["permissions"] == ["members:invite", "members:read"]
 
 
 def test_me_requires_authentication() -> None:
@@ -334,8 +375,9 @@ def test_me_requires_authentication() -> None:
     assert response.json() == {"detail": "not_authenticated"}
 
 
-def test_me_refreshes_cookie_when_session_was_renewed() -> None:
+def test_me_refreshes_cookie_when_session_was_renewed(monkeypatch: MonkeyPatch) -> None:
     # Given a session that the sliding renewal just extended
+    stub_permission_resolution(monkeypatch)
     client = make_client(authentication=make_authentication(renewed=True))
     client.cookies.set(SESSION_COOKIE_NAME, "opaque-session-token")
 
@@ -360,3 +402,75 @@ def test_me_without_membership_returns_forbidden() -> None:
     # Then access is forbidden
     assert response.status_code == 403
     assert response.json() == {"detail": "no_active_membership"}
+
+
+def test_register_with_invite_token_delegates_to_service() -> None:
+    # Given a registration payload carrying an invitation token
+    service = FakeAuthService()
+    client = make_client(service=service)
+
+    # When it is submitted
+    response = client.post("/auth/register", json=register_payload(invite_token="raw-invite-token"))
+
+    # Then the token reaches the service and the member identity is returned
+    assert response.status_code == 201
+    assert service.registered_invite_tokens == ["raw-invite-token"]
+    assert f"{SESSION_COOKIE_NAME}=opaque-session-token" in response.headers["set-cookie"]
+
+
+def test_register_with_invalid_invite_returns_not_found() -> None:
+    # Given the service rejecting the invitation token
+    service = FakeAuthService()
+    service.register_error = InvitationInvalidError()
+    client = make_client(service=service)
+
+    # When registration is submitted
+    response = client.post("/auth/register", json=register_payload(invite_token="bad-token"))
+
+    # Then the failure is uniform and does not enumerate invitations
+    assert response.status_code == 404
+    assert response.json() == {"detail": "invitation_invalid"}
+
+
+def test_register_with_mismatched_invite_email_returns_forbidden() -> None:
+    # Given the service reporting an email mismatch with the invitation
+    service = FakeAuthService()
+    service.register_error = InvitationEmailMismatchError()
+    client = make_client(service=service)
+
+    # When registration is submitted
+    response = client.post("/auth/register", json=register_payload(invite_token="raw-invite-token"))
+
+    # Then the mismatch is reported
+    assert response.status_code == 403
+    assert response.json() == {"detail": "invitation_email_mismatch"}
+
+
+def test_login_returns_mfa_challenge_when_second_factor_required() -> None:
+    # Given a login that stops at the MFA challenge
+    service = FakeAuthService()
+    service.login_result = MfaPending(
+        user=UserView(
+            id=uuid.UUID("22222222-2222-2222-2222-222222222222"),
+            email="owner@example.com",
+            display_name="Tenant Owner",
+        ),
+        mfa_token="raw-mfa-token",
+        expires_at=datetime(2030, 1, 1, tzinfo=UTC),
+    )
+    client = make_client(service=service)
+
+    # When valid credentials are submitted
+    response = client.post(
+        "/auth/login",
+        json={"email": "owner@example.com", "password": "sup3r-secret"},
+    )
+
+    # Then the pending challenge is returned instead of a session cookie
+    assert response.status_code == 200
+    assert response.json() == {
+        "mfa_required": True,
+        "mfa_token": "raw-mfa-token",
+        "expires_at": "2030-01-01T00:00:00Z",
+    }
+    assert "set-cookie" not in response.headers

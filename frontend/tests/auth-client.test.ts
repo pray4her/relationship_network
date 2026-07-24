@@ -20,6 +20,11 @@ const authViewBody = {
   user: { id: "user-1", email: "owner@example.com", display_name: "张三" },
 } as const
 
+const meViewBody = {
+  ...authViewBody,
+  permissions: ["members:manage", "members:read", "tenant:manage"],
+} as const
+
 class ScriptedAuthTransport implements AuthTransport {
   readonly #handler: () => Promise<AuthTransportResponse>
 
@@ -152,7 +157,7 @@ test("treats an out-of-contract success body as unreachable", async () => {
 test("exposes a renewed session cookie from the me endpoint", async () => {
   // Given the API slides the session and sets a renewed cookie
   const transport = fixedTransport({
-    body: authViewBody,
+    body: meViewBody,
     session: { maxAge: 1_209_600, secure: false, value: "renewed-token" },
     status: 200,
   })
@@ -164,7 +169,7 @@ test("exposes a renewed session cookie from the me endpoint", async () => {
   expect(result).toEqual({
     kind: "authenticated",
     renewedSession: { maxAge: 1_209_600, secure: false, value: "renewed-token" },
-    view: authViewBody,
+    view: meViewBody,
   })
 })
 
@@ -192,6 +197,65 @@ test("maps tenant endpoint statuses to explicit results", async () => {
   await expect(
     loadCurrentTenant(fixedTransport({ body: null, session: null, status: 403 }), "s"),
   ).resolves.toEqual({ kind: "forbidden" })
+  await expect(
+    loadCurrentTenant(
+      fixedTransport({ body: { detail: "mfa_required" }, session: null, status: 403 }),
+      "s",
+    ),
+  ).resolves.toEqual({ kind: "mfaRequired" })
+})
+
+test("maps an mfa-pending login response to the mfaRequired result", async () => {
+  // Given the API answers the login with an MFA challenge instead of a session
+  const transport = fixedTransport({
+    body: {
+      mfa_required: true,
+      mfa_token: "mfa-token-1",
+      expires_at: "2026-07-24T10:25:00Z",
+    },
+    session: null,
+    status: 200,
+  })
+
+  // When the login crosses the frontend boundary
+  const result = await loginAccount(transport, {
+    email: "owner@example.com",
+    password: "super-secret",
+  })
+
+  // Then the caller is routed into the MFA challenge step
+  expect(result).toEqual({
+    kind: "mfaRequired",
+    expiresAt: "2026-07-24T10:25:00Z",
+    mfaToken: "mfa-token-1",
+  })
+})
+
+test("maps invitation-aware register failures to dedicated results", async () => {
+  await expect(
+    registerAccount(
+      fixedTransport({ body: { detail: "invitation_invalid" }, session: null, status: 404 }),
+      {
+        display_name: "张三",
+        email: "invitee@example.com",
+        invite_token: "invite-token",
+        password: "super-secret",
+        tenant_name: null,
+      },
+    ),
+  ).resolves.toEqual({ kind: "invitationInvalid" })
+  await expect(
+    registerAccount(
+      fixedTransport({ body: { detail: "invitation_email_mismatch" }, session: null, status: 403 }),
+      {
+        display_name: "张三",
+        email: "other@example.com",
+        invite_token: "invite-token",
+        password: "super-secret",
+        tenant_name: null,
+      },
+    ),
+  ).resolves.toEqual({ kind: "invitationEmailMismatch" })
 })
 
 test("parses the rn_session cookie and its attributes from set-cookie headers", () => {
@@ -235,7 +299,7 @@ test("extracts the session cookie from a real API response", async () => {
         "set-cookie",
         "rn_session=renewed-token; Path=/; HttpOnly; Max-Age=1209600; Secure",
       )
-      return new Response(JSON.stringify(authViewBody), { headers, status: 200 })
+      return new Response(JSON.stringify(meViewBody), { headers, status: 200 })
     }),
   )
 
@@ -246,6 +310,6 @@ test("extracts the session cookie from a real API response", async () => {
   expect(result).toEqual({
     kind: "authenticated",
     renewedSession: { maxAge: 1_209_600, secure: true, value: "renewed-token" },
-    view: authViewBody,
+    view: meViewBody,
   })
 })
