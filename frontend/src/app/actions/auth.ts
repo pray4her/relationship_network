@@ -15,7 +15,7 @@ import {
   type SessionCookie,
   sessionCookieOptions,
 } from "@/lib/auth-client"
-import { loginInputSchema, registerInputSchema } from "@/lib/auth-contract"
+import { type AuthView, loginInputSchema, registerInputSchema } from "@/lib/auth-contract"
 import { createMfaTransport, verifyMfaChallenge } from "@/lib/mfa-client"
 
 const authFormFields = ["email", "password", "display_name", "tenant_name"] as const
@@ -60,6 +60,10 @@ async function storeSessionCookie(session: SessionCookie | null): Promise<void> 
   store.set(SESSION_COOKIE_NAME, session.value, sessionCookieOptions(session))
 }
 
+function landingPath(view: AuthView): string {
+  return view.user.is_platform_admin && view.tenant === null ? "/admin" : "/"
+}
+
 export async function registerAction(
   _previous: AuthFormState,
   formData: FormData,
@@ -92,7 +96,7 @@ export async function registerAction(
   }
 
   await storeSessionCookie(result.session)
-  redirect("/")
+  redirect(landingPath(result.view))
 }
 
 export async function loginAction(
@@ -127,7 +131,7 @@ export async function loginAction(
   }
 
   await storeSessionCookie(result.session)
-  redirect("/")
+  redirect(landingPath(result.view))
 }
 
 export async function mfaVerifyAction(
@@ -169,7 +173,7 @@ export async function mfaVerifyAction(
 
   await storeSessionCookie(result.session)
   store.delete(MFA_CHALLENGE_COOKIE_NAME)
-  redirect("/")
+  redirect(landingPath(result.view))
 }
 
 export async function logoutAction(): Promise<void> {

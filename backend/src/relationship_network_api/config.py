@@ -29,6 +29,7 @@ class AppSettings(DatabaseSettings):
     session_ttl_seconds: int = 1209600
     session_renewal_window_seconds: int = 86400
     session_cookie_secure: bool = False
+    platform_admin_emails: str = ""
     invitation_ttl_seconds: int = 604800
     mfa_challenge_ttl_seconds: int = 300
     app_base_url: str = "http://localhost:3000"
@@ -43,6 +44,11 @@ class AppSettings(DatabaseSettings):
 def load_app_settings() -> AppSettings:
     settings_factory = cast("Callable[[], AppSettings]", AppSettings)
     return settings_factory()
+
+
+def parse_platform_admin_emails(raw: str) -> frozenset[str]:
+    """Parse the comma-separated platform admin email allowlist from settings."""
+    return frozenset(entry.strip().lower() for entry in raw.split(",") if entry.strip())
 
 
 def load_database_settings() -> DatabaseSettings:

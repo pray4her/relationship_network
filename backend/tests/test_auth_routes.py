@@ -193,6 +193,7 @@ def test_register_returns_created_identity_and_sets_session_cookie() -> None:
             "id": "22222222-2222-2222-2222-222222222222",
             "email": "owner@example.com",
             "display_name": "陈然",
+            "is_platform_admin": False,
         },
         "tenant": {
             "id": "11111111-1111-1111-1111-111111111111",

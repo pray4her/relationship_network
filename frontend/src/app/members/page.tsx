@@ -74,6 +74,19 @@ export default async function MembersPage() {
   }
 
   const permissions = auth.view.permissions
+
+  if (auth.view.tenant === null) {
+    return (
+      <main className="page-shell">
+        <AccountPanel />
+        <section className="panel">
+          <h1 className="panel-title">成员管理</h1>
+          <p className="notice">你没有加入任何租户，无法查看租户成员。</p>
+        </section>
+      </main>
+    )
+  }
+
   const canRead = permissions.includes("members:read")
   const canManage = permissions.includes("members:manage")
   const canInvite = permissions.includes("members:invite")

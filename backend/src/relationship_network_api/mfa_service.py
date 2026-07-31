@@ -28,6 +28,7 @@ MFA_ALREADY_ENABLED_DETAIL: Final = "mfa_already_enabled"
 MFA_NOT_ENABLED_DETAIL: Final = "mfa_not_enabled"
 INVALID_MFA_CODE_DETAIL: Final = "invalid_mfa_code"
 MFA_REQUIRED_BY_TENANT_DETAIL: Final = "mfa_required_by_tenant"
+MFA_REQUIRED_FOR_PLATFORM_ADMIN_DETAIL: Final = "mfa_required_for_platform_admin"
 MFA_SETUP_REQUIRED_DETAIL: Final = "mfa_setup_required"
 MFA_CHALLENGE_INVALID_DETAIL: Final = "mfa_challenge_invalid"
 TENANT_NOT_FOUND_DETAIL: Final = "tenant_not_found"
@@ -59,6 +60,11 @@ class InvalidMfaCodeError(Exception):
 @final
 class MfaRequiredByTenantError(Exception):
     """Raised when disabling MFA while a tenant policy requires it."""
+
+
+@final
+class MfaRequiredForPlatformAdminError(Exception):
+    """Raised when a platform administrator tries to disable mandatory MFA."""
 
 
 @final
@@ -162,12 +168,14 @@ async def enable(session: AsyncSession, *, user_id: uuid.UUID, code: str) -> lis
 
 
 async def disable(session: AsyncSession, *, user_id: uuid.UUID, code: str) -> None:
-    """Disable TOTP after verifying a code, unless a tenant policy requires MFA."""
+    """Disable TOTP after verifying a code, unless MFA is mandatory for the account."""
     user = await load_user(session, user_id=user_id)
     if user.totp_enabled_at is None or user.totp_secret is None:
         raise MfaNotEnabledError
     if not verify_totp(user.totp_secret, code, at_time=_now_timestamp()):
         raise InvalidMfaCodeError
+    if user.is_platform_admin:
+        raise MfaRequiredForPlatformAdminError
     # Membership rows are only visible once the user context is pinned.
     await tenant_context.set_user_context(session, user.id)
     enforcing = (

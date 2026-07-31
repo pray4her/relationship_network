@@ -49,6 +49,7 @@ class UserView:
     id: uuid.UUID
     email: str
     display_name: str
+    is_platform_admin: bool = False
 
 
 @final
@@ -75,10 +76,14 @@ class IssuedSession:
 @final
 @dataclass(frozen=True)
 class AuthResult:
-    """Outcome of a successful registration or login."""
+    """Outcome of a successful registration or login.
+
+    Platform administrators without any tenant membership authenticate with a
+    None membership; they never gain tenant access implicitly.
+    """
 
     user: UserView
-    membership: MembershipView
+    membership: MembershipView | None
     session: IssuedSession
 
 
@@ -129,10 +134,14 @@ class AuthService:
         session_ttl_seconds: int,
         session_renewal_window_seconds: int,
         mfa_challenge_ttl_seconds: int = 300,
+        platform_admin_emails: frozenset[str] | None = None,
     ) -> None:
         self._session_ttl = timedelta(seconds=session_ttl_seconds)
         self._renewal_window = timedelta(seconds=session_renewal_window_seconds)
         self._mfa_challenge_ttl = timedelta(seconds=mfa_challenge_ttl_seconds)
+        self._platform_admin_emails = (
+            platform_admin_emails if platform_admin_emails is not None else frozenset()
+        )
 
     async def register(  # noqa: PLR0913
         self,
@@ -170,7 +179,10 @@ class AuthService:
         except IntegrityError as error:
             await session.rollback()
             raise DuplicateEmailError from error
+        self._sync_platform_admin_grant(user)
 
+        membership: TenantMembership | None
+        tenant: Tenant | None
         if invitation is not None:
             await tenant_context.set_user_context(session, user.id)
             tenant = await self._load_tenant(session, invitation.tenant_id)
@@ -183,6 +195,10 @@ class AuthService:
             )
             session.add(membership)
             invitation.accepted_at = datetime.now(UTC)
+        elif user.is_platform_admin:
+            # Platform administrators do not automatically become tenant members.
+            membership = None
+            tenant = None
         else:
             resolved_tenant_name = tenant_name or default_tenant_name(display_name)
             tenant = Tenant(
@@ -200,18 +216,7 @@ class AuthService:
                 is_active=True,
             )
             session.add(membership)
-        token, auth_session = self._build_session(user)
-        session.add(auth_session)
-        try:
-            await session.commit()
-        except SQLAlchemyError:
-            await session.rollback()
-            raise
-        return AuthResult(
-            user=_user_view(user),
-            membership=_membership_view(membership, tenant),
-            session=IssuedSession(token=token, expires_at=auth_session.expires_at),
-        )
+        return await self._issue_session_result(session, user, membership, tenant)
 
     async def login(
         self,
@@ -234,6 +239,7 @@ class AuthService:
             raise InvalidCredentialsError
         if not user.is_active:
             raise InvalidCredentialsError
+        self._sync_platform_admin_grant(user)
 
         if user.totp_enabled_at is not None:
             now = datetime.now(UTC)
@@ -260,39 +266,17 @@ class AuthService:
 
         await tenant_context.set_user_context(session, user.id)
         membership, tenant = await self._load_membership(session, user.id)
-        if membership is None or tenant is None:
+        if (membership is None or tenant is None) and not user.is_platform_admin:
             raise InvalidCredentialsError
-        token, auth_session = self._build_session(user)
-        session.add(auth_session)
-        try:
-            await session.commit()
-        except SQLAlchemyError:
-            await session.rollback()
-            raise
-        return AuthResult(
-            user=_user_view(user),
-            membership=_membership_view(membership, tenant),
-            session=IssuedSession(token=token, expires_at=auth_session.expires_at),
-        )
+        return await self._issue_session_result(session, user, membership, tenant)
 
     async def complete_mfa_login(self, session: AsyncSession, *, user: User) -> AuthResult:
         """Issue a session for a user whose MFA challenge was verified."""
         await tenant_context.set_user_context(session, user.id)
         membership, tenant = await self._load_membership(session, user.id)
-        if membership is None or tenant is None:
+        if (membership is None or tenant is None) and not user.is_platform_admin:
             raise InvalidCredentialsError
-        token, auth_session = self._build_session(user)
-        session.add(auth_session)
-        try:
-            await session.commit()
-        except SQLAlchemyError:
-            await session.rollback()
-            raise
-        return AuthResult(
-            user=_user_view(user),
-            membership=_membership_view(membership, tenant),
-            session=IssuedSession(token=token, expires_at=auth_session.expires_at),
-        )
+        return await self._issue_session_result(session, user, membership, tenant)
 
     async def logout(self, session: AsyncSession, *, token: str | None) -> None:
         """Delete the session row for the token; idempotent for unknown tokens."""
@@ -358,6 +342,40 @@ class AuthService:
             last_used_at=now,
         )
 
+    async def _issue_session_result(
+        self,
+        session: AsyncSession,
+        user: User,
+        membership: TenantMembership | None,
+        tenant: Tenant | None,
+    ) -> AuthResult:
+        """Persist a fresh session and render the auth result in one transaction."""
+        token, auth_session = self._build_session(user)
+        session.add(auth_session)
+        try:
+            await session.commit()
+        except SQLAlchemyError:
+            await session.rollback()
+            raise
+        return AuthResult(
+            user=_user_view(user),
+            membership=(
+                _membership_view(membership, tenant)
+                if membership is not None and tenant is not None
+                else None
+            ),
+            session=IssuedSession(token=token, expires_at=auth_session.expires_at),
+        )
+
+    def _sync_platform_admin_grant(self, user: User) -> None:
+        """Align the platform admin flag with the env allowlist on each auth event.
+
+        The allowlist is the single source of truth: emails added to it gain
+        the flag here, and emails removed from it lose the flag on their next
+        registration or login. The flag is never set through any API.
+        """
+        user.is_platform_admin = user.email in self._platform_admin_emails
+
     async def _load_membership(
         self,
         session: AsyncSession,
@@ -383,7 +401,12 @@ class AuthService:
 
 
 def _user_view(user: User) -> UserView:
-    return UserView(id=user.id, email=user.email, display_name=user.display_name)
+    return UserView(
+        id=user.id,
+        email=user.email,
+        display_name=user.display_name,
+        is_platform_admin=user.is_platform_admin,
+    )
 
 
 def _membership_view(membership: TenantMembership, tenant: Tenant) -> MembershipView:

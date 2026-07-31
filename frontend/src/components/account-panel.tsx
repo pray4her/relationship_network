@@ -48,10 +48,16 @@ export async function AccountPanel() {
         </div>
         <div className="account-tenant">
           <span className="account-label">租户</span>
-          <strong>{auth.view.tenant.name}</strong>
-          <span className="account-role">
-            角色：{auth.view.role === "owner" ? "租户所有者" : "成员"}
-          </span>
+          {auth.view.tenant === null ? (
+            <strong>{auth.view.user.is_platform_admin ? "平台管理员（无租户）" : "无租户"}</strong>
+          ) : (
+            <>
+              <strong>{auth.view.tenant.name}</strong>
+              <span className="account-role">
+                角色：{auth.view.role === "owner" ? "租户所有者" : "成员"}
+              </span>
+            </>
+          )}
         </div>
         <form action={logoutAction}>
           <Button mode="secondary" type="submit">
@@ -59,7 +65,10 @@ export async function AccountPanel() {
           </Button>
         </form>
       </section>
-      <WorkspaceNav permissions={auth.view.permissions} />
+      <WorkspaceNav
+        isPlatformAdmin={auth.view.user.is_platform_admin}
+        permissions={auth.view.permissions}
+      />
       {mfaGateActive ? (
         <p className="notice" role="alert">
           租户已启用强制 MFA，请完成两步验证设置。

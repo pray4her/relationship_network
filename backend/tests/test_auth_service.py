@@ -168,6 +168,7 @@ async def test_register_creates_user_tenant_and_owner_membership() -> None:
     added_types = {type(instance) for instance in spy.added}
     assert added_types == {User, Tenant, TenantMembership, AuthSession}
     assert result.user.email == "owner@example.com"
+    assert result.membership is not None
     assert result.membership.role == "owner"
     assert result.membership.tenant_name == "陈然 的租户"
     assert result.membership.tenant_slug
@@ -192,6 +193,7 @@ async def test_register_uses_explicit_tenant_name() -> None:
     )
 
     # Then the tenant uses the requested name
+    assert result.membership is not None
     assert result.membership.tenant_name == "Acme 科技"
 
 
@@ -298,6 +300,7 @@ async def test_login_success_issues_session() -> None:
     assert spy.commit_calls == 1
     assert isinstance(result, AuthResult)
     assert result.user.email == "owner@example.com"
+    assert result.membership is not None
     assert result.membership.role == "owner"
     assert result.membership.tenant_slug == "acme-1234abcd"
     session_row = next(instance for instance in spy.added if isinstance(instance, AuthSession))
@@ -486,6 +489,7 @@ async def test_register_with_invite_joins_issuing_tenant(monkeypatch: MonkeyPatc
     membership = next(i for i in spy.added if isinstance(i, TenantMembership))
     assert membership.tenant_id == tenant.id
     assert membership.role == "member"
+    assert result.membership is not None
     assert result.membership.role == "member"
     assert result.membership.tenant_id == tenant.id
     assert invitation.accepted_at is not None
@@ -591,6 +595,7 @@ async def test_complete_mfa_login_issues_session() -> None:
 
     # Then a normal session is issued
     assert result.user.email == "owner@example.com"
+    assert result.membership is not None
     assert result.membership.tenant_slug == "acme-1234abcd"
     assert result.session.token
     assert spy.commit_calls == 1
@@ -604,3 +609,179 @@ async def test_complete_mfa_login_without_membership_fails() -> None:
     # When the login is completed
     with pytest.raises(InvalidCredentialsError):
         _ = await service.complete_mfa_login(as_session(spy), user=make_user())
+
+
+async def test_register_promotes_allowlisted_email_to_platform_admin() -> None:
+    # Given an allowlisted platform admin email
+    service = AuthService(
+        session_ttl_seconds=SESSION_TTL_SECONDS,
+        session_renewal_window_seconds=RENEWAL_WINDOW_SECONDS,
+        platform_admin_emails=frozenset({"admin@example.com"}),
+    )
+    spy = SpySession()
+
+    # When the allowlisted email registers
+    result = await service.register(
+        as_session(spy),
+        email="Admin@Example.com",
+        password="sup3r-secret",
+        display_name="平台管理员",
+        tenant_name=None,
+    )
+
+    # Then the user is flagged as platform admin
+    assert result.user.is_platform_admin
+    user = next(i for i in spy.added if isinstance(i, User))
+    assert user.is_platform_admin
+
+
+async def test_register_does_not_promote_other_emails() -> None:
+    # Given an allowlist that does not contain the registrant
+    service = AuthService(
+        session_ttl_seconds=SESSION_TTL_SECONDS,
+        session_renewal_window_seconds=RENEWAL_WINDOW_SECONDS,
+        platform_admin_emails=frozenset({"admin@example.com"}),
+    )
+    spy = SpySession()
+
+    # When a regular email registers
+    result = await service.register(
+        as_session(spy),
+        email="owner@example.com",
+        password="sup3r-secret",
+        display_name="陈然",
+        tenant_name=None,
+    )
+
+    # Then no platform admin rights are granted
+    assert not result.user.is_platform_admin
+    user = next(i for i in spy.added if isinstance(i, User))
+    assert not user.is_platform_admin
+
+
+async def test_login_promotes_allowlisted_email_to_platform_admin() -> None:
+    # Given an existing user whose email is later allowlisted
+    service = AuthService(
+        session_ttl_seconds=SESSION_TTL_SECONDS,
+        session_renewal_window_seconds=RENEWAL_WINDOW_SECONDS,
+        platform_admin_emails=frozenset({"admin@example.com"}),
+    )
+    user = make_user(email="admin@example.com")
+    tenant = make_tenant()
+    membership = make_membership(user, tenant)
+    spy = SpySession(execute_results=[user, membership, tenant])
+
+    # When the user logs in
+    result = await service.login(
+        as_session(spy),
+        email="admin@example.com",
+        password="right-password-1",
+    )
+
+    # Then the promotion is persisted with the session
+    assert isinstance(result, AuthResult)
+    assert result.user.is_platform_admin
+    assert user.is_platform_admin
+    assert spy.commit_calls == 1
+
+
+async def test_login_platform_admin_without_membership_gets_session() -> None:
+    # Given a platform administrator who belongs to no tenant
+    service = AuthService(
+        session_ttl_seconds=SESSION_TTL_SECONDS,
+        session_renewal_window_seconds=RENEWAL_WINDOW_SECONDS,
+        platform_admin_emails=frozenset({"admin@example.com"}),
+    )
+    user = make_user(email="admin@example.com")
+    spy = SpySession(execute_results=[user, None])
+
+    # When the admin logs in
+    result = await service.login(
+        as_session(spy),
+        email="admin@example.com",
+        password="right-password-1",
+    )
+
+    # Then a session is issued without any tenant context
+    assert isinstance(result, AuthResult)
+    assert result.user.is_platform_admin
+    assert result.membership is None
+    assert result.session.token
+    assert spy.commit_calls == 1
+
+
+async def test_login_non_admin_without_membership_fails() -> None:
+    # Given a regular user without an active membership
+    service = make_service()
+    user = make_user()
+    spy = SpySession(execute_results=[user, None])
+
+    # When login is attempted
+    with pytest.raises(InvalidCredentialsError):
+        _ = await service.login(
+            as_session(spy),
+            email="owner@example.com",
+            password="right-password-1",
+        )
+
+
+async def test_complete_mfa_login_platform_admin_without_membership_gets_session() -> None:
+    # Given a platform administrator without a tenant whose challenge was verified
+    service = make_service()
+    user = make_user(email="admin@example.com")
+    user.is_platform_admin = True
+    spy = SpySession(execute_results=[None])
+
+    # When the login is completed
+    result = await service.complete_mfa_login(as_session(spy), user=user)
+
+    # Then a session is issued without any tenant context
+    assert result.membership is None
+    assert result.session.token
+    assert spy.commit_calls == 1
+
+
+async def test_register_platform_admin_skips_tenant_creation() -> None:
+    # Given an allowlisted platform admin email
+    service = AuthService(
+        session_ttl_seconds=SESSION_TTL_SECONDS,
+        session_renewal_window_seconds=RENEWAL_WINDOW_SECONDS,
+        platform_admin_emails=frozenset({"admin@example.com"}),
+    )
+    spy = SpySession()
+
+    # When the admin registers
+    result = await service.register(
+        as_session(spy),
+        email="admin@example.com",
+        password="sup3r-secret",
+        display_name="平台管理员",
+        tenant_name=None,
+    )
+
+    # Then no tenant or membership is created for them
+    assert result.membership is None
+    added_types = {type(instance) for instance in spy.added}
+    assert added_types == {User, AuthSession}
+
+
+async def test_login_revokes_platform_admin_when_email_leaves_allowlist() -> None:
+    # Given a user whose email was removed from the allowlist
+    service = make_service()
+    user = make_user(email="former-admin@example.com")
+    user.is_platform_admin = True
+    tenant = make_tenant()
+    membership = make_membership(user, tenant)
+    spy = SpySession(execute_results=[user, membership, tenant])
+
+    # When the user logs in
+    result = await service.login(
+        as_session(spy),
+        email="former-admin@example.com",
+        password="right-password-1",
+    )
+
+    # Then the flag is revoked with the next authentication
+    assert isinstance(result, AuthResult)
+    assert not result.user.is_platform_admin
+    assert not user.is_platform_admin

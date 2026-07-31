@@ -15,6 +15,7 @@ from relationship_network_api.mfa_service import (
     MfaChallengeInvalidError,
     MfaNotEnabledError,
     MfaRequiredByTenantError,
+    MfaRequiredForPlatformAdminError,
     MfaSetupRequiredError,
     complete_challenge,
     disable,
@@ -235,6 +236,22 @@ async def test_disable_blocked_by_tenant_policy() -> None:
     # When disabling is attempted
     with pytest.raises(MfaRequiredByTenantError):
         await disable(as_session(spy), user_id=USER_ID, code=current_code(secret))
+
+
+async def test_disable_blocked_for_platform_admin() -> None:
+    # Given a platform administrator with MFA enabled
+    secret = generate_totp_secret()
+    user = make_user(totp_secret=secret, mfa_enabled=True)
+    user.is_platform_admin = True
+    spy = SpySession([FakeResult(scalar=user)])
+
+    # When disabling is attempted
+    with pytest.raises(MfaRequiredForPlatformAdminError):
+        await disable(as_session(spy), user_id=USER_ID, code=current_code(secret))
+
+    # Then MFA stays enabled and nothing is committed
+    assert user.totp_enabled_at is not None
+    assert spy.commit_calls == 0
 
 
 async def test_disable_rejects_wrong_code() -> None:

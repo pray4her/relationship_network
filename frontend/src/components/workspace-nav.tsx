@@ -2,9 +2,10 @@ import Link from "next/link"
 
 type WorkspaceNavProps = {
   readonly permissions: readonly string[]
+  readonly isPlatformAdmin: boolean
 }
 
-export function WorkspaceNav({ permissions }: WorkspaceNavProps) {
+export function WorkspaceNav({ isPlatformAdmin, permissions }: WorkspaceNavProps) {
   return (
     <nav className="workspace-nav" aria-label="工作区">
       <Link className="workspace-nav-link" href="/">
@@ -18,6 +19,11 @@ export function WorkspaceNav({ permissions }: WorkspaceNavProps) {
       <Link className="workspace-nav-link" href="/settings/security">
         安全设置
       </Link>
+      {isPlatformAdmin ? (
+        <Link className="workspace-nav-link" href="/admin">
+          平台管理
+        </Link>
+      ) : null}
     </nav>
   )
 }

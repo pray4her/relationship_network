@@ -23,6 +23,12 @@ MembershipRole = Literal["owner", "member"]
 OWNER_ROLE: Final[MembershipRole] = "owner"
 MEMBER_ROLE: Final[MembershipRole] = "member"
 
+TenantStatus = Literal["active", "suspended"]
+"""Lifecycle states a tenant can be in; stored as lowercase strings."""
+
+TENANT_STATUS_ACTIVE: Final[TenantStatus] = "active"
+TENANT_STATUS_SUSPENDED: Final[TenantStatus] = "suspended"
+
 
 class Base(DeclarativeBase):
     pass
@@ -49,6 +55,7 @@ class User(Base):
     display_name: Mapped[str] = mapped_column(String(50))
     password_hash: Mapped[str] = mapped_column(String(255))
     is_active: Mapped[bool] = mapped_column(Boolean, server_default=true(), default=True)
+    is_platform_admin: Mapped[bool] = mapped_column(Boolean, server_default=false(), default=False)
     totp_secret: Mapped[str | None] = mapped_column(String(64), nullable=True)
     totp_enabled_at: Mapped[datetime | None] = mapped_column(
         DateTime(timezone=True),
@@ -63,11 +70,19 @@ class User(Base):
 @final
 class Tenant(Base):
     __tablename__ = "tenants"
+    __table_args__ = (
+        CheckConstraint("status IN ('active', 'suspended')", name="ck_tenants_status"),
+    )
 
     id: Mapped[uuid.UUID] = mapped_column(Uuid, primary_key=True, default=uuid.uuid4)
     name: Mapped[str] = mapped_column(String(100))
     slug: Mapped[str] = mapped_column(String(120), unique=True)
     mfa_required: Mapped[bool] = mapped_column(Boolean, server_default=false(), default=False)
+    status: Mapped[TenantStatus] = mapped_column(
+        String(20),
+        server_default=TENANT_STATUS_ACTIVE,
+        default=TENANT_STATUS_ACTIVE,
+    )
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
         server_default=func.now(),
@@ -233,6 +248,30 @@ class MfaChallenge(Base):
     attempts: Mapped[int] = mapped_column(Integer, server_default="0", default=0)
     expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
     used_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        server_default=func.now(),
+    )
+
+
+@final
+class PlatformAuditEvent(Base):
+    """Append-only record of a sensitive platform administration operation."""
+
+    __tablename__ = "platform_audit_events"
+
+    id: Mapped[uuid.UUID] = mapped_column(Uuid, primary_key=True, default=uuid.uuid4)
+    actor_id: Mapped[uuid.UUID | None] = mapped_column(
+        Uuid,
+        ForeignKey("users.id", ondelete="SET NULL"),
+        index=True,
+        nullable=True,
+    )
+    action: Mapped[str] = mapped_column(String(100), index=True)
+    target_type: Mapped[str] = mapped_column(String(50))
+    target_id: Mapped[str] = mapped_column(String(64))
+    result: Mapped[str] = mapped_column(String(20))
+    detail: Mapped[str] = mapped_column(String(1000), server_default="", default="")
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
         server_default=func.now(),

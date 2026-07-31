@@ -24,6 +24,7 @@ const authUserSchema = z
     display_name: z.string(),
     email: z.string(),
     id: z.string(),
+    is_platform_admin: z.boolean(),
   })
   .readonly()
 
@@ -37,16 +38,16 @@ const authTenantSchema = z
 
 export const authViewSchema = z
   .object({
-    role: membershipRoleSchema,
-    tenant: authTenantSchema,
+    role: membershipRoleSchema.nullable(),
+    tenant: authTenantSchema.nullable(),
     user: authUserSchema,
   })
   .readonly()
 
 export const meViewSchema = z
   .object({
-    role: membershipRoleSchema,
-    tenant: authTenantSchema,
+    role: membershipRoleSchema.nullable(),
+    tenant: authTenantSchema.nullable(),
     user: authUserSchema,
     permissions: z.array(z.string()),
   })

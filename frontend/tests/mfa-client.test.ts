@@ -15,7 +15,12 @@ import {
 const authViewBody = {
   role: "owner",
   tenant: { id: "tenant-1", name: "示例租户", slug: "demo" },
-  user: { id: "user-1", email: "owner@example.com", display_name: "张三" },
+  user: {
+    id: "user-1",
+    email: "owner@example.com",
+    display_name: "张三",
+    is_platform_admin: false,
+  },
 } as const
 
 class ScriptedMfaTransport implements MfaTransport {

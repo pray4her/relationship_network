@@ -58,6 +58,7 @@ class UserResponse(BaseModel):
     id: uuid.UUID
     email: str
     display_name: str
+    is_platform_admin: bool
 
 
 @final
@@ -70,15 +71,15 @@ class TenantResponse(BaseModel):
 @final
 class AuthResponse(BaseModel):
     user: UserResponse
-    tenant: TenantResponse
-    role: MembershipRole
+    tenant: TenantResponse | None
+    role: MembershipRole | None
 
 
 @final
 class MeResponse(BaseModel):
     user: UserResponse
-    tenant: TenantResponse
-    role: MembershipRole
+    tenant: TenantResponse | None
+    role: MembershipRole | None
     permissions: list[str]
 
 
@@ -89,16 +90,29 @@ class MfaRequiredResponse(BaseModel):
     expires_at: datetime
 
 
-def build_auth_response(user: UserView, membership: MembershipView) -> AuthResponse:
-    """Render the pinned registration/login/me response shape."""
+def build_auth_response(user: UserView, membership: MembershipView | None) -> AuthResponse:
+    """Render the pinned registration/login/me response shape.
+
+    Platform administrators without a tenant membership get null tenant and
+    role; they hold no tenant permissions.
+    """
     return AuthResponse(
-        user=UserResponse(id=user.id, email=user.email, display_name=user.display_name),
-        tenant=TenantResponse(
-            id=membership.tenant_id,
-            name=membership.tenant_name,
-            slug=membership.tenant_slug,
+        user=UserResponse(
+            id=user.id,
+            email=user.email,
+            display_name=user.display_name,
+            is_platform_admin=user.is_platform_admin,
         ),
-        role=membership.role,
+        tenant=(
+            TenantResponse(
+                id=membership.tenant_id,
+                name=membership.tenant_name,
+                slug=membership.tenant_slug,
+            )
+            if membership is not None
+            else None
+        ),
+        role=membership.role if membership is not None else None,
     )
 
 
@@ -193,7 +207,7 @@ async def read_current_identity(
     settings: SettingsDep,
 ) -> MeResponse:
     membership = authentication.membership
-    if membership is None:
+    if membership is None and not authentication.user.is_platform_admin:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail=NO_ACTIVE_MEMBERSHIP_DETAIL,
@@ -202,14 +216,16 @@ async def read_current_identity(
         token = request.cookies.get(SESSION_COOKIE_NAME)
         if token:
             set_session_cookie(response, settings=settings, token=token)
-    # The authenticate call committed, ending the transaction-local tenant
-    # context; re-pin it before resolving permissions from RLS-scoped tables.
-    await tenant_context.set_tenant_context(session, membership.tenant_id)
-    permissions = await rbac_service.resolve_permissions(
-        session,
-        tenant_id=membership.tenant_id,
-        membership_role=membership.role,
-        membership_id=membership.membership_id,
-    )
+    permissions: frozenset[str] = frozenset()
+    if membership is not None:
+        # The authenticate call committed, ending the transaction-local tenant
+        # context; re-pin it before resolving permissions from RLS-scoped tables.
+        await tenant_context.set_tenant_context(session, membership.tenant_id)
+        permissions = await rbac_service.resolve_permissions(
+            session,
+            tenant_id=membership.tenant_id,
+            membership_role=membership.role,
+            membership_id=membership.membership_id,
+        )
     auth_response = build_auth_response(authentication.user, membership)
     return MeResponse(**auth_response.model_dump(), permissions=sorted(permissions))

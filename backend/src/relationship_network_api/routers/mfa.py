@@ -24,11 +24,13 @@ from relationship_network_api.mfa_service import (
     MFA_CHALLENGE_INVALID_DETAIL,
     MFA_NOT_ENABLED_DETAIL,
     MFA_REQUIRED_BY_TENANT_DETAIL,
+    MFA_REQUIRED_FOR_PLATFORM_ADMIN_DETAIL,
     InvalidMfaCodeError,
     MfaAlreadyEnabledError,
     MfaChallengeInvalidError,
     MfaNotEnabledError,
     MfaRequiredByTenantError,
+    MfaRequiredForPlatformAdminError,
 )
 from relationship_network_api.routers.auth import (
     AuthResponse,
@@ -153,6 +155,11 @@ async def disable_mfa(
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
             detail=MFA_REQUIRED_BY_TENANT_DETAIL,
+        ) from error
+    except MfaRequiredForPlatformAdminError as error:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail=MFA_REQUIRED_FOR_PLATFORM_ADMIN_DETAIL,
         ) from error
     return Response(status_code=status.HTTP_204_NO_CONTENT)
 

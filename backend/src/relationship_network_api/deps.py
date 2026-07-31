@@ -9,7 +9,11 @@ from sqlalchemy.ext.asyncio import AsyncEngine, AsyncSession
 
 from relationship_network_api import rbac_service, tenant_context
 from relationship_network_api.auth_service import Authentication, AuthService, MembershipView
-from relationship_network_api.config import AppSettings, load_app_settings
+from relationship_network_api.config import (
+    AppSettings,
+    load_app_settings,
+    parse_platform_admin_emails,
+)
 from relationship_network_api.db import create_engine_from_settings, create_session_factory
 from relationship_network_api.membership_service import NO_ACTIVE_MEMBERSHIP_DETAIL
 from relationship_network_api.models import Tenant, User
@@ -18,6 +22,7 @@ SESSION_COOKIE_NAME: Final = "rn_session"
 NOT_AUTHENTICATED_DETAIL: Final = "not_authenticated"
 PERMISSION_DENIED_DETAIL: Final = "permission_denied"
 MFA_REQUIRED_DETAIL: Final = "mfa_required"
+PLATFORM_ADMIN_REQUIRED_DETAIL: Final = "platform_admin_required"
 
 
 @dataclass(frozen=True)
@@ -62,6 +67,7 @@ def get_auth_service(
         session_ttl_seconds=settings.session_ttl_seconds,
         session_renewal_window_seconds=settings.session_renewal_window_seconds,
         mfa_challenge_ttl_seconds=settings.mfa_challenge_ttl_seconds,
+        platform_admin_emails=parse_platform_admin_emails(settings.platform_admin_emails),
     )
 
 
@@ -161,3 +167,29 @@ def require_permission(
         return context
 
     return dependency
+
+
+async def require_platform_admin(
+    session: Annotated[AsyncSession, Depends(get_db_session)],
+    authentication: Annotated[Authentication, Depends(require_authentication)],
+) -> Authentication:
+    """Require a platform administrator who has enrolled MFA.
+
+    Platform admin rights live outside tenant RBAC: tenant roles can never
+    grant or derive them, and the management entry stays closed until the
+    admin completes TOTP enrollment.
+    """
+    user = (
+        await session.execute(select(User).where(User.id == authentication.user.id))
+    ).scalar_one_or_none()
+    if user is None or not user.is_platform_admin:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail=PLATFORM_ADMIN_REQUIRED_DETAIL,
+        )
+    if user.totp_enabled_at is None:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail=MFA_REQUIRED_DETAIL,
+        )
+    return authentication

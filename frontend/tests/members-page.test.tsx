@@ -85,7 +85,12 @@ function stubSession(permissions: readonly string[]) {
       permissions: [...permissions],
       role: "owner",
       tenant: { id: "tenant-1", name: "示例租户", slug: "demo" },
-      user: { display_name: "张三", email: "owner@example.com", id: "user-owner" },
+      user: {
+        display_name: "张三",
+        email: "owner@example.com",
+        id: "user-owner",
+        is_platform_admin: false,
+      },
     },
   })
 }

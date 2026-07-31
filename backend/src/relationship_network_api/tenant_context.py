@@ -7,6 +7,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 TENANT_SETTING: Final = "app.tenant_id"
 USER_SETTING: Final = "app.user_id"
 INVITE_TOKEN_SETTING: Final = "app.invite_token_hash"  # noqa: S105
+PLATFORM_ADMIN_SETTING: Final = "app.platform_admin"
 
 
 async def set_tenant_context(session: AsyncSession, tenant_id: uuid.UUID) -> None:
@@ -22,6 +23,13 @@ async def set_user_context(session: AsyncSession, user_id: uuid.UUID) -> None:
     _ = await session.execute(
         text(f"SELECT set_config('{USER_SETTING}', :user_id, true)"),
         {"user_id": str(user_id)},
+    )
+
+
+async def set_platform_admin_context(session: AsyncSession) -> None:
+    """Grant the current transaction read access across tenants for platform admins."""
+    _ = await session.execute(
+        text(f"SELECT set_config('{PLATFORM_ADMIN_SETTING}', 'on', true)"),
     )
 
 

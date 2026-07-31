@@ -11,6 +11,7 @@ from relationship_network_api.health import (
     evaluate_readiness,
 )
 from relationship_network_api.probes import build_dependency_checks
+from relationship_network_api.routers.admin import router as admin_router
 from relationship_network_api.routers.auth import router as auth_router
 from relationship_network_api.routers.invitations import router as invitations_router
 from relationship_network_api.routers.members import router as members_router
@@ -38,6 +39,7 @@ def create_app(
     app.include_router(invitations_router)
     app.include_router(members_router)
     app.include_router(mfa_router)
+    app.include_router(admin_router)
 
     @app.get("/health/live", tags=["health"])
     async def liveness() -> LiveStatus:

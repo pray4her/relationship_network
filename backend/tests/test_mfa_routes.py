@@ -31,6 +31,7 @@ from relationship_network_api.mfa_service import (
     MfaChallengeInvalidError,
     MfaNotEnabledError,
     MfaRequiredByTenantError,
+    MfaRequiredForPlatformAdminError,
     MfaSetupView,
     MfaStatusView,
 )
@@ -217,6 +218,7 @@ def test_mfa_disable_returns_no_content(monkeypatch: MonkeyPatch) -> None:
         (MfaNotEnabledError(), 409, "mfa_not_enabled"),
         (InvalidMfaCodeError(), 401, "invalid_mfa_code"),
         (MfaRequiredByTenantError(), 409, "mfa_required_by_tenant"),
+        (MfaRequiredForPlatformAdminError(), 409, "mfa_required_for_platform_admin"),
     ],
 )
 def test_mfa_disable_maps_service_errors(

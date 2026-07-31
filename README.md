@@ -96,6 +96,21 @@ API_INTERNAL_URL=http://localhost:8000 bun run dev
 
 MFA 基于 TOTP：`POST /auth/mfa/setup` 生成密钥，`POST /auth/mfa/enable` 校验并启用（同时下发一次性恢复码），登录后由 `POST /auth/mfa/verify` 完成二次校验。租户开启 `mfa_required` 后，`get_tenant_context` 会拒绝未完成 MFA 的成员，返回 403 `mfa_required`。
 
+## 平台管理
+
+平台管理员是与租户权限完全隔离的运营身份：其授权边界不经过租户 RBAC，普通租户角色无法获得或推导出该权限。`RN_PLATFORM_ADMIN_EMAILS`（逗号分隔的邮箱名单）是唯一授权来源——名单内邮箱在注册或登录时自动获得 `is_platform_admin` 标记，移出名单后在下一次认证时被回收。平台管理员注册时不会自动创建租户或成员关系（`tenant` / `role` 为 null），也不会以成员身份污染任何租户。
+
+平台管理员必须启用 TOTP MFA：未完成 MFA 时管理入口一律返回 403 `mfa_required`，且平台管理员无法关闭自己的 MFA（409 `mfa_required_for_platform_admin`）。
+
+管理 API（均需平台管理员身份 + MFA）：
+
+- `GET /admin/tenants?query=&status=&limit=&offset=`：按名称或 slug 检索租户，返回 `{tenants, total}`，含成员数与租户状态（`active` / `suspended`）。成员数等跨租户读取通过 `app.platform_admin` GUC 在 RLS 策略中显式放行。
+- `GET /admin/tenants/{id}`：租户详情（状态、MFA 策略、成员数、创建时间）。
+- `POST /admin/tenants/{id}/status`：暂停或恢复租户。该敏感写操作会写入 `platform_audit_events` 审计表（操作者、动作、目标、结果、时间；目标不存在时也记录失败结果）。审计表为只增不改：应用角色仅有 SELECT/INSERT 权限，操作者账号删除后事件保留（actor_id 置空）。
+- `GET /admin/audit-events`：查看最近的平台操作审计记录。
+
+前端管理入口位于 `/admin`（平台管理员登录后默认落点），导航栏仅对平台管理员显示"平台管理"入口；未启用 MFA 时会被引导至 `/settings/security` 完成设置。
+
 相关环境变量（`RN_` 前缀，见 `backend/.env.example` 与根目录 `.env.example`）：
 
 - `RN_SESSION_TTL_SECONDS`：会话有效期，默认 1209600（14 天），同时作为 Cookie 的 Max-Age。
@@ -103,6 +118,7 @@ MFA 基于 TOTP：`POST /auth/mfa/setup` 生成密钥，`POST /auth/mfa/enable` 
 - `RN_SESSION_COOKIE_SECURE`：会话 Cookie 是否带 Secure 标记，默认 false，生产环境应设为 true。
 - `RN_INVITATION_TTL_SECONDS`：邀请有效期，默认 604800（7 天）。
 - `RN_MFA_CHALLENGE_TTL_SECONDS`：MFA 挑战有效期，默认 300（5 分钟）。
+- `RN_PLATFORM_ADMIN_EMAILS`：逗号分隔的平台管理员邮箱名单，默认空。名单内邮箱在注册/登录时获得平台管理员身份，移出名单后下一次认证时回收。
 - `RN_APP_BASE_URL`：邀请邮件中链接使用的前端地址，默认 http://localhost:3000。
 - `RN_SMTP_HOST` / `RN_SMTP_PORT` / `RN_SMTP_USERNAME` / `RN_SMTP_PASSWORD` / `RN_SMTP_FROM` / `RN_SMTP_USE_TLS`：邀请邮件的 SMTP 配置；未设置 host 时仅在 worker 日志中记录邀请链接。
 
