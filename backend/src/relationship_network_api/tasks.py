@@ -3,8 +3,13 @@ import smtplib
 from email.message import EmailMessage
 from typing import TYPE_CHECKING, Final, Literal, TypedDict, cast
 
+import anyio
+from sqlalchemy.exc import SQLAlchemyError
+
+from relationship_network_api import tenant_context, usage_service
 from relationship_network_api.celery_app import celery_app
-from relationship_network_api.config import load_app_settings
+from relationship_network_api.config import load_app_settings, load_database_settings
+from relationship_network_api.db import create_engine_from_settings, create_session_factory
 
 if TYPE_CHECKING:
     from celery import Task
@@ -13,6 +18,9 @@ logger = logging.getLogger(__name__)
 
 SMOKE_TASK_NAME: Final = "relationship_network.smoke"
 INVITATION_EMAIL_TASK_NAME: Final = "relationship_network.send_invitation_email"
+RELEASE_EXPIRED_RESERVATIONS_TASK_NAME: Final = (
+    "relationship_network.release_expired_usage_reservations"
+)
 
 
 class SmokeResult(TypedDict):
@@ -74,4 +82,32 @@ send_invitation_email = cast(
         retry_backoff=True,
         max_retries=3,
     )(send_invitation_email_payload),
+)
+
+
+def release_expired_usage_reservations_payload() -> int:
+    """Release expired usage reservations across all tenants; returns the count."""
+    return anyio.run(_release_expired_usage_reservations)
+
+
+async def _release_expired_usage_reservations() -> int:
+    settings = load_database_settings()
+    engine = create_engine_from_settings(settings)
+    try:
+        session_factory = create_session_factory(engine)
+        async with session_factory() as session:
+            await tenant_context.set_platform_admin_context(session)
+            return await usage_service.release_expired_reservations(session)
+    finally:
+        await engine.dispose()
+
+
+release_expired_usage_reservations = cast(
+    "Task",
+    celery_app.task(
+        name=RELEASE_EXPIRED_RESERVATIONS_TASK_NAME,
+        autoretry_for=(SQLAlchemyError, OSError),
+        retry_backoff=True,
+        max_retries=3,
+    )(release_expired_usage_reservations_payload),
 )

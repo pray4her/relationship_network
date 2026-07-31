@@ -86,7 +86,7 @@ API_INTERNAL_URL=http://localhost:8000 bun run dev
 
 注册、登录和会话续期由后端 API 提供，会话通过名为 `rn_session` 的 HttpOnly Cookie 维持（Path=/、SameSite=Lax，Secure 由配置决定；数据库只保存令牌的 SHA-256 哈希）。
 
-- `POST /auth/register`：创建用户、租户和 owner 成员关系（单事务），返回 201 及 `{user, tenant, role}`，并种下会话 Cookie。邮箱重复返回 409 `email_already_registered`。未提供 `tenant_name` 时默认使用 `"{display_name} 的租户"`。
+- `POST /auth/register`：创建用户、租户、owner 成员关系和 14 天试用订阅（单事务），返回 201 及 `{user, tenant, role}`，并种下会话 Cookie。邮箱重复返回 409 `email_already_registered`。未提供 `tenant_name` 时默认使用 `"{display_name} 的租户"`。
 - `POST /auth/login`：返回与注册相同的 JSON 结构并种下 Cookie。邮箱不存在与密码错误统一返回 401 `invalid_credentials`，不区分原因。
 - `POST /auth/logout`：删除服务端会话并以 `Max-Age=0` 清除 Cookie，无会话时也返回 204。
 - `GET /auth/me`：返回当前身份；未认证返回 401 `not_authenticated`。剩余有效期进入续期窗口时自动滑动续期并重写 Cookie。
@@ -121,6 +121,19 @@ MFA 基于 TOTP：`POST /auth/mfa/setup` 生成密钥，`POST /auth/mfa/enable` 
 - `RN_PLATFORM_ADMIN_EMAILS`：逗号分隔的平台管理员邮箱名单，默认空。名单内邮箱在注册/登录时获得平台管理员身份，移出名单后下一次认证时回收。
 - `RN_APP_BASE_URL`：邀请邮件中链接使用的前端地址，默认 http://localhost:3000。
 - `RN_SMTP_HOST` / `RN_SMTP_PORT` / `RN_SMTP_USERNAME` / `RN_SMTP_PASSWORD` / `RN_SMTP_FROM` / `RN_SMTP_USE_TLS`：邀请邮件的 SMTP 配置；未设置 host 时仅在 worker 日志中记录邀请链接。
+
+## 计费与用量
+
+新租户在注册事务内同时获得试用订阅：试用套餐（`trial`，14 天）的权益快照固定在订阅指向的不可变套餐版本上，之后发布新套餐版本不影响既有订阅。用量通过只增的 `usage_ledger_entries` 台账记账（reserve / confirm / release；应用角色仅有 SELECT/INSERT 权限，更新与删除由数据库权限拒绝），幂等键保证重试不重复计数，同一幂等键携带不同参数（metric 或 amount）会被拒绝。
+
+- `GET /billing/summary`：返回当前订阅的套餐与用量余额。需要会话 Cookie 和 `billing:read` 权限（注册租户的所有者默认持有全部系统权限）；无当前订阅返回 404 `subscription_not_found`。响应形如 `{plan: {code, name, version}, status, trial_ends_at, current_period_start, current_period_end, metrics: [{metric, limit, used, reserved, remaining}, ...]}`，`metrics` 固定按 owners、companies、active_jobs、searches、matches、reports 顺序返回。
+- 过期预订由 Celery 任务 `relationship_network.release_expired_usage_reservations` 清扫：任务在平台管理员 GUC 下跨租户写入 release 记录，数据库/网络失败自动指数退避重试，并发清扫器通过保存点跳过彼此已处理的预订。beat 调度每 5 分钟（300 秒）触发一次；beat 进程独立于 worker，本地可复用 worker 镜像运行：
+
+```powershell
+docker compose exec worker poetry run celery -A relationship_network_api.tasks:celery_app beat --loglevel=INFO
+```
+
+开发时也可以用 `celery -A relationship_network_api.tasks:celery_app worker -B` 让 worker 内嵌 beat。
 
 ## 质量检查
 

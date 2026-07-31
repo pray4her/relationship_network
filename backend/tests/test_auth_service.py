@@ -9,7 +9,7 @@ from _pytest.monkeypatch import MonkeyPatch
 from sqlalchemy.exc import IntegrityError, SQLAlchemyError
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from relationship_network_api import auth_service, invitation_service, tenant_context
+from relationship_network_api import auth_service, invitation_service, tenant_context, usage_service
 from relationship_network_api.auth_service import (
     AuthResult,
     AuthService,
@@ -45,6 +45,14 @@ def _stub_rls_context(monkeypatch: MonkeyPatch) -> None:
 
     monkeypatch.setattr(tenant_context, "set_tenant_context", _noop)
     monkeypatch.setattr(tenant_context, "set_user_context", _noop)
+
+
+@pytest.fixture(autouse=True)
+def _stub_trial_subscription(monkeypatch: MonkeyPatch) -> None:
+    async def _noop(*_args: object, **_kwargs: object) -> None:
+        return None
+
+    monkeypatch.setattr(usage_service, "start_trial_subscription", _noop)
 
 
 @final
@@ -785,3 +793,71 @@ async def test_login_revokes_platform_admin_when_email_leaves_allowlist() -> Non
     assert isinstance(result, AuthResult)
     assert not result.user.is_platform_admin
     assert not user.is_platform_admin
+
+
+async def test_register_starts_trial_subscription_for_new_tenant(
+    monkeypatch: MonkeyPatch,
+) -> None:
+    # Given a spy on the trial subscription hook
+    service = make_service()
+    trial_calls: list[uuid.UUID] = []
+
+    async def fake_start_trial(_session: object, *, tenant_id: uuid.UUID) -> None:
+        trial_calls.append(tenant_id)
+
+    monkeypatch.setattr(usage_service, "start_trial_subscription", fake_start_trial)
+    spy = SpySession()
+
+    # When registration creates a new tenant
+    result = await service.register(
+        as_session(spy),
+        email="owner@example.com",
+        password="sup3r-secret",
+        display_name="陈然",
+        tenant_name=None,
+    )
+
+    # Then the trial subscription starts for that tenant inside the same transaction
+    assert result.membership is not None
+    assert trial_calls == [result.membership.tenant_id]
+    assert spy.commit_calls == 1
+
+
+async def test_register_with_invite_skips_trial_subscription(monkeypatch: MonkeyPatch) -> None:
+    # Given a pending invitation and a spy on the trial subscription hook
+    service = make_service()
+    tenant = make_tenant()
+    invitation = TenantInvitation(
+        id=uuid.uuid4(),
+        tenant_id=tenant.id,
+        email="invitee@example.com",
+        token_hash="b" * 64,
+        invited_by=uuid.uuid4(),
+        expires_at=datetime.now(UTC) + timedelta(days=7),
+    )
+
+    async def fake_load_pending(_session: object, *, token: str) -> TenantInvitation:
+        del token
+        return invitation
+
+    trial_calls: list[uuid.UUID] = []
+
+    async def fake_start_trial(_session: object, *, tenant_id: uuid.UUID) -> None:
+        trial_calls.append(tenant_id)
+
+    monkeypatch.setattr(invitation_service, "load_pending_invitation", fake_load_pending)
+    monkeypatch.setattr(usage_service, "start_trial_subscription", fake_start_trial)
+    spy = SpySession(execute_results=[tenant])
+
+    # When registration joins the issuing tenant
+    _ = await service.register(
+        as_session(spy),
+        email="invitee@example.com",
+        password="sup3r-secret",
+        display_name="受邀用户",
+        tenant_name=None,
+        invite_token="raw-invite-token",
+    )
+
+    # Then no trial subscription is started
+    assert trial_calls == []

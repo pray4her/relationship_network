@@ -6,12 +6,16 @@ from typing import Protocol, Self, cast
 
 import pytest
 from _pytest.monkeypatch import MonkeyPatch
+from sqlalchemy.exc import SQLAlchemyError
 
 from relationship_network_api import tasks
 from relationship_network_api.config import AppSettings
 from relationship_network_api.tasks import (
     INVITATION_EMAIL_TASK_NAME,
+    RELEASE_EXPIRED_RESERVATIONS_TASK_NAME,
     SMOKE_TASK_NAME,
+    release_expired_usage_reservations,
+    release_expired_usage_reservations_payload,
     send_invitation_email,
     send_invitation_email_payload,
     smoke_payload,
@@ -150,3 +154,31 @@ def test_invitation_email_logs_url_when_smtp_host_empty(
 
     # Then the invite URL is logged instead of sent
     assert "http://localhost:3000/invite/raw-token" in caplog.text
+
+
+def test_release_expired_reservations_payload_runs_db_sweep(monkeypatch: MonkeyPatch) -> None:
+    # Given the database-running sweep stubbed out
+    async def fake_sweep() -> int:
+        return 7
+
+    monkeypatch.setattr(tasks, "_release_expired_usage_reservations", fake_sweep)
+
+    # When the worker payload runs
+    released = release_expired_usage_reservations_payload()
+
+    # Then the sweep result is returned
+    assert released == 7
+    assert RELEASE_EXPIRED_RESERVATIONS_TASK_NAME == (
+        "relationship_network.release_expired_usage_reservations"
+    )
+
+
+def test_release_expired_reservations_retries_db_failures_with_backoff() -> None:
+    # Given the registered sweeper task (attributes missing from celery stubs)
+    task = cast("_RetryPolicy", cast("object", release_expired_usage_reservations))
+
+    # Then transient database and network failures retry with exponential backoff
+    assert SQLAlchemyError in task.autoretry_for
+    assert OSError in task.autoretry_for
+    assert task.retry_backoff is True
+    assert task.max_retries == 3

@@ -17,6 +17,14 @@ def create_celery_app(settings: WorkerSettings) -> Celery:
         task_serializer="json",
         task_track_started=True,
         timezone="UTC",
+        beat_schedule={
+            # Task name kept in sync with RELEASE_EXPIRED_RESERVATIONS_TASK_NAME
+            # in tasks.py (importing it here would be circular).
+            "release-expired-usage-reservations": {
+                "task": "relationship_network.release_expired_usage_reservations",
+                "schedule": 300.0,
+            },
+        },
     )
     return app
 

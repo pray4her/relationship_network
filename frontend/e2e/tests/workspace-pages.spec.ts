@@ -36,6 +36,13 @@ test("requires login for the members page", async ({ page }) => {
   await expect(page.getByRole("link", { name: "登录" }).first()).toBeVisible()
 })
 
+test("requires login for the usage page", async ({ page }) => {
+  await page.goto("/usage")
+
+  await expect(page.getByRole("heading", { name: "用量与套餐" })).toBeVisible()
+  await expect(page.getByRole("link", { name: "登录" }).first()).toBeVisible()
+})
+
 test("renders the members page for a freshly registered owner", async ({ page }) => {
   test.skip(!(await isAuthApiAvailable()), "auth API 未部署，跳过实时成员页流程")
 

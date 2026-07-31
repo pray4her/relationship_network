@@ -7,6 +7,7 @@ from sqlalchemy import (
     CheckConstraint,
     DateTime,
     ForeignKey,
+    Index,
     Integer,
     String,
     UniqueConstraint,
@@ -28,6 +29,33 @@ TenantStatus = Literal["active", "suspended"]
 
 TENANT_STATUS_ACTIVE: Final[TenantStatus] = "active"
 TENANT_STATUS_SUSPENDED: Final[TenantStatus] = "suspended"
+
+UsageMetric = Literal["owners", "companies", "active_jobs", "searches", "matches", "reports"]
+"""Usage metrics a plan can cap; stored as lowercase strings."""
+
+USAGE_METRICS: Final[tuple[UsageMetric, ...]] = (
+    "owners",
+    "companies",
+    "active_jobs",
+    "searches",
+    "matches",
+    "reports",
+)
+"""All usage metrics in canonical summary order."""
+
+CONCURRENT_METRICS: Final[frozenset[UsageMetric]] = frozenset(
+    {"owners", "companies", "active_jobs"}
+)
+"""Long-lived count limits; the other metrics reset per billing period."""
+
+SubscriptionStatus = Literal["trialing", "active", "expired", "cancelled"]
+"""Lifecycle states a tenant subscription can be in; stored as lowercase strings."""
+
+PlanVersionStatus = Literal["draft", "published", "archived"]
+"""Lifecycle states a plan version can be in; stored as lowercase strings."""
+
+LedgerEntryType = Literal["reserve", "confirm", "release"]
+"""Usage ledger entry kinds; stored as lowercase strings."""
 
 
 class Base(DeclarativeBase):
@@ -272,6 +300,147 @@ class PlatformAuditEvent(Base):
     target_id: Mapped[str] = mapped_column(String(64))
     result: Mapped[str] = mapped_column(String(20))
     detail: Mapped[str] = mapped_column(String(1000), server_default="", default="")
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        server_default=func.now(),
+    )
+
+
+@final
+class Plan(Base):
+    __tablename__ = "plans"
+
+    id: Mapped[uuid.UUID] = mapped_column(Uuid, primary_key=True, default=uuid.uuid4)
+    code: Mapped[str] = mapped_column(String(50), unique=True)
+    name: Mapped[str] = mapped_column(String(100))
+    is_active: Mapped[bool] = mapped_column(Boolean, server_default=true(), default=True)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        server_default=func.now(),
+    )
+
+
+@final
+class PlanVersion(Base):
+    __tablename__ = "plan_versions"
+    __table_args__ = (
+        CheckConstraint(
+            "status IN ('draft', 'published', 'archived')",
+            name="ck_plan_versions_status",
+        ),
+        UniqueConstraint("plan_id", "version", name="uq_plan_versions_plan_version"),
+    )
+
+    id: Mapped[uuid.UUID] = mapped_column(Uuid, primary_key=True, default=uuid.uuid4)
+    plan_id: Mapped[uuid.UUID] = mapped_column(
+        Uuid,
+        ForeignKey("plans.id"),
+    )
+    version: Mapped[int] = mapped_column(Integer)
+    status: Mapped[PlanVersionStatus] = mapped_column(String(20))
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        server_default=func.now(),
+    )
+
+
+@final
+class PlanEntitlement(Base):
+    __tablename__ = "plan_entitlements"
+    __table_args__ = (
+        CheckConstraint("limit_value >= 0", name="ck_plan_entitlements_limit"),
+        CheckConstraint(
+            "metric IN ('owners', 'companies', 'active_jobs', 'searches', 'matches', 'reports')",
+            name="ck_plan_entitlements_metric",
+        ),
+    )
+
+    plan_version_id: Mapped[uuid.UUID] = mapped_column(
+        Uuid,
+        ForeignKey("plan_versions.id"),
+        primary_key=True,
+    )
+    metric: Mapped[UsageMetric] = mapped_column(String(30), primary_key=True)
+    limit_value: Mapped[int] = mapped_column(Integer)
+
+
+@final
+class TenantSubscription(Base):
+    __tablename__ = "tenant_subscriptions"
+    __table_args__ = (
+        CheckConstraint(
+            "status IN ('trialing', 'active', 'expired', 'cancelled')",
+            name="ck_tenant_subscriptions_status",
+        ),
+    )
+
+    id: Mapped[uuid.UUID] = mapped_column(Uuid, primary_key=True, default=uuid.uuid4)
+    tenant_id: Mapped[uuid.UUID] = mapped_column(
+        Uuid,
+        ForeignKey("tenants.id", ondelete="CASCADE"),
+        index=True,
+    )
+    plan_version_id: Mapped[uuid.UUID] = mapped_column(
+        Uuid,
+        ForeignKey("plan_versions.id"),
+    )
+    status: Mapped[SubscriptionStatus] = mapped_column(String(20))
+    started_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    current_period_start: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    current_period_end: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    trial_ends_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        server_default=func.now(),
+    )
+
+
+@final
+class UsageLedgerEntry(Base):
+    """Append-only usage accounting row; reservations settle via confirm/release entries."""
+
+    __tablename__ = "usage_ledger_entries"
+    __table_args__ = (
+        CheckConstraint(
+            "metric IN ('owners', 'companies', 'active_jobs', 'searches', 'matches', 'reports')",
+            name="ck_usage_ledger_entries_metric",
+        ),
+        CheckConstraint("amount > 0", name="ck_usage_ledger_entries_amount"),
+        CheckConstraint(
+            "entry_type IN ('reserve', 'confirm', 'release')",
+            name="ck_usage_ledger_entries_entry_type",
+        ),
+        UniqueConstraint(
+            "tenant_id",
+            "idempotency_key",
+            name="uq_usage_ledger_tenant_idempotency",
+        ),
+        UniqueConstraint(
+            "reservation_id",
+            "entry_type",
+            name="uq_usage_ledger_reservation_type",
+        ),
+        Index("ix_usage_ledger_entries_tenant_metric", "tenant_id", "metric"),
+    )
+
+    id: Mapped[uuid.UUID] = mapped_column(Uuid, primary_key=True, default=uuid.uuid4)
+    tenant_id: Mapped[uuid.UUID] = mapped_column(
+        Uuid,
+        ForeignKey("tenants.id", ondelete="CASCADE"),
+        index=True,
+    )
+    subscription_id: Mapped[uuid.UUID] = mapped_column(
+        Uuid,
+        ForeignKey("tenant_subscriptions.id"),
+    )
+    reservation_id: Mapped[uuid.UUID] = mapped_column(Uuid)
+    metric: Mapped[UsageMetric] = mapped_column(String(30))
+    amount: Mapped[int] = mapped_column(Integer)
+    entry_type: Mapped[LedgerEntryType] = mapped_column(String(20))
+    idempotency_key: Mapped[str] = mapped_column(String(100))
+    reference_type: Mapped[str | None] = mapped_column(String(50), nullable=True)
+    reference_id: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    expires_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
         server_default=func.now(),

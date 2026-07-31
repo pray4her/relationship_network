@@ -8,7 +8,7 @@ from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError, SQLAlchemyError
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from relationship_network_api import invitation_service, tenant_context
+from relationship_network_api import invitation_service, tenant_context, usage_service
 from relationship_network_api.models import (
     MEMBER_ROLE,
     OWNER_ROLE,
@@ -156,7 +156,8 @@ class AuthService:
         """Create user, tenant, owner membership, and session in one transaction.
 
         With an invite token, no tenant is created: the user joins the issuing
-        tenant as a plain member and the invitation is marked accepted.
+        tenant as a plain member and the invitation is marked accepted. A newly
+        created tenant also gets its trial subscription in the same transaction.
         """
         invitation = None
         if invite_token is not None:
@@ -216,6 +217,7 @@ class AuthService:
                 is_active=True,
             )
             session.add(membership)
+            _ = await usage_service.start_trial_subscription(session, tenant_id=tenant.id)
         return await self._issue_session_result(session, user, membership, tenant)
 
     async def login(
