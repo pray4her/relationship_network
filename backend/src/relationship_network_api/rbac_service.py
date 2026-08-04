@@ -25,6 +25,7 @@ SYSTEM_PERMISSIONS: Final[dict[str, str]] = {
     "members:invite": "邀请新成员加入租户",
     "tenant:manage": "管理租户设置",
     "billing:read": "查看套餐权益与用量",
+    "billing:manage": "管理账单与订阅",
 }
 """System-defined permission catalog; codes are stable and assigned to roles."""
 

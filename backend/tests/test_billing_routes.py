@@ -99,6 +99,8 @@ def make_summary() -> UsageSummaryView:
             trial_ends_at=trial_end,
             current_period_start=now,
             current_period_end=trial_end,
+            cancel_requested_at=None,
+            offline_order_id=None,
         ),
         metrics=tuple(
             MetricBalance(metric=metric, limit=1, used=0, reserved=0, remaining=1)

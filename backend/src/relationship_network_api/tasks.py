@@ -21,6 +21,7 @@ INVITATION_EMAIL_TASK_NAME: Final = "relationship_network.send_invitation_email"
 RELEASE_EXPIRED_RESERVATIONS_TASK_NAME: Final = (
     "relationship_network.release_expired_usage_reservations"
 )
+EXPIRE_DUE_SUBSCRIPTIONS_TASK_NAME: Final = "relationship_network.expire_due_subscriptions"
 
 
 class SmokeResult(TypedDict):
@@ -110,4 +111,32 @@ release_expired_usage_reservations = cast(
         retry_backoff=True,
         max_retries=3,
     )(release_expired_usage_reservations_payload),
+)
+
+
+def expire_due_subscriptions_payload() -> int:
+    """Expire subscriptions past their billing period end; returns the count."""
+    return anyio.run(_expire_due_subscriptions)
+
+
+async def _expire_due_subscriptions() -> int:
+    settings = load_database_settings()
+    engine = create_engine_from_settings(settings)
+    try:
+        session_factory = create_session_factory(engine)
+        async with session_factory() as session:
+            await tenant_context.set_platform_admin_context(session)
+            return await usage_service.expire_due_subscriptions(session)
+    finally:
+        await engine.dispose()
+
+
+expire_due_subscriptions = cast(
+    "Task",
+    celery_app.task(
+        name=EXPIRE_DUE_SUBSCRIPTIONS_TASK_NAME,
+        autoretry_for=(SQLAlchemyError, OSError),
+        retry_backoff=True,
+        max_retries=3,
+    )(expire_due_subscriptions_payload),
 )

@@ -12,6 +12,12 @@ import {
   type TenantStatus,
 } from "./admin-contract"
 import { SESSION_COOKIE_NAME } from "./auth-client"
+import {
+  type OrderStatus,
+  type OrderView,
+  orderListSchema,
+  orderViewSchema,
+} from "./orders-contract"
 
 const apiUrlSchema = z.url()
 
@@ -34,6 +40,13 @@ export interface AdminTransport {
     status: TenantStatus,
   ): Promise<AdminTransportResponse>
   listAuditEvents(session: string): Promise<AdminTransportResponse>
+  listOrders(session: string, status: OrderStatus | null): Promise<AdminTransportResponse>
+  confirmOrder(session: string, orderId: string): Promise<AdminTransportResponse>
+  rejectOrder(
+    session: string,
+    orderId: string,
+    reason: string | null,
+  ): Promise<AdminTransportResponse>
 }
 
 export class AdminTransportError extends Error {
@@ -79,6 +92,30 @@ class KyAdminTransport implements AdminTransport {
 
   listAuditEvents(session: string): Promise<AdminTransportResponse> {
     return this.#request("/admin/audit-events", { method: "GET", session })
+  }
+
+  listOrders(session: string, status: OrderStatus | null): Promise<AdminTransportResponse> {
+    const path = new URL("/admin/orders", this.#baseUrl)
+    if (status !== null) {
+      path.searchParams.set("status", status)
+    }
+    return this.#request(path.toString(), { method: "GET", session })
+  }
+
+  confirmOrder(session: string, orderId: string): Promise<AdminTransportResponse> {
+    return this.#request(`/admin/orders/${orderId}/confirm`, { method: "POST", session })
+  }
+
+  rejectOrder(
+    session: string,
+    orderId: string,
+    reason: string | null,
+  ): Promise<AdminTransportResponse> {
+    return this.#request(`/admin/orders/${orderId}/reject`, {
+      json: reason === null || reason === "" ? {} : { reason },
+      method: "POST",
+      session,
+    })
   }
 
   async #request(
@@ -238,6 +275,92 @@ export async function loadAdminAuditEvents(
       return { kind: "ok", events: adminAuditEventListSchema.parse(response.body).events }
     }
     return accessFailure(response) ?? { kind: "unreachable" }
+  } catch (error) {
+    if (isExpectedError(error)) {
+      return { kind: "unreachable" }
+    }
+    throw error
+  }
+}
+
+export type AdminOrderListResult =
+  | { readonly kind: "ok"; readonly orders: readonly OrderView[] }
+  | AdminAccessFailure
+  | { readonly kind: "unreachable" }
+
+export async function listAdminOrders(
+  transport: AdminTransport,
+  session: string,
+  status: OrderStatus | null,
+): Promise<AdminOrderListResult> {
+  try {
+    const response = await transport.listOrders(session, status)
+    if (response.status === 200) {
+      return { kind: "ok", orders: orderListSchema.parse(response.body).orders }
+    }
+    return accessFailure(response) ?? { kind: "unreachable" }
+  } catch (error) {
+    if (isExpectedError(error)) {
+      return { kind: "unreachable" }
+    }
+    throw error
+  }
+}
+
+export type AdminOrderReviewConflict = "order_already_confirmed" | "order_already_rejected"
+
+export type AdminOrderReviewResult =
+  | { readonly kind: "ok"; readonly order: OrderView }
+  | { readonly kind: "notFound" }
+  | { readonly kind: "conflict"; readonly detail: AdminOrderReviewConflict }
+  | AdminAccessFailure
+  | { readonly kind: "unreachable" }
+
+function orderReviewFailure(response: AdminTransportResponse): AdminOrderReviewResult | null {
+  if (response.status === 404) {
+    return { kind: "notFound" }
+  }
+  if (response.status === 409) {
+    const detail = readAdminErrorDetail(response.body)
+    if (detail === "order_already_confirmed" || detail === "order_already_rejected") {
+      return { detail, kind: "conflict" }
+    }
+    return { kind: "unreachable" }
+  }
+  return accessFailure(response)
+}
+
+export async function confirmAdminOrder(
+  transport: AdminTransport,
+  session: string,
+  orderId: string,
+): Promise<AdminOrderReviewResult> {
+  try {
+    const response = await transport.confirmOrder(session, orderId)
+    if (response.status === 200) {
+      return { kind: "ok", order: orderViewSchema.parse(response.body) }
+    }
+    return orderReviewFailure(response) ?? { kind: "unreachable" }
+  } catch (error) {
+    if (isExpectedError(error)) {
+      return { kind: "unreachable" }
+    }
+    throw error
+  }
+}
+
+export async function rejectAdminOrder(
+  transport: AdminTransport,
+  session: string,
+  orderId: string,
+  reason: string | null,
+): Promise<AdminOrderReviewResult> {
+  try {
+    const response = await transport.rejectOrder(session, orderId, reason)
+    if (response.status === 200) {
+      return { kind: "ok", order: orderViewSchema.parse(response.body) }
+    }
+    return orderReviewFailure(response) ?? { kind: "unreachable" }
   } catch (error) {
     if (isExpectedError(error)) {
       return { kind: "unreachable" }

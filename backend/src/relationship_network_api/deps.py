@@ -7,7 +7,7 @@ from fastapi import Depends, HTTPException, Request, status
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncEngine, AsyncSession
 
-from relationship_network_api import rbac_service, tenant_context
+from relationship_network_api import rbac_service, tenant_context, usage_service
 from relationship_network_api.auth_service import Authentication, AuthService, MembershipView
 from relationship_network_api.config import (
     AppSettings,
@@ -23,6 +23,7 @@ NOT_AUTHENTICATED_DETAIL: Final = "not_authenticated"
 PERMISSION_DENIED_DETAIL: Final = "permission_denied"
 MFA_REQUIRED_DETAIL: Final = "mfa_required"
 PLATFORM_ADMIN_REQUIRED_DETAIL: Final = "platform_admin_required"
+SUBSCRIPTION_READ_ONLY_DETAIL: Final = "subscription_read_only"
 
 
 @dataclass(frozen=True)
@@ -167,6 +168,32 @@ def require_permission(
         return context
 
     return dependency
+
+
+async def require_writable_tenant(
+    session: Annotated[AsyncSession, Depends(get_db_session)],
+    context: Annotated[TenantContext, Depends(get_tenant_context)],
+) -> TenantContext:
+    """Require the tenant's subscription to be in a writable (in-period) state.
+
+    This gate is meant for future business write endpoints (jobs, matches,
+    reports and the like): tenants whose paid period has lapsed keep read
+    access but are rejected here. Offline order submission deliberately does
+    not use this gate, because submitting an order is how an expired tenant
+    resubscribes.
+    """
+    if not await usage_service.is_tenant_writable(
+        session,
+        tenant_id=context.membership.tenant_id,
+    ):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail=SUBSCRIPTION_READ_ONLY_DETAIL,
+        )
+    return context
+
+
+WritableTenantDep = Annotated[TenantContext, Depends(require_writable_tenant)]
 
 
 async def require_platform_admin(

@@ -6,13 +6,19 @@ from fastapi import APIRouter, Depends, HTTPException, Query, status
 from pydantic import BaseModel
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from relationship_network_api import admin_service, audit_service
+from relationship_network_api import admin_service, audit_service, order_service
 from relationship_network_api.auth_service import Authentication
 from relationship_network_api.deps import (
     get_db_session,
     require_platform_admin,
 )
 from relationship_network_api.models import TenantStatus
+from relationship_network_api.order_service import OrderStatus
+from relationship_network_api.routers.billing import (
+    OrderListResponse,
+    OrderResponse,
+    order_response,
+)
 
 router = APIRouter()
 
@@ -20,6 +26,9 @@ DbSession = Annotated[AsyncSession, Depends(get_db_session)]
 PlatformAdminDep = Annotated[Authentication, Depends(require_platform_admin)]
 
 _QUERY_MAX_LENGTH: Final = 100
+ORDER_NOT_FOUND_DETAIL: Final = "order_not_found"
+ORDER_ALREADY_REJECTED_DETAIL: Final = "order_already_rejected"
+ORDER_ALREADY_CONFIRMED_DETAIL: Final = "order_already_confirmed"
 
 
 @final
@@ -177,3 +186,75 @@ async def list_audit_events(
             for event in events
         ]
     )
+
+
+@final
+class RejectOrderRequest(BaseModel):
+    reason: str = ""
+
+
+@router.get("/admin/orders")
+async def list_orders(
+    _admin: PlatformAdminDep,
+    session: DbSession,
+    order_status: Annotated[OrderStatus | None, Query(alias="status")] = None,
+    tenant_id: uuid.UUID | None = None,
+) -> OrderListResponse:
+    orders = await order_service.list_orders_admin(
+        session,
+        status=order_status,
+        tenant_id=tenant_id,
+    )
+    return OrderListResponse(orders=[order_response(view) for view in orders])
+
+
+@router.post("/admin/orders/{order_id}/confirm")
+async def confirm_order(
+    order_id: uuid.UUID,
+    admin: PlatformAdminDep,
+    session: DbSession,
+) -> OrderResponse:
+    try:
+        view = await order_service.confirm_order(
+            session,
+            order_id=order_id,
+            reviewer_id=admin.user.id,
+        )
+    except order_service.OrderNotFoundError as error:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=ORDER_NOT_FOUND_DETAIL,
+        ) from error
+    except order_service.OrderStateError as error:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail=ORDER_ALREADY_REJECTED_DETAIL,
+        ) from error
+    return order_response(view)
+
+
+@router.post("/admin/orders/{order_id}/reject")
+async def reject_order(
+    order_id: uuid.UUID,
+    payload: RejectOrderRequest,
+    admin: PlatformAdminDep,
+    session: DbSession,
+) -> OrderResponse:
+    try:
+        view = await order_service.reject_order(
+            session,
+            order_id=order_id,
+            reviewer_id=admin.user.id,
+            reason=payload.reason,
+        )
+    except order_service.OrderNotFoundError as error:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=ORDER_NOT_FOUND_DETAIL,
+        ) from error
+    except order_service.OrderStateError as error:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail=ORDER_ALREADY_CONFIRMED_DETAIL,
+        ) from error
+    return order_response(view)

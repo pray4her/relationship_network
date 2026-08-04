@@ -3,10 +3,16 @@ import { cookies } from "next/headers"
 import Link from "next/link"
 import { redirect } from "next/navigation"
 
+import { cancelSubscriptionAction, submitOrderAction } from "@/app/actions/orders"
 import { AccountPanel } from "@/components/account-panel"
+import { CancelSubscriptionAction } from "@/components/billing/cancel-subscription-action"
+import { OrderRequestForm } from "@/components/billing/order-request-form"
+import { ReadOnlyBanner } from "@/components/billing/read-only-banner"
 import { createAuthTransport, loadAuthSession, SESSION_COOKIE_NAME } from "@/lib/auth-client"
 import { createBillingTransport, loadBillingSummary } from "@/lib/billing-client"
 import type { BillingMetric, BillingStatus } from "@/lib/billing-contract"
+import { createOrdersTransport, listOrders, type OrderListResult } from "@/lib/orders-client"
+import { formatAmountCents, orderStatusLabels } from "@/lib/orders-view"
 
 export const metadata: Metadata = {
   title: "用量与套餐 · Relationship Network",
@@ -30,6 +36,73 @@ const billingMetricLabels: Record<BillingMetric, string> = {
 
 function formatDateTime(value: string): string {
   return new Date(value).toLocaleString("zh-CN", { hour12: false })
+}
+
+type OrderSectionsProps = {
+  readonly canManage: boolean
+  readonly ordersResult: OrderListResult
+}
+
+function OrderSections({ canManage, ordersResult }: OrderSectionsProps) {
+  // Rendered per page load so form retries and double submits reuse one key;
+  // the backend resolves a repeated key to the same stored order.
+  const idempotencyKey = crypto.randomUUID()
+  return (
+    <>
+      <section className="panel" aria-labelledby="order-apply-heading">
+        <h2 className="panel-title" id="order-apply-heading">
+          申请订阅（线下付款）
+        </h2>
+        {canManage ? (
+          <OrderRequestForm action={submitOrderAction} idempotencyKey={idempotencyKey} />
+        ) : (
+          <p className="field-hint">你没有提交订单申请的权限，请联系租户管理员。</p>
+        )}
+      </section>
+
+      <section className="panel" aria-labelledby="orders-heading">
+        <h2 className="panel-title" id="orders-heading">
+          我的订单
+        </h2>
+        {ordersResult.kind !== "ok" ? (
+          <p className="notice">订单数据暂时不可用，请稍后再试。</p>
+        ) : ordersResult.orders.length === 0 ? (
+          <p className="field-hint">暂无订单记录。</p>
+        ) : (
+          <table className="data-table">
+            <thead>
+              <tr>
+                <th>套餐</th>
+                <th>金额</th>
+                <th>付款凭证号</th>
+                <th>状态</th>
+                <th>提交时间</th>
+                <th>审核备注</th>
+              </tr>
+            </thead>
+            <tbody>
+              {ordersResult.orders.map((order) => (
+                <tr key={order.id}>
+                  <td>
+                    {order.plan_code} v{order.plan_version}
+                  </td>
+                  <td>{formatAmountCents(order.amount_cents)}</td>
+                  <td>{order.payment_reference}</td>
+                  <td>
+                    <span className={order.status === "pending" ? "tag" : "tag tag-muted"}>
+                      {orderStatusLabels[order.status]}
+                    </span>
+                  </td>
+                  <td>{formatDateTime(order.created_at)}</td>
+                  <td>{order.review_note === "" ? "—" : order.review_note}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        )}
+      </section>
+    </>
+  )
 }
 
 export default async function UsagePage() {
@@ -95,11 +168,16 @@ export default async function UsagePage() {
     )
   }
 
-  const result = await loadBillingSummary(createBillingTransport(), session)
+  const [result, ordersResult] = await Promise.all([
+    loadBillingSummary(createBillingTransport(), session),
+    listOrders(createOrdersTransport(), session),
+  ])
 
-  if (result.kind === "mfaRequired") {
+  if (result.kind === "mfaRequired" || ordersResult.kind === "mfaRequired") {
     redirect("/settings/security")
   }
+
+  const canManage = auth.view.permissions.includes("billing:manage")
 
   if (result.kind === "notFound") {
     return (
@@ -109,6 +187,7 @@ export default async function UsagePage() {
           <h1 className="panel-title">用量与套餐</h1>
           <p className="notice">当前租户暂无订阅</p>
         </section>
+        <OrderSections canManage={canManage} ordersResult={ordersResult} />
       </main>
     )
   }
@@ -126,6 +205,15 @@ export default async function UsagePage() {
   }
 
   const { summary } = result
+  const isReadOnly =
+    summary.status === "expired" ||
+    summary.status === "cancelled" ||
+    Date.parse(summary.current_period_end) <= Date.now()
+  const canCancel =
+    !isReadOnly &&
+    (summary.status === "active" || summary.status === "trialing") &&
+    !summary.cancel_requested_at &&
+    canManage
 
   return (
     <main className="page-shell">
@@ -135,6 +223,7 @@ export default async function UsagePage() {
         <h1 className="panel-title" id="plan-heading">
           用量与套餐
         </h1>
+        {isReadOnly ? <ReadOnlyBanner /> : null}
         <p>
           当前套餐：{summary.plan.name} v{summary.plan.version}{" "}
           <span className="tag">{billingStatusLabels[summary.status]}</span>
@@ -146,6 +235,13 @@ export default async function UsagePage() {
           当前计费周期：{formatDateTime(summary.current_period_start)} –{" "}
           {formatDateTime(summary.current_period_end)}
         </p>
+        {summary.cancel_requested_at ? (
+          <p>
+            已于 {formatDateTime(summary.cancel_requested_at)} 申请取消，将于{" "}
+            {formatDateTime(summary.current_period_end)} 到期后取消。
+          </p>
+        ) : null}
+        {canCancel ? <CancelSubscriptionAction action={cancelSubscriptionAction} /> : null}
       </section>
 
       <section className="panel" aria-labelledby="metrics-heading">
@@ -175,6 +271,8 @@ export default async function UsagePage() {
           </tbody>
         </table>
       </section>
+
+      <OrderSections canManage={canManage} ordersResult={ordersResult} />
     </main>
   )
 }

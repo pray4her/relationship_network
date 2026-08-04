@@ -9,6 +9,7 @@ from relationship_network_api.models import USAGE_METRICS, LedgerEntryType, Usag
 from relationship_network_api.usage_service import (
     LedgerEntrySnapshot,
     UnknownMetricError,
+    add_one_month,
     compute_balance,
 )
 
@@ -170,3 +171,21 @@ def test_compute_balance_rejects_unknown_metric() -> None:
 def test_usage_metrics_catalog_order() -> None:
     # The canonical order drives summary rendering and must stay stable
     assert USAGE_METRICS == ("owners", "companies", "active_jobs", "searches", "matches", "reports")
+
+
+def test_add_one_month_clamps_january_31_to_february_28() -> None:
+    assert add_one_month(datetime(2025, 1, 31, 12, 0, 0, tzinfo=UTC)) == datetime(
+        2025, 2, 28, 12, 0, 0, tzinfo=UTC
+    )
+
+
+def test_add_one_month_rolls_december_into_next_year() -> None:
+    assert add_one_month(datetime(2025, 12, 15, 12, 0, 0, tzinfo=UTC)) == datetime(
+        2026, 1, 15, 12, 0, 0, tzinfo=UTC
+    )
+
+
+def test_add_one_month_clamps_january_31_to_leap_day() -> None:
+    assert add_one_month(datetime(2024, 1, 31, 12, 0, 0, tzinfo=UTC)) == datetime(
+        2024, 2, 29, 12, 0, 0, tzinfo=UTC
+    )

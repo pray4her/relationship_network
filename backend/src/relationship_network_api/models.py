@@ -10,6 +10,7 @@ from sqlalchemy import (
     Index,
     Integer,
     String,
+    Text,
     UniqueConstraint,
     false,
     func,
@@ -50,6 +51,9 @@ CONCURRENT_METRICS: Final[frozenset[UsageMetric]] = frozenset(
 
 SubscriptionStatus = Literal["trialing", "active", "expired", "cancelled"]
 """Lifecycle states a tenant subscription can be in; stored as lowercase strings."""
+
+OfflineOrderStatus = Literal["pending", "confirmed", "rejected"]
+"""Review states an offline order can be in; stored as lowercase strings."""
 
 PlanVersionStatus = Literal["draft", "published", "archived"]
 """Lifecycle states a plan version can be in; stored as lowercase strings."""
@@ -365,6 +369,68 @@ class PlanEntitlement(Base):
 
 
 @final
+class OfflineOrder(Base):
+    """A tenant's offline payment order awaiting platform administrator review."""
+
+    __tablename__ = "offline_orders"
+    __table_args__ = (
+        CheckConstraint(
+            "status IN ('pending', 'confirmed', 'rejected')",
+            name="ck_offline_orders_status",
+        ),
+        UniqueConstraint(
+            "tenant_id",
+            "idempotency_key",
+            name="uq_offline_orders_tenant_idempotency",
+        ),
+    )
+
+    id: Mapped[uuid.UUID] = mapped_column(Uuid, primary_key=True, default=uuid.uuid4)
+    tenant_id: Mapped[uuid.UUID] = mapped_column(
+        Uuid,
+        ForeignKey("tenants.id", ondelete="CASCADE"),
+        index=True,
+    )
+    plan_version_id: Mapped[uuid.UUID] = mapped_column(
+        Uuid,
+        ForeignKey("plan_versions.id"),
+    )
+    amount_cents: Mapped[int] = mapped_column(Integer)
+    payment_reference: Mapped[str] = mapped_column(Text)
+    # Reserved for future online payment channels; only manual offline
+    # collection ("offline") exists for now. Invoicing is deliberately out of
+    # scope for the first iteration, so no invoice fields are modelled yet.
+    payment_channel: Mapped[str] = mapped_column(
+        String(20),
+        server_default="offline",
+        default="offline",
+    )
+    payer_note: Mapped[str] = mapped_column(Text, server_default="", default="")
+    status: Mapped[OfflineOrderStatus] = mapped_column(
+        String(20),
+        server_default="pending",
+        default="pending",
+    )
+    idempotency_key: Mapped[str] = mapped_column(String(128))
+    submitted_by: Mapped[uuid.UUID | None] = mapped_column(
+        Uuid,
+        ForeignKey("users.id", ondelete="SET NULL"),
+        nullable=True,
+    )
+    reviewed_by: Mapped[uuid.UUID | None] = mapped_column(
+        Uuid,
+        ForeignKey("users.id", ondelete="SET NULL"),
+        nullable=True,
+    )
+    reviewed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    review_note: Mapped[str] = mapped_column(Text, server_default="", default="")
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        server_default=func.now(),
+    )
+
+
+@final
 class TenantSubscription(Base):
     __tablename__ = "tenant_subscriptions"
     __table_args__ = (
@@ -389,6 +455,15 @@ class TenantSubscription(Base):
     current_period_start: Mapped[datetime] = mapped_column(DateTime(timezone=True))
     current_period_end: Mapped[datetime] = mapped_column(DateTime(timezone=True))
     trial_ends_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    cancel_requested_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True),
+        nullable=True,
+    )
+    offline_order_id: Mapped[uuid.UUID | None] = mapped_column(
+        Uuid,
+        ForeignKey("offline_orders.id"),
+        nullable=True,
+    )
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
         server_default=func.now(),

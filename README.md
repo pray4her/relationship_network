@@ -135,6 +135,19 @@ docker compose exec worker poetry run celery -A relationship_network_api.tasks:c
 
 开发时也可以用 `celery -A relationship_network_api.tasks:celery_app worker -B` 让 worker 内嵌 beat。
 
+## 线下订单与订阅生命周期
+
+暂无商户号期间采用人工收款开通：租户提交线下订单（金额、付款凭证号、备注），平台管理员审核确认后激活按月订阅。订单携带 `payment_channel` 字段（当前固定 `offline`），为后续在线支付通道预留；发票申请首期不实现。
+
+- `POST /billing/orders`：提交线下订单，需要 `billing:manage` 权限，返回 201。`(tenant_id, idempotency_key)` 唯一约束保证重复提交（含表单重试、双击）解析为同一张订单；同一幂等键携带不同参数返回 409 `idempotency_key_mismatch`。套餐不存在返回 404 `plan_not_found`。
+- `GET /billing/orders`：本租户订单列表（需 `billing:read`），RLS 保证跨租户不可见。
+- `POST /billing/subscription/cancel`：取消订阅（需 `billing:manage`），在当前有效期结束后才进入只读，重复调用幂等；无当前订阅返回 404 `subscription_not_found`。
+- `GET /admin/orders?status=&tenant_id=`、`POST /admin/orders/{id}/confirm`、`POST /admin/orders/{id}/reject`：平台管理员审核入口（需平台管理员 + MFA）。确认/拒绝均幂等（重复操作返回当前状态、不重复写审计），对已拒绝订单确认返回 409 `order_already_rejected`，对已确认订单拒绝返回 409 `order_already_confirmed`。审核动作写入 `platform_audit_events`（`billing.order_confirm` / `billing.order_reject`）。
+
+确认订单时，当前订阅（试用或在期付费）被替换为一个月期的 `active` 订阅；在期付费订阅续约时新周期顺延期末起算，不截断已购时长。Celery 任务 `relationship_network.expire_due_subscriptions` 每日把越过 `current_period_end` 的订阅置为 `expired`。到期租户的业务数据永久保留且可查看，写操作由 `deps.require_writable_tenant` 门禁拒绝（403 `subscription_read_only`，供后续业务写端点挂载）；重新提交订单并被确认后恢复写能力，用量账本保持不变。
+
+前端入口：`/usage`（订阅状态、取消、订单申请与历史、只读横幅）与 `/admin/orders`（审核列表与操作）。
+
 ## 质量检查
 
 ```powershell

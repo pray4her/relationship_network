@@ -5,6 +5,9 @@ export const adminErrorDetails = [
   "platform_admin_required",
   "mfa_required",
   "tenant_not_found",
+  "order_not_found",
+  "order_already_confirmed",
+  "order_already_rejected",
 ] as const
 
 export const adminErrorSchema = z

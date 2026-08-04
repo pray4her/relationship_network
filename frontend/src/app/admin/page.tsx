@@ -109,6 +109,9 @@ export default async function AdminPage({ searchParams }: AdminPageProps) {
           </div>
         </form>
         <p className="field-hint">共 {tenantsResult.total} 个租户</p>
+        <p className="field-hint">
+          <Link href="/admin/orders">前往线下订单审核</Link>
+        </p>
         {tenantsResult.tenants.length === 0 ? (
           <p className="field-hint">没有符合条件的租户。</p>
         ) : (

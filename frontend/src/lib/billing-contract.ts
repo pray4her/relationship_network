@@ -50,7 +50,20 @@ export const billingSummarySchema = z
     trial_ends_at: z.string().nullable(),
     current_period_start: z.string(),
     current_period_end: z.string(),
+    cancel_requested_at: z.string().nullish(),
+    offline_order_id: z.string().nullish(),
     metrics: z.array(metricBalanceSchema),
+  })
+  .readonly()
+
+export const subscriptionViewSchema = z
+  .object({
+    status: billingStatusSchema,
+    trial_ends_at: z.string().nullish(),
+    current_period_start: z.string().nullish(),
+    current_period_end: z.string().nullish(),
+    cancel_requested_at: z.string().nullish(),
+    offline_order_id: z.string().nullish(),
   })
   .readonly()
 
@@ -59,4 +72,5 @@ export type BillingStatus = z.infer<typeof billingStatusSchema>
 export type MetricBalance = z.infer<typeof metricBalanceSchema>
 export type BillingPlan = z.infer<typeof billingPlanSchema>
 export type BillingSummary = z.infer<typeof billingSummarySchema>
+export type SubscriptionView = z.infer<typeof subscriptionViewSchema>
 export type BillingErrorDetail = z.infer<typeof billingErrorSchema>["detail"]

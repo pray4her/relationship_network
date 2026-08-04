@@ -1,10 +1,11 @@
+import calendar
 import uuid
 from collections.abc import Iterable
 from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
-from typing import Final, Literal, final
+from typing import TYPE_CHECKING, Final, Literal, cast, final
 
-from sqlalchemy import select
+from sqlalchemy import select, update
 from sqlalchemy.exc import IntegrityError, SQLAlchemyError
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -18,6 +19,9 @@ from relationship_network_api.models import (
     UsageLedgerEntry,
     UsageMetric,
 )
+
+if TYPE_CHECKING:
+    from sqlalchemy.engine import CursorResult
 
 DEFAULT_RESERVATION_TTL_SECONDS: Final = 900
 
@@ -80,6 +84,8 @@ class SubscriptionView:
     trial_ends_at: datetime | None
     current_period_start: datetime
     current_period_end: datetime
+    cancel_requested_at: datetime | None
+    offline_order_id: uuid.UUID | None
 
 
 @final
@@ -174,6 +180,87 @@ def compute_balance(
         reserved=reserved,
         remaining=limit - used - reserved,
     )
+
+
+def add_one_month(dt: datetime) -> datetime:
+    """Shift a datetime one calendar month forward, keeping its timezone.
+
+    The day clamps to the target month's last day, so January 31 shifts to
+    February 28 (or 29 on a leap year).
+    """
+    month_index = dt.year * 12 + dt.month  # 1-based months since year 0
+    year, month = divmod(month_index, 12)
+    month += 1
+    last_day = calendar.monthrange(year, month)[1]
+    return dt.replace(year=year, month=month, day=min(dt.day, last_day))
+
+
+async def cancel_subscription(
+    session: AsyncSession,
+    *,
+    tenant_id: uuid.UUID,
+    now: datetime | None = None,
+) -> SubscriptionView:
+    """Flag the tenant's current subscription for cancellation; idempotent.
+
+    The subscription stays active until its current period end, when the
+    expiry sweeper flips it to expired; cancelling only records the request.
+    """
+    resolved_now = now or datetime.now(UTC)
+    subscription, version = await _load_current_subscription(session, tenant_id=tenant_id)
+    if subscription.cancel_requested_at is not None:
+        return _subscription_view(subscription, version)
+    subscription.cancel_requested_at = resolved_now
+    view = _subscription_view(subscription, version)
+    await _commit(session)
+    return view
+
+
+async def expire_due_subscriptions(
+    session: AsyncSession,
+    *,
+    now: datetime | None = None,
+) -> int:
+    """Expire every current subscription past its period end; returns the count.
+
+    The caller must have set the platform admin context so row level security
+    exposes subscriptions across all tenants.
+    """
+    resolved_now = now or datetime.now(UTC)
+    result = await session.execute(
+        update(TenantSubscription)
+        .where(
+            TenantSubscription.status.in_(_CURRENT_STATUSES),
+            TenantSubscription.current_period_end <= resolved_now,
+        )
+        .values(status="expired")
+    )
+    await _commit(session)
+    return cast("CursorResult[tuple[TenantSubscription]]", result).rowcount
+
+
+async def is_tenant_writable(
+    session: AsyncSession,
+    *,
+    tenant_id: uuid.UUID,
+    now: datetime | None = None,
+) -> bool:
+    """Return whether the tenant may write, i.e. has a current subscription in period.
+
+    A cancellation request does not revoke write access: the tenant keeps
+    writing until the paid period actually ends.
+    """
+    resolved_now = now or datetime.now(UTC)
+    result = await session.execute(
+        select(TenantSubscription.id)
+        .where(
+            TenantSubscription.tenant_id == tenant_id,
+            TenantSubscription.status.in_(_CURRENT_STATUSES),
+            TenantSubscription.current_period_end > resolved_now,
+        )
+        .limit(1)
+    )
+    return result.scalar_one_or_none() is not None
 
 
 async def start_trial_subscription(
@@ -683,4 +770,6 @@ def _subscription_view(
         trial_ends_at=subscription.trial_ends_at,
         current_period_start=subscription.current_period_start,
         current_period_end=subscription.current_period_end,
+        cancel_requested_at=subscription.cancel_requested_at,
+        offline_order_id=subscription.offline_order_id,
     )

@@ -4,10 +4,19 @@ import { revalidatePath } from "next/cache"
 import { cookies } from "next/headers"
 import { redirect } from "next/navigation"
 
-import { createAdminTransport, updateAdminTenantStatus } from "@/lib/admin-client"
+import {
+  confirmAdminOrder,
+  createAdminTransport,
+  rejectAdminOrder,
+  updateAdminTenantStatus,
+} from "@/lib/admin-client"
 import { SESSION_COOKIE_NAME } from "@/lib/auth-client"
 
 export type TenantStatusActionState = {
+  readonly formError: string | null
+}
+
+export type OrderReviewActionState = {
   readonly formError: string | null
 }
 
@@ -61,4 +70,69 @@ export async function tenantStatusAction(
     return { formError: "没有执行该操作的权限" }
   }
   return { formError: "服务暂时不可用，请稍后再试" }
+}
+
+function orderReviewError(result: { readonly kind: string; readonly detail?: string }): string {
+  if (result.kind === "notFound") {
+    return "订单不存在或已被删除"
+  }
+  if (result.kind === "conflict") {
+    return result.detail === "order_already_rejected"
+      ? "该订单已被拒绝，无法再确认"
+      : "该订单已确认，无法再拒绝"
+  }
+  if (result.kind === "mfaRequired") {
+    return "请先完成两步验证设置，再执行订单审核"
+  }
+  if (result.kind === "anonymous") {
+    return "登录已过期，请重新登录"
+  }
+  if (result.kind === "forbidden") {
+    return "没有执行该操作的权限"
+  }
+  return "服务暂时不可用，请稍后再试"
+}
+
+export async function confirmOrderAction(
+  _previous: OrderReviewActionState,
+  formData: FormData,
+): Promise<OrderReviewActionState> {
+  const orderId = formString(formData, "order_id")
+  if (orderId === "") {
+    return { formError: "缺少订单标识" }
+  }
+
+  const session = await requireSession()
+  const result = await confirmAdminOrder(createAdminTransport(), session, orderId)
+  revalidatePath("/admin/orders")
+
+  if (result.kind === "ok") {
+    return { formError: null }
+  }
+  return { formError: orderReviewError(result) }
+}
+
+export async function rejectOrderAction(
+  _previous: OrderReviewActionState,
+  formData: FormData,
+): Promise<OrderReviewActionState> {
+  const orderId = formString(formData, "order_id")
+  if (orderId === "") {
+    return { formError: "缺少订单标识" }
+  }
+
+  const session = await requireSession()
+  const reason = formString(formData, "reason").trim()
+  const result = await rejectAdminOrder(
+    createAdminTransport(),
+    session,
+    orderId,
+    reason === "" ? null : reason,
+  )
+  revalidatePath("/admin/orders")
+
+  if (result.kind === "ok") {
+    return { formError: null }
+  }
+  return { formError: orderReviewError(result) }
 }

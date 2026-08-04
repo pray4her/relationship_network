@@ -24,6 +24,12 @@ def create_celery_app(settings: WorkerSettings) -> Celery:
                 "task": "relationship_network.release_expired_usage_reservations",
                 "schedule": 300.0,
             },
+            # Task name kept in sync with EXPIRE_DUE_SUBSCRIPTIONS_TASK_NAME
+            # in tasks.py (importing it here would be circular).
+            "expire-due-subscriptions": {
+                "task": "relationship_network.expire_due_subscriptions",
+                "schedule": 86400.0,
+            },
         },
     )
     return app
