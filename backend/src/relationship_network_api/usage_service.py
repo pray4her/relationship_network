@@ -30,7 +30,7 @@ IDEMPOTENCY_KEY_MISMATCH_DETAIL: Final = "idempotency_key_mismatch"
 
 _CURRENT_STATUSES: Final = ("trialing", "active")
 
-ReservationStatus = Literal["pending", "confirmed", "released"]
+ReservationStatus = Literal["pending", "confirmed", "released", "vacated"]
 """Settlement state of a reservation, derived from its ledger entries."""
 
 
@@ -163,12 +163,12 @@ def compute_balance(
     reserved = 0
     for reservation_entries in by_reservation.values():
         settled = {entry.entry_type for entry in reservation_entries}
+        if "vacate" in settled or "release" in settled:
+            continue
         if "confirm" in settled:
             used += next(
                 entry.amount for entry in reservation_entries if entry.entry_type == "confirm"
             )
-        elif "release" in settled:
-            continue
         else:
             reserve = next(entry for entry in reservation_entries if entry.entry_type == "reserve")
             if reserve.expires_at is None or reserve.expires_at > now:
@@ -489,6 +489,53 @@ async def release(
     )
 
 
+async def vacate_confirmed(
+    session: AsyncSession,
+    *,
+    tenant_id: uuid.UUID,
+    reservation_id: uuid.UUID,
+) -> ReservationView:
+    """Free a confirmed concurrent seat; idempotent per reservation.
+
+    Vacate applies only after confirm. It conflicts with release (pending
+    reservations must use release instead) and with a missing confirm.
+    """
+    _ = await _load_current_subscription(session, tenant_id=tenant_id, for_update=True)
+    entries = await _load_reservation_entries(
+        session,
+        tenant_id=tenant_id,
+        reservation_id=reservation_id,
+    )
+    reserve_entry = _reserve_entry(entries)
+    if _has_entry(entries, "vacate"):
+        return ReservationView(
+            reservation_id=reservation_id,
+            metric=reserve_entry.metric,
+            amount=reserve_entry.amount,
+            status="vacated",
+            expires_at=reserve_entry.expires_at,
+        )
+    if _has_entry(entries, "release"):
+        raise ReservationStateError
+    if not _has_entry(entries, "confirm"):
+        raise ReservationStateError
+    session.add(
+        _settlement_entry(
+            tenant_id=tenant_id,
+            reserve_entry=reserve_entry,
+            entry_type="vacate",
+        )
+    )
+    await _commit(session)
+    return ReservationView(
+        reservation_id=reservation_id,
+        metric=reserve_entry.metric,
+        amount=reserve_entry.amount,
+        status="vacated",
+        expires_at=reserve_entry.expires_at,
+    )
+
+
 async def _settle(  # noqa: PLR0913
     session: AsyncSession,
     *,
@@ -702,7 +749,9 @@ def _view_from_entries(
 ) -> ReservationView:
     reserve_entry = _reserve_entry(entries)
     status: ReservationStatus
-    if _has_entry(entries, "confirm"):
+    if _has_entry(entries, "vacate"):
+        status = "vacated"
+    elif _has_entry(entries, "confirm"):
         status = "confirmed"
     elif _has_entry(entries, "release"):
         status = "released"

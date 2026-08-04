@@ -58,8 +58,17 @@ OfflineOrderStatus = Literal["pending", "confirmed", "rejected"]
 PlanVersionStatus = Literal["draft", "published", "archived"]
 """Lifecycle states a plan version can be in; stored as lowercase strings."""
 
-LedgerEntryType = Literal["reserve", "confirm", "release"]
+LedgerEntryType = Literal["reserve", "confirm", "release", "vacate"]
 """Usage ledger entry kinds; stored as lowercase strings."""
+
+CompanyStatus = Literal["active", "archived"]
+"""Lifecycle states a company can be in; stored as lowercase strings."""
+
+COMPANY_STATUS_ACTIVE: Final[CompanyStatus] = "active"
+COMPANY_STATUS_ARCHIVED: Final[CompanyStatus] = "archived"
+
+DocumentScanStatus = Literal["clean", "rejected", "content_checked"]
+"""Document content-scan outcomes; stored as lowercase strings."""
 
 
 class Base(DeclarativeBase):
@@ -471,8 +480,122 @@ class TenantSubscription(Base):
 
 
 @final
+class Company(Base):
+    """A recruiting client company owned by a tenant."""
+
+    __tablename__ = "companies"
+    __table_args__ = (
+        CheckConstraint(
+            "status IN ('active', 'archived')",
+            name="ck_companies_status",
+        ),
+        Index("ix_companies_tenant_status", "tenant_id", "status"),
+    )
+
+    id: Mapped[uuid.UUID] = mapped_column(Uuid, primary_key=True, default=uuid.uuid4)
+    tenant_id: Mapped[uuid.UUID] = mapped_column(
+        Uuid,
+        ForeignKey("tenants.id", ondelete="CASCADE"),
+        index=True,
+    )
+    name: Mapped[str] = mapped_column(String(200))
+    profile_text: Mapped[str] = mapped_column(Text, server_default="", default="")
+    status: Mapped[CompanyStatus] = mapped_column(
+        String(20),
+        server_default=COMPANY_STATUS_ACTIVE,
+        default=COMPANY_STATUS_ACTIVE,
+    )
+    usage_reservation_id: Mapped[uuid.UUID | None] = mapped_column(Uuid, nullable=True)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        server_default=func.now(),
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        server_default=func.now(),
+        onupdate=func.now(),
+    )
+    archived_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+
+
+@final
+class CompanyDocument(Base):
+    """A privately stored company profile document with extracted text."""
+
+    __tablename__ = "company_documents"
+    __table_args__ = (
+        CheckConstraint("byte_size > 0", name="ck_company_documents_byte_size"),
+        CheckConstraint(
+            "scan_status IN ('clean', 'rejected', 'content_checked')",
+            name="ck_company_documents_scan_status",
+        ),
+        UniqueConstraint("storage_key", name="uq_company_documents_storage_key"),
+    )
+
+    id: Mapped[uuid.UUID] = mapped_column(Uuid, primary_key=True, default=uuid.uuid4)
+    tenant_id: Mapped[uuid.UUID] = mapped_column(
+        Uuid,
+        ForeignKey("tenants.id", ondelete="CASCADE"),
+        index=True,
+    )
+    company_id: Mapped[uuid.UUID] = mapped_column(
+        Uuid,
+        ForeignKey("companies.id", ondelete="CASCADE"),
+        index=True,
+    )
+    original_filename: Mapped[str] = mapped_column(String(255))
+    content_type: Mapped[str] = mapped_column(String(100))
+    byte_size: Mapped[int] = mapped_column(Integer)
+    storage_key: Mapped[str] = mapped_column(String(512))
+    sha256: Mapped[str] = mapped_column(String(64))
+    extracted_text: Mapped[str] = mapped_column(Text, server_default="", default="")
+    scan_status: Mapped[DocumentScanStatus] = mapped_column(
+        String(30),
+        server_default="content_checked",
+        default="content_checked",
+    )
+    uploaded_by: Mapped[uuid.UUID | None] = mapped_column(
+        Uuid,
+        ForeignKey("users.id", ondelete="SET NULL"),
+        nullable=True,
+    )
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        server_default=func.now(),
+    )
+
+
+@final
+class TenantAuditEvent(Base):
+    """Append-only tenant business audit record."""
+
+    __tablename__ = "tenant_audit_events"
+
+    id: Mapped[uuid.UUID] = mapped_column(Uuid, primary_key=True, default=uuid.uuid4)
+    tenant_id: Mapped[uuid.UUID] = mapped_column(
+        Uuid,
+        ForeignKey("tenants.id", ondelete="CASCADE"),
+        index=True,
+    )
+    actor_user_id: Mapped[uuid.UUID | None] = mapped_column(
+        Uuid,
+        ForeignKey("users.id", ondelete="SET NULL"),
+        nullable=True,
+    )
+    action: Mapped[str] = mapped_column(String(100))
+    target_type: Mapped[str] = mapped_column(String(50))
+    target_id: Mapped[str] = mapped_column(String(64))
+    result: Mapped[str] = mapped_column(String(20))
+    detail: Mapped[str] = mapped_column(String(1000), server_default="", default="")
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        server_default=func.now(),
+    )
+
+
+@final
 class UsageLedgerEntry(Base):
-    """Append-only usage accounting row; reservations settle via confirm/release entries."""
+    """Append-only usage accounting row; reservations settle via confirm/release/vacate."""
 
     __tablename__ = "usage_ledger_entries"
     __table_args__ = (
@@ -482,7 +605,7 @@ class UsageLedgerEntry(Base):
         ),
         CheckConstraint("amount > 0", name="ck_usage_ledger_entries_amount"),
         CheckConstraint(
-            "entry_type IN ('reserve', 'confirm', 'release')",
+            "entry_type IN ('reserve', 'confirm', 'release', 'vacate')",
             name="ck_usage_ledger_entries_entry_type",
         ),
         UniqueConstraint(

@@ -14,6 +14,7 @@ from relationship_network_api.probes import build_dependency_checks
 from relationship_network_api.routers.admin import router as admin_router
 from relationship_network_api.routers.auth import router as auth_router
 from relationship_network_api.routers.billing import router as billing_router
+from relationship_network_api.routers.companies import router as companies_router
 from relationship_network_api.routers.invitations import router as invitations_router
 from relationship_network_api.routers.members import router as members_router
 from relationship_network_api.routers.mfa import router as mfa_router
@@ -39,6 +40,7 @@ def create_app(
     app.include_router(rbac_router)
     app.include_router(invitations_router)
     app.include_router(members_router)
+    app.include_router(companies_router)
     app.include_router(mfa_router)
     app.include_router(admin_router)
     app.include_router(billing_router)

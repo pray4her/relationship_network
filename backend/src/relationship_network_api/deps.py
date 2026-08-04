@@ -170,13 +170,37 @@ def require_permission(
     return dependency
 
 
+def require_writable_permission(
+    permission: str,
+) -> Callable[..., Coroutine[object, object, TenantContext]]:
+    """Require both a permission and a writable (in-period) subscription."""
+
+    permission_dependency = require_permission(permission)
+
+    async def dependency(
+        session: Annotated[AsyncSession, Depends(get_db_session)],
+        context: Annotated[TenantContext, Depends(permission_dependency)],
+    ) -> TenantContext:
+        if not await usage_service.is_tenant_writable(
+            session,
+            tenant_id=context.membership.tenant_id,
+        ):
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail=SUBSCRIPTION_READ_ONLY_DETAIL,
+            )
+        return context
+
+    return dependency
+
+
 async def require_writable_tenant(
     session: Annotated[AsyncSession, Depends(get_db_session)],
     context: Annotated[TenantContext, Depends(get_tenant_context)],
 ) -> TenantContext:
     """Require the tenant's subscription to be in a writable (in-period) state.
 
-    This gate is meant for future business write endpoints (jobs, matches,
+    This gate is meant for business write endpoints (companies, jobs, matches,
     reports and the like): tenants whose paid period has lapsed keep read
     access but are rejected here. Offline order submission deliberately does
     not use this gate, because submitting an order is how an expired tenant

@@ -117,6 +117,46 @@ def test_compute_balance_released_reservation_frees_quota() -> None:
     assert balance("searches", 20, settled("release", 3)) == (0, 0, 20)
 
 
+def test_compute_balance_vacated_confirm_frees_concurrent_quota() -> None:
+    # Given a confirmed concurrent seat that was later vacated (e.g. company archived)
+    reservation_id = uuid.uuid4()
+    subscription_id = uuid.uuid4()
+    created = NOW - timedelta(hours=1)
+    entries = [
+        LedgerEntrySnapshot(
+            reservation_id=reservation_id,
+            subscription_id=subscription_id,
+            metric="companies",
+            entry_type="reserve",
+            amount=1,
+            created_at=created,
+            expires_at=None,
+        ),
+        LedgerEntrySnapshot(
+            reservation_id=reservation_id,
+            subscription_id=subscription_id,
+            metric="companies",
+            entry_type="confirm",
+            amount=1,
+            created_at=created,
+            expires_at=None,
+        ),
+        LedgerEntrySnapshot(
+            reservation_id=reservation_id,
+            subscription_id=subscription_id,
+            metric="companies",
+            entry_type="vacate",
+            amount=1,
+            created_at=created,
+            expires_at=None,
+        ),
+    ]
+
+    # When the balance is computed
+    # Then the vacated confirm no longer counts as used
+    assert balance("companies", 1, entries) == (0, 0, 1)
+
+
 def test_compute_balance_ignores_expired_reserves() -> None:
     # Given one expired reservation, one still-open, and one without expiry
     entries = (

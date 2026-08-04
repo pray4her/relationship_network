@@ -122,9 +122,24 @@ MFA 基于 TOTP：`POST /auth/mfa/setup` 生成密钥，`POST /auth/mfa/enable` 
 - `RN_APP_BASE_URL`：邀请邮件中链接使用的前端地址，默认 http://localhost:3000。
 - `RN_SMTP_HOST` / `RN_SMTP_PORT` / `RN_SMTP_USERNAME` / `RN_SMTP_PASSWORD` / `RN_SMTP_FROM` / `RN_SMTP_USE_TLS`：邀请邮件的 SMTP 配置；未设置 host 时仅在 worker 日志中记录邀请链接。
 
+## 企业
+
+租户在权限与套餐约束内维护招聘企业。企业使用归档而非硬删，以保留历史职位与报告上下文；`companies` 为并发容量指标，创建时 `reserve`/`confirm`，归档时通过账本 `vacate` 释放名额。
+
+- `POST /companies`：创建企业，需要 `companies:manage` 与可写订阅；超额返回 409 `company_quota_exceeded`。请求 `{name, profile_text?}`，响应 `{id, name, profile_text, status, created_at, updated_at, archived_at}`。
+- `GET /companies?status=`：企业列表，需要 `companies:read`；`status` 可选 `active` / `archived`。
+- `GET /companies/{id}`：企业详情，需要 `companies:read`；跨租户或不存在返回 404 `company_not_found`。
+- `PATCH /companies/{id}`：编辑名称与简介，需要 `companies:manage`；已归档返回 409 `company_archived`。
+- `POST /companies/{id}/archive`：归档企业并释放 `companies` 额度，需要 `companies:manage`。
+- `POST /companies/{id}/documents`：上传 PDF/DOCX/TXT（≤10 MB）到私有对象存储并抽取文本，需要 `companies:manage`；错误码含 `invalid_document`、`document_too_large`。
+- `GET /companies/{id}/documents`、`GET /companies/{id}/documents/{doc_id}/content`：列出文档与鉴权流式下载（无公开 URL）。
+- `GET /companies/{id}/events`：企业操作审计（创建/编辑/归档/上传），写入租户业务表 `tenant_audit_events`（只增）。
+
+权限目录新增 `companies:read` / `companies:manage`；租户所有者默认持有全部系统权限。前端入口：`/companies` 与 `/companies/[id]`（导航栏按 `companies:read` 显示「企业」）。
+
 ## 计费与用量
 
-新租户在注册事务内同时获得试用订阅：试用套餐（`trial`，14 天）的权益快照固定在订阅指向的不可变套餐版本上，之后发布新套餐版本不影响既有订阅。用量通过只增的 `usage_ledger_entries` 台账记账（reserve / confirm / release；应用角色仅有 SELECT/INSERT 权限，更新与删除由数据库权限拒绝），幂等键保证重试不重复计数，同一幂等键携带不同参数（metric 或 amount）会被拒绝。
+新租户在注册事务内同时获得试用订阅：试用套餐（`trial`，14 天）的权益快照固定在订阅指向的不可变套餐版本上，之后发布新套餐版本不影响既有订阅。用量通过只增的 `usage_ledger_entries` 台账记账（reserve / confirm / release / vacate；应用角色仅有 SELECT/INSERT 权限，更新与删除由数据库权限拒绝），幂等键保证重试不重复计数，同一幂等键携带不同参数（metric 或 amount）会被拒绝。并发指标（owners、companies、active_jobs）在 confirm 后可通过 `vacate` 释放占用（例如企业归档）。
 
 - `GET /billing/summary`：返回当前订阅的套餐与用量余额。需要会话 Cookie 和 `billing:read` 权限（注册租户的所有者默认持有全部系统权限）；无当前订阅返回 404 `subscription_not_found`。响应形如 `{plan: {code, name, version}, status, trial_ends_at, current_period_start, current_period_end, metrics: [{metric, limit, used, reserved, remaining}, ...]}`，`metrics` 固定按 owners、companies、active_jobs、searches、matches、reports 顺序返回。
 - 过期预订由 Celery 任务 `relationship_network.release_expired_usage_reservations` 清扫：任务在平台管理员 GUC 下跨租户写入 release 记录，数据库/网络失败自动指数退避重试，并发清扫器通过保存点跳过彼此已处理的预订。beat 调度每 5 分钟（300 秒）触发一次；beat 进程独立于 worker，本地可复用 worker 镜像运行：

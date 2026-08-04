@@ -16,6 +16,11 @@ export function WorkspaceNav({ isPlatformAdmin, permissions }: WorkspaceNavProps
           成员
         </Link>
       ) : null}
+      {permissions.includes("companies:read") ? (
+        <Link className="workspace-nav-link" href="/companies">
+          企业
+        </Link>
+      ) : null}
       {permissions.includes("billing:read") ? (
         <Link className="workspace-nav-link" href="/usage">
           用量与套餐
