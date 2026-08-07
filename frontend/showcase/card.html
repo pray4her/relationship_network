@@ -1,0 +1,268 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Card — Component Showcase</title>
+<link rel="stylesheet" href="../src/styles/tokens.css">
+<link rel="stylesheet" href="../src/styles/typography.css">
+<link rel="stylesheet" href="../src/styles/separator.css">
+<link rel="stylesheet" href="../src/styles/button.css">
+<link rel="stylesheet" href="../src/styles/avatar.css">
+<link rel="stylesheet" href="../src/styles/card.css">
+<style>
+  /* Page chrome — tokens only, no component values. */
+  *, *::before, *::after { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: var(--background);
+    color: var(--foreground);
+    font-family: var(--font-sans);
+    -webkit-font-smoothing: antialiased;
+  }
+  .container { max-width: var(--doc-container-max); margin: 0 auto; padding: 0 var(--space-6); }
+  .page-head { padding: var(--space-16) 0 var(--space-8); border-bottom: var(--border-width) solid var(--border); }
+  .page-head .text--overline { color: var(--primary); display: block; margin-bottom: var(--space-3); }
+  .page-head p { margin: var(--space-4) 0 0; max-width: 64ch; }
+  .demo-block { padding: var(--space-8) 0; }
+  .demo-block > .text--h5 { margin-bottom: var(--space-6); }
+  .demo-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(var(--doc-grid-min-card), 1fr)); gap: var(--space-6) var(--space-8); align-items: start; }
+  .demo-note { margin-top: var(--space-4); max-width: 72ch; color: var(--muted-foreground); }
+  .demo-caption { margin-bottom: var(--space-3); color: var(--caption-foreground); }
+  .demo-cell { display: grid; gap: var(--space-3); justify-items: stretch; }
+  .demo-cell > .card { height: 100%; }
+</style>
+</head>
+<body>
+
+<header class="page-head">
+  <div class="container">
+    <span class="text text--overline">Component</span>
+    <h1 class="text text--h1">Card</h1>
+    <p class="text text--body-md">
+      A composable surface container — five surface variants, seven optional
+      parts, zero business content. Whole-card interactivity uses pattern A
+      (the root IS the <code class="text text--code">&lt;a&gt;</code>, content
+      stays non-interactive); cards with buttons use pattern B (inert root,
+      interactivity lives in <code class="text text--code">.card__actions</code>).
+      Static state classes (<code class="text text--code">.is-hover</code>,
+      <code class="text text--code">.is-active</code>,
+      <code class="text text--code">.is-focus-visible</code>,
+      <code class="text text--code">.is-disabled</code>) mirror the real
+      pseudo-classes so this page can render them without interaction. Every
+      value is a <code class="text text--code">tokens.css</code> reference.
+    </p>
+  </div>
+</header>
+
+<main class="container">
+
+  <!-- ===================== Variants ===================== -->
+  <section class="demo-block" aria-labelledby="variants-heading">
+    <h2 class="text text--h5" id="variants-heading">Variants</h2>
+    <div class="demo-grid">
+      <div class="demo-cell">
+        <p class="text text--caption demo-caption">default — --card fill, no border (feature-card recipe)</p>
+        <article class="card">
+          <h3 class="card__title">Default</h3>
+          <p class="card__description">Cream fill one step below the canvas</p>
+          <div class="card__body"><p>The workhorse surface for feature and content groupings.</p></div>
+        </article>
+      </div>
+      <div class="demo-cell">
+        <p class="text text--caption demo-caption">outlined — --background + --border hairline</p>
+        <article class="card card--outlined">
+          <h3 class="card__title">Outlined</h3>
+          <p class="card__description">Canvas fill with a hairline border</p>
+          <div class="card__body"><p>For dense lists where a filled card would feel heavy.</p></div>
+        </article>
+      </div>
+      <div class="demo-cell">
+        <p class="text text--caption demo-caption">elevated — --background + --shadow-subtle (used rarely)</p>
+        <article class="card card--elevated">
+          <h3 class="card__title">Elevated</h3>
+          <p class="card__description">The one sanctioned shadow</p>
+          <div class="card__body"><p>Reserved for moments that must float above the canvas.</p></div>
+        </article>
+      </div>
+      <div class="demo-cell">
+        <p class="text text--caption demo-caption">selected — --selected-bg + --selected-border hairline</p>
+        <article class="card card--selected">
+          <h3 class="card__title">Selected</h3>
+          <p class="card__description">The emphasized-band token speaks</p>
+          <div class="card__body"><p>Marks the chosen item in pickers and comparison grids.</p></div>
+        </article>
+      </div>
+    </div>
+    <p class="text text--caption demo-note">
+      Selection resolves to the dedicated
+      <code class="text text--code">--selected-bg</code> /
+      <code class="text text--code">--selected-border</code> tokens — reported by
+      this component as a gap, now shipped in tokens.css. All variants keep a
+      <code class="text text--code">--border-width</code> border (transparent
+      when unused) so they stay the same outer size in a grid.
+    </p>
+  </section>
+
+  <hr class="separator separator--horizontal separator--subtle" role="presentation">
+
+  <!-- ===================== Anatomy ===================== -->
+  <section class="demo-block" aria-labelledby="anatomy-heading">
+    <h2 class="text text--h5" id="anatomy-heading">Anatomy</h2>
+    <div class="demo-grid">
+      <div class="demo-cell">
+        <p class="text text--caption demo-caption">full — media, header (Avatar composed), title, description, body, footer, actions (Button composed)</p>
+        <article class="card">
+          <figure class="card__media">
+            <img src="data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 320 120'><rect width='320' height='120' fill='%23e8e0d2'/><circle cx='72' cy='60' r='34' fill='%23cc785c'/><rect x='140' y='34' width='130' height='52' rx='8' fill='%23181715'/></svg>" alt="Abstract cover: coral circle and dark block on a cream field">
+          </figure>
+          <div class="card__header">
+            <span class="avatar avatar--initials" role="img" aria-label="Grace Hopper"><span class="avatar__initials">GH</span></span>
+            <div>
+              <h3 class="card__title">Every part at once</h3>
+              <p class="card__description">Media bleeds to the edges via the padding token</p>
+            </div>
+          </div>
+          <div class="card__body">
+            <p>Parts are optional and order-free; the root's column gap
+            (<code class="text text--code">--space-4</code>) spaces whatever is present.
+            The card knows nothing about profiles, plans, or posts.</p>
+          </div>
+          <div class="card__footer">
+            <div class="card__actions">
+              <button class="btn btn--primary btn--sm" type="button">Approve</button>
+              <button class="btn btn--ghost btn--sm" type="button">Skip</button>
+            </div>
+          </div>
+        </article>
+      </div>
+      <div class="demo-cell">
+        <p class="text text--caption demo-caption">minimal — title + body only; title/description/body</p>
+        <article class="card card--outlined">
+          <h3 class="card__title">Quiet card</h3>
+          <div class="card__body">
+            <p>Two parts, same tokens. The body resets its first/last child
+            margins so consumer markup needs no spacing classes.</p>
+            <p>Footer divider and actions stay home when not invited.</p>
+          </div>
+        </article>
+        <p class="text text--caption demo-caption" style="margin-top:var(--space-6);">title + description pair, no body</p>
+        <article class="card card--outlined">
+          <h3 class="card__title">Label card</h3>
+          <p class="card__description">A heading with a single muted line — the description token pair does the hierarchy.</p>
+        </article>
+      </div>
+    </div>
+  </section>
+
+  <hr class="separator separator--horizontal separator--subtle" role="presentation">
+
+  <!-- ===================== Interactive states ===================== -->
+  <section class="demo-block" aria-labelledby="states-heading">
+    <h2 class="text text--h5" id="states-heading">Interactive states (pattern A — root is the &lt;a&gt;)</h2>
+    <div class="demo-grid">
+      <div class="demo-cell">
+        <p class="text text--caption demo-caption">default</p>
+        <a class="card card--interactive" href="#job-1">
+          <h3 class="card__title">Senior Backend Engineer</h3>
+          <p class="card__description">Platform team · Remote</p>
+        </a>
+      </div>
+      <div class="demo-cell">
+        <p class="text text--caption demo-caption">hover — lifts with --shadow-subtle</p>
+        <a class="card card--interactive is-hover" href="#job-1">
+          <h3 class="card__title">Senior Backend Engineer</h3>
+          <p class="card__description">Platform team · Remote</p>
+        </a>
+      </div>
+      <div class="demo-cell">
+        <p class="text text--caption demo-caption">active — pressed back to flat</p>
+        <a class="card card--interactive is-active" href="#job-1">
+          <h3 class="card__title">Senior Backend Engineer</h3>
+          <p class="card__description">Platform team · Remote</p>
+        </a>
+      </div>
+      <div class="demo-cell">
+        <p class="text text--caption demo-caption">focus-visible — shared --ring-focus recipe</p>
+        <a class="card card--interactive is-focus-visible" href="#job-1">
+          <h3 class="card__title">Senior Backend Engineer</h3>
+          <p class="card__description">Platform team · Remote</p>
+        </a>
+      </div>
+      <div class="demo-cell">
+        <p class="text text--caption demo-caption">selected — compose .card--selected</p>
+        <a class="card card--interactive card--selected" href="#job-1" aria-current="true">
+          <h3 class="card__title">Senior Backend Engineer</h3>
+          <p class="card__description">Platform team · Remote</p>
+        </a>
+      </div>
+      <div class="demo-cell">
+        <p class="text text--caption demo-caption">disabled — --opacity-disabled, aria-disabled, no href</p>
+        <a class="card card--interactive is-disabled" aria-disabled="true">
+          <h3 class="card__title">Senior Backend Engineer</h3>
+          <p class="card__description">Platform team · Remote</p>
+        </a>
+      </div>
+      <div class="demo-cell">
+        <p class="text text--caption demo-caption">elevated + hover — lifts to --shadow-lift</p>
+        <a class="card card--elevated card--interactive is-hover" href="#job-1">
+          <h3 class="card__title">Senior Backend Engineer</h3>
+          <p class="card__description">Platform team · Remote</p>
+        </a>
+      </div>
+    </div>
+    <p class="text text--caption demo-note">
+      The root anchor is the single interaction target — content inside is plain
+      text, so there is nothing nested to conflict. Keyboard is native (Tab /
+      Enter). Flat variants lift to <code class="text text--code">--shadow-subtle</code>
+      on hover; the already-elevated variant lifts to
+      <code class="text text--code">--shadow-lift</code> — the second elevation
+      level this component reported and tokens.css now ships.
+    </p>
+  </section>
+
+  <hr class="separator separator--horizontal separator--subtle" role="presentation">
+
+  <!-- ===================== Composition ===================== -->
+  <section class="demo-block" aria-labelledby="composition-heading">
+    <h2 class="text text--h5" id="composition-heading">Composition (pattern B — inert root, real controls)</h2>
+    <div class="demo-grid">
+      <div class="demo-cell">
+        <p class="text text--caption demo-caption">actions carry the interactivity — root never gets .card--interactive</p>
+        <article class="card">
+          <div class="card__header">
+            <span class="avatar" role="img" aria-label="Ada Lovelace">
+              <img class="avatar__image" src="data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'><rect width='64' height='64' fill='%23cc785c'/><circle cx='32' cy='25' r='11' fill='%23faf9f5'/><path d='M10 64c2-16 12-24 22-24s20 8 22 24Z' fill='%23faf9f5'/></svg>" alt="">
+            </span>
+            <div>
+              <h3 class="card__title">Ada Lovelace</h3>
+              <p class="card__description">Analytical engine notes, 1843</p>
+            </div>
+          </div>
+          <div class="card__body"><p>Two independent targets below; the card surface itself is inert.</p></div>
+          <div class="card__actions">
+            <button class="btn btn--primary btn--sm" type="button">Invite</button>
+            <button class="btn btn--secondary btn--sm" type="button">View profile</button>
+          </div>
+        </article>
+      </div>
+      <div class="demo-cell">
+        <p class="text text--caption demo-caption">outlined + media + footer — parts remix freely across variants</p>
+        <article class="card card--outlined">
+          <figure class="card__media">
+            <img src="data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 320 120'><rect width='320' height='120' fill='%23181715'/><circle cx='248' cy='44' r='26' fill='%23cc785c'/><rect x='32' y='72' width='150' height='16' rx='8' fill='%23f5f0e8'/></svg>" alt="Abstract cover: coral sun over a dark field">
+          </figure>
+          <h3 class="card__title">Dark media on a light card</h3>
+          <div class="card__body"><p>Media is content, not a variant — any surface recipe accepts it.</p></div>
+          <div class="card__footer">
+            <p class="card__description">Footer divider uses --border-soft, the quiet hairline.</p>
+          </div>
+        </article>
+      </div>
+    </div>
+  </section>
+
+</main>
+
+</body>
+</html>

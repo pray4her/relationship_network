@@ -1,0 +1,221 @@
+/* ==========================================================================
+   Avatar
+   Token mapping — every value below references tokens.css, nothing else.
+
+   A user/entity identity glyph: photo, initials fallback, or generic person
+   fallback, with an optional presence dot. Non-interactive by default (a
+   <span>); add .avatar--interactive when the root is an <a> or <button>
+   (profile links, member pickers) — keyboard support is then native
+   (Tab to focus, Enter/Space to activate), the component adds no JS.
+
+   Anatomy (markup contract):
+     .avatar               root <span> (or <a>/<button> with --interactive);
+                           size + variant modifiers
+     .avatar__image        <img> filling the circle (object-fit: cover)
+     .avatar__initials     <span> with 1–2 letters (text styles live on root)
+     .avatar__icon         generic-fallback inline SVG (currentColor)
+     .avatar__status       optional presence dot + modifier
+                           (--online / --offline / --busy / --away)
+
+   Accessibility contract (styling is identical; only the markup differs):
+     informative  root role="img" aria-label="Ada Lovelace" (+ ", online"
+                  when a status dot is present); inner img gets alt=""
+     decorative   root aria-hidden="true" (adjacent text already names the
+                  person); inner img gets alt=""
+     interactive  root <a>/<button> with an accessible name (aria-label or
+                  visible text); the visual parts add nothing
+
+   Resolution model: the root declares component-local aliases
+   (--_size / --_status-size / --_icon-size / --_status-color); size,
+   variant, and status modifiers only re-declare aliases. The variant
+   hairline is a real --border-width border so the ring is identical at
+   every size; box-shadow stays free for hover/focus.
+
+   PROPERTY → TOKEN
+   ─────────────────────────────────────────────────────────────────────────
+   SIZE SCALE (--avatar-size-* — reported by this component, now shipped;
+   xs=24, sm=32, md=40, lg=48, xl=64)
+     xs  --avatar-size-xs       sm  --avatar-size-sm
+     md  --avatar-size-md       lg  --avatar-size-lg
+     xl  --avatar-size-xl
+   GEOMETRY
+     radius          --radius-full (pills, circular elements)
+     variant border  --border-width solid --border (the elev-hairline
+                     recipe; separates cream fills from the canvas)
+     status dot      size xs/sm/md --space-2 (the design-system status-dot
+                     precedent), lg/xl --space-3; radius --radius-full;
+                     separator ring 0 0 0 --border-width --background
+                     (canvas-colored, so the dot reads on any photo)
+   VARIANTS
+     image           img object-fit cover, --radius-full; no border —
+                     the photo is its own surface
+     initials        bg --card (the badge-pill recipe), fg --foreground,
+                     hairline border
+     generic         bg --muted (the shadcn muted-surface role),
+                     icon --muted-foreground, hairline border
+   TYPOGRAPHY (initials, set on root; weight --font-weight-medium)
+     xs  --text-caption-up (+ --line-height + --letter-spacing, uppercase —
+         the token's full treatment; the letter-spacing's trailing gap is
+         re-centered with padding-inline-start of the SAME token)
+     sm  --text-caption (+ --line-height)
+     md  --text-body-sm (+ --line-height)
+     lg  --text-title-sm (+ --line-height)
+     xl  --text-title-md (+ --line-height)
+   GENERIC ICON
+     xs --icon-size-xs · sm --icon-size-sm · md --icon-size-md ·
+     lg --icon-size-lg · xl --icon-size-xl (reported by this component,
+     now shipped); stroke --stroke-width-icon
+   STATUS COLORS (the --status-* presence tokens — reported by this
+   component, now shipped)
+     online   --status-online        offline  --status-offline
+     busy     --status-busy          away     --status-away
+   INTERACTIVE (root is <a>/<button>; resets: padding/border 0,
+   text-decoration none — resets only, no visual values)
+     hover          --shadow-subtle (the one sanctioned shadow)
+     focus-visible  outline none + 0 0 0 --ring-width --ring-focus
+                    (the shared ring recipe from Input/Button/Badge)
+     motion         box-shadow --duration-fast --ease-standard;
+                    killed under prefers-reduced-motion
+
+   TOKEN NOTES: --avatar-size-*, --status-*, --icon-size-xl, and
+   --font-weight-medium were reported as gaps by this component and are
+   now shipped in tokens.css; their values equal the interim borrowings
+   they replace.
+   ========================================================================== */
+
+.avatar {
+  /* Component-local aliases — every referenced value is a tokens.css token.
+     Defaults: md size · image variant · no status. */
+  --_size: var(--avatar-size-md);
+  --_status-size: var(--space-2);
+  --_icon-size: var(--icon-size-md);
+  --_status-color: var(--status-offline);
+
+  position: relative; /* anchors .avatar__status */
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: none;
+  width: var(--_size);
+  height: var(--_size);
+  padding: 0; /* reset for <button> roots */
+  border: 0; /* reset for <button> roots; variants paint their own hairline */
+  border-radius: var(--radius-full);
+  background: transparent;
+  color: var(--foreground);
+  font-family: var(--font-sans);
+  font-size: var(--text-body-sm); /* md initials */
+  font-weight: var(--font-weight-medium);
+  line-height: var(--text-body-sm--line-height);
+  text-decoration: none; /* reset for <a> roots */
+}
+
+/* ===== Sizes ===== */
+
+.avatar--xs {
+  --_size: var(--avatar-size-xs);
+  --_icon-size: var(--icon-size-xs);
+  font-size: var(--text-caption-up);
+  line-height: var(--text-caption-up--line-height);
+  letter-spacing: var(--text-caption-up--letter-spacing);
+  text-transform: uppercase; /* the caption-up token's full treatment */
+}
+.avatar--xs .avatar__initials {
+  /* letter-spacing leaves a trailing gap; re-center with the same token */
+  padding-inline-start: var(--text-caption-up--letter-spacing);
+}
+
+.avatar--sm {
+  --_size: var(--avatar-size-sm);
+  --_icon-size: var(--icon-size-sm);
+  font-size: var(--text-caption);
+  line-height: var(--text-caption--line-height);
+}
+
+.avatar--lg {
+  --_size: var(--avatar-size-lg);
+  --_status-size: var(--space-3);
+  --_icon-size: var(--icon-size-lg);
+  font-size: var(--text-title-sm);
+  line-height: var(--text-title-sm--line-height);
+}
+
+.avatar--xl {
+  --_size: var(--avatar-size-xl);
+  --_status-size: var(--space-3);
+  --_icon-size: var(--icon-size-xl);
+  font-size: var(--text-title-md);
+  line-height: var(--text-title-md--line-height);
+}
+
+/* ===== Variants ===== */
+
+.avatar__image {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  border-radius: var(--radius-full);
+}
+
+.avatar--initials {
+  background: var(--card);
+  color: var(--foreground);
+  border: var(--border-width) solid var(--border);
+}
+
+.avatar--generic {
+  background: var(--muted);
+  color: var(--muted-foreground);
+  border: var(--border-width) solid var(--border);
+}
+
+.avatar__icon {
+  flex: none;
+  width: var(--_icon-size);
+  height: var(--_icon-size);
+}
+.avatar__icon path,
+.avatar__icon circle {
+  stroke-width: var(--stroke-width-icon);
+}
+
+/* ===== Status dot ===== */
+
+.avatar__status {
+  position: absolute;
+  inset-block-end: 0;
+  inset-inline-end: 0;
+  width: var(--_status-size);
+  height: var(--_status-size);
+  border-radius: var(--radius-full);
+  background: var(--_status-color);
+  box-shadow: 0 0 0 var(--border-width) var(--background); /* canvas separator ring */
+}
+
+.avatar__status--online { --_status-color: var(--status-online); }
+.avatar__status--offline { --_status-color: var(--status-offline); }
+.avatar__status--busy { --_status-color: var(--status-busy); }
+.avatar__status--away { --_status-color: var(--status-away); }
+
+/* ===== Interactive (root is <a> or <button>) ===== */
+
+.avatar--interactive {
+  cursor: pointer;
+  transition: box-shadow var(--duration-fast) var(--ease-standard);
+}
+.avatar--interactive:hover,
+.avatar--interactive.is-hover {
+  box-shadow: var(--shadow-subtle);
+}
+.avatar--interactive:focus-visible,
+.avatar--interactive.is-focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 var(--ring-width) var(--ring-focus);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .avatar--interactive {
+    transition: none;
+  }
+}
