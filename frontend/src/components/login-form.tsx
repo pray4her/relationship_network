@@ -4,6 +4,7 @@ import { useActionState } from "react"
 
 import type { AuthFormState } from "@/app/actions/auth"
 import { FormField } from "@/components/form-field"
+import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Button } from "@/components/ui/button"
 
 type LoginFormProps = {
@@ -17,11 +18,11 @@ export function LoginForm({ action }: LoginFormProps) {
   })
 
   return (
-    <form action={formAction} className="auth-form" noValidate>
+    <form action={formAction} className="flex flex-col gap-4" noValidate>
       {state.formError ? (
-        <p className="form-error" role="alert">
-          {state.formError}
-        </p>
+        <Alert variant="destructive">
+          <AlertDescription>{state.formError}</AlertDescription>
+        </Alert>
       ) : null}
 
       <FormField
@@ -39,7 +40,7 @@ export function LoginForm({ action }: LoginFormProps) {
         type="password"
       />
 
-      <Button type="submit" disabled={isPending}>
+      <Button className="w-full" disabled={isPending} type="submit">
         {isPending ? "登录中…" : "登录"}
       </Button>
     </form>

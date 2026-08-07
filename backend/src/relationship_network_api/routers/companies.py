@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-import uuid
+import uuid  # noqa: TC003 (pydantic resolves model annotations at runtime)
 from typing import Annotated, Literal
 
 from fastapi import APIRouter, Depends, File, HTTPException, Query, UploadFile, status
@@ -31,11 +31,11 @@ from relationship_network_api.deps import (
 from relationship_network_api.document_text import (
     DOCUMENT_TOO_LARGE_DETAIL,
     INVALID_DOCUMENT_DETAIL,
+    MAX_DOCUMENT_BYTES,
     DocumentTooLargeError,
     InvalidDocumentError,
-    MAX_DOCUMENT_BYTES,
 )
-from relationship_network_api.models import CompanyStatus
+from relationship_network_api.models import CompanyStatus  # noqa: TC001
 from relationship_network_api.object_storage_service import (
     ObjectStorage,
     ObjectStorageError,
@@ -65,7 +65,8 @@ class CreateCompanyRequest(BaseModel):
     def name_must_not_be_blank(cls, value: str) -> str:
         stripped = value.strip()
         if not stripped:
-            raise ValueError("name must not be blank")
+            msg = "name must not be blank"
+            raise ValueError(msg)
         return stripped
 
 
@@ -80,7 +81,8 @@ class UpdateCompanyRequest(BaseModel):
             return None
         stripped = value.strip()
         if not stripped:
-            raise ValueError("name must not be blank")
+            msg = "name must not be blank"
+            raise ValueError(msg)
         return stripped
 
 
@@ -306,7 +308,7 @@ async def upload_company_document(
         ) from error
     except DocumentTooLargeError as error:
         raise HTTPException(
-            status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE,
+            status_code=status.HTTP_413_CONTENT_TOO_LARGE,
             detail=DOCUMENT_TOO_LARGE_DETAIL,
         ) from error
     except InvalidDocumentError as error:

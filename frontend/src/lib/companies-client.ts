@@ -99,15 +99,18 @@ class KyCompaniesTransport implements CompaniesTransport {
     const form = new FormData()
     form.append("file", file, filename)
     try {
-      const response = await ky(new URL(`/companies/${companyId}/documents`, this.#baseUrl).toString(), {
-        body: form,
-        cache: "no-store",
-        headers: { cookie: `${SESSION_COOKIE_NAME}=${session}` },
-        method: "POST",
-        retry: 0,
-        throwHttpErrors: false,
-        timeout: 30_000,
-      })
+      const response = await ky(
+        new URL(`/companies/${companyId}/documents`, this.#baseUrl).toString(),
+        {
+          body: form,
+          cache: "no-store",
+          headers: { cookie: `${SESSION_COOKIE_NAME}=${session}` },
+          method: "POST",
+          retry: 0,
+          throwHttpErrors: false,
+          timeout: 30_000,
+        },
+      )
       const body = await response.json<unknown>().catch(() => null)
       return { body, status: response.status }
     } catch (error) {
@@ -281,7 +284,10 @@ export async function createCompany(
     if (response.status === 201) {
       return { kind: "ok", company: companyViewSchema.parse(response.body) }
     }
-    if (response.status === 409 && readCompaniesErrorDetail(response.body) === "company_quota_exceeded") {
+    if (
+      response.status === 409 &&
+      readCompaniesErrorDetail(response.body) === "company_quota_exceeded"
+    ) {
       return { kind: "quotaExceeded" }
     }
     return accessFailure(response) ?? { kind: "unreachable" }

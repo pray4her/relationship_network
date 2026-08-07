@@ -5,7 +5,7 @@ import { redirect } from "next/navigation"
 
 import { mfaVerifyAction } from "@/app/actions/auth"
 import { MfaVerifyForm } from "@/components/mfa-verify-form"
-import { Card } from "@/components/ui/card"
+import { Card, CardContent, CardHeader } from "@/components/ui/card"
 import { MFA_CHALLENGE_COOKIE_NAME } from "@/lib/auth-client"
 
 export const metadata: Metadata = {
@@ -20,15 +20,26 @@ export default async function MfaLoginPage() {
   }
 
   return (
-    <main className="auth-shell">
-      <Card className="auth-card">
-        <p className="eyebrow">ACCOUNT / 账户</p>
-        <h1 className="auth-title">两步验证</h1>
-        <p className="auth-switch">该账户已启用 MFA，请完成第二步验证。</p>
-        <MfaVerifyForm action={mfaVerifyAction} />
-        <p className="auth-switch">
-          <Link href="/login">返回登录</Link>
-        </p>
+    <main className="flex min-h-dvh items-center justify-center px-4 py-10">
+      <Card className="w-full max-w-md">
+        <CardHeader>
+          <p className="font-mono text-xs tracking-widest text-muted-foreground uppercase">
+            ACCOUNT / 账户
+          </p>
+          <h1 className="text-2xl font-bold tracking-tight">两步验证</h1>
+        </CardHeader>
+        <CardContent className="flex flex-col gap-4">
+          <p className="text-sm text-muted-foreground">该账户已启用 MFA，请完成第二步验证。</p>
+          <MfaVerifyForm action={mfaVerifyAction} />
+          <p className="text-sm text-muted-foreground">
+            <Link
+              className="font-medium text-foreground underline underline-offset-4"
+              href="/login"
+            >
+              返回登录
+            </Link>
+          </p>
+        </CardContent>
       </Card>
     </main>
   )

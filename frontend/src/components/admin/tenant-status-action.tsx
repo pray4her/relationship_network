@@ -1,8 +1,19 @@
 "use client"
 
-import { useActionState } from "react"
+import { useActionState, useId, useState } from "react"
 
 import type { TenantStatusActionState } from "@/app/actions/admin"
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog"
 import { Button } from "@/components/ui/button"
 import type { TenantStatus } from "@/lib/admin-contract"
 
@@ -17,27 +28,42 @@ type TenantStatusActionProps = {
 
 export function TenantStatusAction({ action, status, tenantId }: TenantStatusActionProps) {
   const [state, formAction, isPending] = useActionState(action, { formError: null })
+  const [open, setOpen] = useState(false)
+  const formId = useId()
   const suspend = status === "active"
 
   return (
-    <div className="table-actions">
-      <form
-        action={formAction}
-        onSubmit={(event) => {
-          const message = suspend ? "确定要暂停该租户吗？" : "确定要恢复该租户吗？"
-          if (!window.confirm(message)) {
-            event.preventDefault()
-          }
-        }}
-      >
+    <div className="flex flex-wrap items-center gap-2">
+      <form action={formAction} id={formId}>
         <input name="tenant_id" type="hidden" value={tenantId} />
         <input name="intent" type="hidden" value={suspend ? "suspend" : "reactivate"} />
-        <Button className="btn-small" mode="secondary" type="submit" disabled={isPending}>
-          {suspend ? "暂停" : "恢复"}
-        </Button>
       </form>
+      <AlertDialog onOpenChange={setOpen} open={open}>
+        <AlertDialogTrigger render={<Button disabled={isPending} size="sm" variant="secondary" />}>
+          {suspend ? "暂停" : "恢复"}
+        </AlertDialogTrigger>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>{suspend ? "暂停租户" : "恢复租户"}</AlertDialogTitle>
+            <AlertDialogDescription>
+              {suspend ? "确定要暂停该租户吗？" : "确定要恢复该租户吗？"}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>取消</AlertDialogCancel>
+            <AlertDialogAction
+              form={formId}
+              onClick={() => setOpen(false)}
+              type="submit"
+              variant={suspend ? "destructive" : "default"}
+            >
+              {suspend ? "暂停" : "恢复"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
       {state.formError ? (
-        <p className="form-error" role="alert">
+        <p className="text-sm text-destructive" role="alert">
           {state.formError}
         </p>
       ) : null}

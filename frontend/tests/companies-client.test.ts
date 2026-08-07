@@ -1,12 +1,12 @@
 import { expect, test } from "vitest"
 
 import {
-  createCompany,
-  loadCompanies,
+  archiveCompany,
   type CompaniesTransport,
   CompaniesTransportError,
   type CompaniesTransportResponse,
-  archiveCompany,
+  createCompany,
+  loadCompanies,
 } from "../src/lib/companies-client"
 
 const companyBody = {

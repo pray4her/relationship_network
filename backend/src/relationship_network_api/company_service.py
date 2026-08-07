@@ -2,14 +2,14 @@
 
 from __future__ import annotations
 
+import contextlib
 import uuid
 from dataclasses import dataclass
 from datetime import UTC, datetime
-from typing import Final, final
+from typing import TYPE_CHECKING, Final, final
 
 from sqlalchemy import select
 from sqlalchemy.exc import SQLAlchemyError
-from sqlalchemy.ext.asyncio import AsyncSession
 
 from relationship_network_api import tenant_audit_service, tenant_context, usage_service
 from relationship_network_api.document_text import (
@@ -24,12 +24,15 @@ from relationship_network_api.models import (
     CompanyStatus,
     DocumentScanStatus,
 )
-from relationship_network_api.object_storage_service import ObjectStorage
 from relationship_network_api.tenant_audit_service import (
     AUDIT_RESULT_SUCCESS,
     TARGET_TYPE_COMPANY,
 )
-from relationship_network_api.usage_service import QuotaExceededError
+
+if TYPE_CHECKING:
+    from sqlalchemy.ext.asyncio import AsyncSession
+
+    from relationship_network_api.object_storage_service import ObjectStorage
 
 COMPANY_NOT_FOUND_DETAIL: Final = "company_not_found"
 COMPANY_ARCHIVED_DETAIL: Final = "company_archived"
@@ -78,18 +81,15 @@ async def create_company(
     """Create a company, consuming one concurrent companies seat."""
     company_id = uuid.uuid4()
     idempotency_key = f"company:{company_id}:create"
-    try:
-        reservation = await usage_service.reserve(
-            session,
-            tenant_id=tenant_id,
-            metric="companies",
-            amount=1,
-            idempotency_key=idempotency_key,
-            reference_type="company",
-            reference_id=str(company_id),
-        )
-    except QuotaExceededError:
-        raise
+    reservation = await usage_service.reserve(
+        session,
+        tenant_id=tenant_id,
+        metric="companies",
+        amount=1,
+        idempotency_key=idempotency_key,
+        reference_type="company",
+        reference_id=str(company_id),
+    )
     await tenant_context.set_tenant_context(session, tenant_id)
     now = datetime.now(UTC)
     company = Company(
@@ -123,14 +123,12 @@ async def create_company(
     except Exception:
         await session.rollback()
         await tenant_context.set_tenant_context(session, tenant_id)
-        try:
+        with contextlib.suppress(usage_service.ReservationStateError):
             _ = await usage_service.release(
                 session,
                 tenant_id=tenant_id,
                 reservation_id=reservation.reservation_id,
             )
-        except usage_service.ReservationStateError:
-            pass
         raise
     await tenant_context.set_tenant_context(session, tenant_id)
     return await get_company(session, tenant_id=tenant_id, company_id=company_id)
@@ -162,7 +160,7 @@ async def get_company(
     return _view(company)
 
 
-async def update_company(
+async def update_company(  # noqa: PLR0913
     session: AsyncSession,
     *,
     tenant_id: uuid.UUID,
@@ -255,7 +253,7 @@ async def archive_company(
     return await get_company(session, tenant_id=tenant_id, company_id=company_id)
 
 
-async def upload_document(
+async def upload_document(  # noqa: PLR0913
     session: AsyncSession,
     *,
     storage: ObjectStorage,

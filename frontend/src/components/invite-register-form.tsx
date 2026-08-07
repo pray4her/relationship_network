@@ -4,9 +4,10 @@ import { useActionState } from "react"
 
 import type { AuthFormState } from "@/app/actions/auth"
 import { FormField } from "@/components/form-field"
+import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Button } from "@/components/ui/button"
+import { Field, FieldDescription, FieldLabel } from "@/components/ui/field"
 import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
 
 type InviteRegisterFormProps = {
   readonly action: (state: AuthFormState, formData: FormData) => Promise<AuthFormState>
@@ -27,21 +28,21 @@ export function InviteRegisterForm({
   })
 
   return (
-    <form action={formAction} className="auth-form" noValidate>
+    <form action={formAction} className="flex flex-col gap-4" noValidate>
       {state.formError ? (
-        <p className="form-error" role="alert">
-          {state.formError}
-        </p>
+        <Alert variant="destructive">
+          <AlertDescription>{state.formError}</AlertDescription>
+        </Alert>
       ) : null}
 
       <input name="invite_token" type="hidden" value={inviteToken} />
-      <p className="field-hint">注册后将直接加入租户：{tenantName}</p>
+      <p className="text-sm text-muted-foreground">注册后将直接加入租户：{tenantName}</p>
 
-      <div className="form-field">
-        <Label htmlFor="email">邮箱</Label>
+      <Field>
+        <FieldLabel htmlFor="email">邮箱</FieldLabel>
         <Input id="email" name="email" readOnly type="email" value={email} />
-        <p className="field-hint">邮箱已锁定为邀请邮箱</p>
-      </div>
+        <FieldDescription>邮箱已锁定为邀请邮箱</FieldDescription>
+      </Field>
       <FormField
         autoComplete="new-password"
         error={state.fieldErrors.password}
@@ -58,7 +59,7 @@ export function InviteRegisterForm({
         type="text"
       />
 
-      <Button type="submit" disabled={isPending}>
+      <Button className="w-full" disabled={isPending} type="submit">
         {isPending ? "提交中…" : "注册并接受邀请"}
       </Button>
     </form>

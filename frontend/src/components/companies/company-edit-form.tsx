@@ -3,9 +3,11 @@
 import { useActionState } from "react"
 
 import type { CompanyFormState } from "@/app/actions/companies"
+import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Button } from "@/components/ui/button"
+import { Field, FieldError, FieldLabel } from "@/components/ui/field"
 import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
+import { Textarea } from "@/components/ui/textarea"
 
 type CompanyEditFormProps = {
   readonly action: (state: CompanyFormState, formData: FormData) => Promise<CompanyFormState>
@@ -14,61 +16,52 @@ type CompanyEditFormProps = {
   readonly profileText: string
 }
 
-export function CompanyEditForm({
-  action,
-  companyId,
-  name,
-  profileText,
-}: CompanyEditFormProps) {
+export function CompanyEditForm({ action, companyId, name, profileText }: CompanyEditFormProps) {
   const [state, formAction, isPending] = useActionState(action, {
     fieldErrors: {},
     formError: null,
   })
 
   return (
-    <form action={formAction} className="auth-form" noValidate>
+    <form action={formAction} className="flex flex-col gap-4" noValidate>
       <input name="company_id" type="hidden" value={companyId} />
       {state.formError ? (
-        <p className="form-error" role="alert">
-          {state.formError}
-        </p>
+        <Alert variant="destructive">
+          <AlertDescription>{state.formError}</AlertDescription>
+        </Alert>
       ) : null}
 
-      <div className="form-field">
-        <Label htmlFor="name">企业名称</Label>
+      <Field data-invalid={state.fieldErrors.name ? true : undefined}>
+        <FieldLabel htmlFor="name">企业名称</FieldLabel>
         <Input
+          aria-invalid={state.fieldErrors.name ? true : undefined}
           defaultValue={name}
           id="name"
-          invalid={Boolean(state.fieldErrors.name)}
           name="name"
           type="text"
         />
-        {state.fieldErrors.name ? (
-          <p className="field-error" role="alert">
-            {state.fieldErrors.name}
-          </p>
-        ) : null}
-      </div>
+        {state.fieldErrors.name ? <FieldError>{state.fieldErrors.name}</FieldError> : null}
+      </Field>
 
-      <div className="form-field">
-        <Label htmlFor="profile_text">企业简介</Label>
-        <textarea
-          className="field-input"
+      <Field data-invalid={state.fieldErrors.profile_text ? true : undefined}>
+        <FieldLabel htmlFor="profile_text">企业简介</FieldLabel>
+        <Textarea
+          aria-invalid={state.fieldErrors.profile_text ? true : undefined}
           defaultValue={profileText}
           id="profile_text"
           name="profile_text"
           rows={6}
         />
         {state.fieldErrors.profile_text ? (
-          <p className="field-error" role="alert">
-            {state.fieldErrors.profile_text}
-          </p>
+          <FieldError>{state.fieldErrors.profile_text}</FieldError>
         ) : null}
-      </div>
+      </Field>
 
-      <Button type="submit" disabled={isPending}>
-        {isPending ? "保存中…" : "保存更改"}
-      </Button>
+      <div>
+        <Button type="submit" disabled={isPending}>
+          {isPending ? "保存中…" : "保存更改"}
+        </Button>
+      </div>
     </form>
   )
 }

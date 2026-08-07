@@ -3,6 +3,7 @@
 import { useActionState } from "react"
 
 import type { AcceptInvitationFormState } from "@/app/actions/invitations"
+import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Button } from "@/components/ui/button"
 
 type AcceptInviteFormProps = {
@@ -17,15 +18,15 @@ export function AcceptInviteForm({ action, token }: AcceptInviteFormProps) {
   const [state, formAction, isPending] = useActionState(action, { formError: null })
 
   return (
-    <form action={formAction} className="auth-form" noValidate>
+    <form action={formAction} className="flex flex-col gap-4" noValidate>
       {state.formError ? (
-        <p className="form-error" role="alert">
-          {state.formError}
-        </p>
+        <Alert variant="destructive">
+          <AlertDescription>{state.formError}</AlertDescription>
+        </Alert>
       ) : null}
 
       <input name="token" type="hidden" value={token} />
-      <Button type="submit" disabled={isPending}>
+      <Button className="w-full" disabled={isPending} type="submit">
         {isPending ? "接受中…" : "接受邀请"}
       </Button>
     </form>

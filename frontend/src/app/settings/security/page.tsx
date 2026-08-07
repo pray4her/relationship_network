@@ -12,6 +12,9 @@ import { AccountPanel } from "@/components/account-panel"
 import { MfaDisableForm } from "@/components/security/mfa-disable-form"
 import { MfaSetupWizard } from "@/components/security/mfa-setup-wizard"
 import { TenantMfaPolicyForm } from "@/components/security/tenant-mfa-policy-form"
+import { Alert, AlertDescription } from "@/components/ui/alert"
+import { Badge } from "@/components/ui/badge"
+import { Card, CardContent, CardHeader } from "@/components/ui/card"
 import { createAuthTransport, loadAuthSession, SESSION_COOKIE_NAME } from "@/lib/auth-client"
 import { createMfaTransport, loadMfaStatus } from "@/lib/mfa-client"
 
@@ -25,14 +28,24 @@ export default async function SecuritySettingsPage() {
 
   if (!session) {
     return (
-      <main className="page-shell">
+      <main className="mx-auto flex w-full max-w-7xl flex-col gap-6 px-6 py-6">
         <AccountPanel />
-        <section className="panel">
-          <h1 className="panel-title">安全设置</h1>
-          <p className="notice">
-            请先<Link href="/login">登录</Link>后管理安全设置。
-          </p>
-        </section>
+        <Card>
+          <CardHeader>
+            <h1 className="text-2xl font-bold tracking-tight">安全设置</h1>
+          </CardHeader>
+          <CardContent>
+            <Alert>
+              <AlertDescription>
+                请先
+                <Link className="font-medium underline underline-offset-4" href="/login">
+                  登录
+                </Link>
+                后管理安全设置。
+              </AlertDescription>
+            </Alert>
+          </CardContent>
+        </Card>
       </main>
     )
   }
@@ -40,20 +53,30 @@ export default async function SecuritySettingsPage() {
   const auth = await loadAuthSession(createAuthTransport(), session)
   if (auth.kind !== "authenticated") {
     return (
-      <main className="page-shell">
+      <main className="mx-auto flex w-full max-w-7xl flex-col gap-6 px-6 py-6">
         <AccountPanel />
-        <section className="panel">
-          <h1 className="panel-title">安全设置</h1>
-          <p className="notice">
-            {auth.kind === "anonymous" ? (
-              <>
-                登录已过期，请<Link href="/login">重新登录</Link>。
-              </>
-            ) : (
-              "服务暂时不可用，请稍后再试。"
-            )}
-          </p>
-        </section>
+        <Card>
+          <CardHeader>
+            <h1 className="text-2xl font-bold tracking-tight">安全设置</h1>
+          </CardHeader>
+          <CardContent>
+            <Alert>
+              <AlertDescription>
+                {auth.kind === "anonymous" ? (
+                  <>
+                    登录已过期，请
+                    <Link className="font-medium underline underline-offset-4" href="/login">
+                      重新登录
+                    </Link>
+                    。
+                  </>
+                ) : (
+                  "服务暂时不可用，请稍后再试。"
+                )}
+              </AlertDescription>
+            </Alert>
+          </CardContent>
+        </Card>
       </main>
     )
   }
@@ -62,39 +85,49 @@ export default async function SecuritySettingsPage() {
   const canManageTenant = auth.view.permissions.includes("tenant:manage")
 
   return (
-    <main className="page-shell">
+    <main className="mx-auto flex w-full max-w-7xl flex-col gap-6 px-6 py-6">
       <AccountPanel />
 
-      <section className="panel" aria-labelledby="mfa-heading">
-        <h1 className="panel-title" id="mfa-heading">
-          两步验证（MFA）
-        </h1>
-        {status.kind === "ok" ? (
-          status.status.enabled ? (
-            <div className="mfa-step">
-              <p>
-                <span className="tag">已启用</span>{" "}
-                <span className="field-hint">
-                  剩余恢复码 {status.status.recovery_codes_remaining} 个
-                </span>
-              </p>
-              <MfaDisableForm action={disableMfaAction} />
-            </div>
+      <Card aria-labelledby="mfa-heading">
+        <CardHeader>
+          <h1 className="text-2xl font-bold tracking-tight" id="mfa-heading">
+            两步验证（MFA）
+          </h1>
+        </CardHeader>
+        <CardContent>
+          {status.kind === "ok" ? (
+            status.status.enabled ? (
+              <div className="flex flex-col gap-4">
+                <p className="flex flex-wrap items-center gap-2">
+                  <Badge className="bg-success/10 text-success">已启用</Badge>
+                  <span className="text-sm text-muted-foreground tabular-nums">
+                    剩余恢复码 {status.status.recovery_codes_remaining} 个
+                  </span>
+                </p>
+                <MfaDisableForm action={disableMfaAction} />
+              </div>
+            ) : (
+              <MfaSetupWizard enableAction={enableMfaAction} startAction={startMfaSetupAction} />
+            )
           ) : (
-            <MfaSetupWizard enableAction={enableMfaAction} startAction={startMfaSetupAction} />
-          )
-        ) : (
-          <p className="notice">两步验证状态暂时不可用，请稍后再试。</p>
-        )}
-      </section>
+            <Alert>
+              <AlertDescription>两步验证状态暂时不可用，请稍后再试。</AlertDescription>
+            </Alert>
+          )}
+        </CardContent>
+      </Card>
 
       {canManageTenant ? (
-        <section className="panel" aria-labelledby="policy-heading">
-          <h2 className="panel-title" id="policy-heading">
-            租户 MFA 策略
-          </h2>
-          <TenantMfaPolicyForm action={tenantMfaPolicyAction} />
-        </section>
+        <Card aria-labelledby="policy-heading">
+          <CardHeader>
+            <h2 className="text-lg font-semibold" id="policy-heading">
+              租户 MFA 策略
+            </h2>
+          </CardHeader>
+          <CardContent>
+            <TenantMfaPolicyForm action={tenantMfaPolicyAction} />
+          </CardContent>
+        </Card>
       ) : null}
     </main>
   )

@@ -1,0 +1,122 @@
+/* Claude — Design Tokens (single source of truth) */
+/* Values: claude-DESIGN.md (DesignMD get_design "claude") */
+/* Naming: shadcn convention. Light theme only — no .dark block. */
+:root {
+  /* ===== Surfaces ===== */
+  --background: #faf9f5;            /* canvas: the page floor, warm cream */
+  --surface-soft: #f5f0e8;          /* soft section bands */
+  --card: #efe9de;                  /* surface-card: feature/content cards */
+  --card-foreground: #141413;
+  --surface-cream-strong: #e8e0d2;  /* active tabs, emphasized bands */
+  --popover: #faf9f5;               /* = canvas */
+  --popover-foreground: #141413;
+
+  /* Dark product surfaces (code mockups, footer — not a theme) */
+  --surface-dark: #181715;
+  --surface-dark-elevated: #252320;
+  --surface-dark-soft: #1f1e1b;
+  --on-dark: #faf9f5;
+  --on-dark-soft: #a09d96;
+
+  /* ===== Text ===== */
+  --foreground: #141413;            /* ink: headlines, primary text */
+  --foreground-strong: #252523;     /* body-strong: lead paragraphs */
+  --foreground-body: #3d3d3a;       /* body: running text */
+  --muted: #f5f0e8;                 /* muted bg (shadcn role) = surface-soft */
+  --muted-foreground: #6c6a64;      /* muted text: sub-heads, breadcrumbs */
+  --caption-foreground: #8e8b82;    /* muted-soft: captions, fine print */
+
+  /* ===== Brand ===== */
+  --primary: #cc785c;               /* coral — scarce on elements, generous on bands */
+  --primary-foreground: #ffffff;    /* on-primary */
+  --primary-active: #a9583e;        /* pressed state */
+  --primary-disabled: #e6dfd8;      /* = hairline; pair with --muted-foreground text */
+  --secondary: #f5f0e8;             /* = surface-soft */
+  --secondary-foreground: #141413;
+  --accent: #efe9de;                /* hover/tab-active bg (shadcn role) = surface-card */
+  --accent-foreground: #141413;
+  --accent-teal: #5db8a6;           /* status dots, "connected" indicators */
+  --accent-amber: #e8a55a;          /* badges, inline highlights */
+
+  /* ===== Semantic ===== */
+  --success: #5db872;
+  --warning: #d4a017;
+  --destructive: #c64545;           /* error */
+  --destructive-foreground: #ffffff;
+
+  /* ===== Lines & focus ===== */
+  --border: #e6dfd8;                /* hairline: 1px borders */
+  --border-soft: #ebe6df;           /* hairline-soft: quiet dividers */
+  --input: #e6dfd8;
+  --ring: #cc785c;
+  --ring-focus: rgb(204 120 92 / 0.15); /* 3px focus ring, coral at 15% alpha */
+
+  /* ===== Code mockups (on dark surfaces only) ===== */
+  --syntax-keyword: #8fb8d8;
+
+  /* ===== Charts ===== */
+  --chart-1: #cc785c;
+  --chart-2: #f8e9e4;
+  --chart-3: #965a46;
+  --chart-4: #ebc2b4;
+  --chart-5: #6c4335;
+
+  /* ===== Typography (Tailwind v4 companion syntax) ===== */
+  --font-display: "Copernicus", "Tiempos Headline", "Cormorant Garamond",
+    "EB Garamond", Garamond, Georgia, "Times New Roman", serif;
+  --font-sans: "StyreneB", Inter, -apple-system, BlinkMacSystemFont,
+    "Segoe UI", Roboto, sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo,
+    Consolas, monospace;
+
+  --text-display-xl: 4rem;    /* 64px */ --text-display-xl--line-height: 1.05; --text-display-xl--letter-spacing: -1.5px;
+  --text-display-lg: 3rem;    /* 48px */ --text-display-lg--line-height: 1.1;  --text-display-lg--letter-spacing: -1px;
+  --text-display-md: 2.25rem; /* 36px */ --text-display-md--line-height: 1.15; --text-display-md--letter-spacing: -0.5px;
+  --text-display-sm: 1.75rem; /* 28px */ --text-display-sm--line-height: 1.2;  --text-display-sm--letter-spacing: -0.3px;
+  --text-title-lg: 1.375rem;  /* 22px */ --text-title-lg--line-height: 1.3;
+  --text-title-md: 1.125rem;  /* 18px */ --text-title-md--line-height: 1.4;
+  --text-title-sm: 1rem;      /* 16px */ --text-title-sm--line-height: 1.4;
+  --text-body-md: 1rem;       /* 16px */ --text-body-md--line-height: 1.55;
+  --text-body-sm: 0.875rem;   /* 14px */ --text-body-sm--line-height: 1.55;
+  --text-caption: 0.8125rem;  /* 13px */ --text-caption--line-height: 1.4;
+  --text-caption-up: 0.75rem; /* 12px */ --text-caption-up--line-height: 1.4;  --text-caption-up--letter-spacing: 1.5px;
+  --text-code: 0.875rem;      /* 14px */ --text-code--line-height: 1.6;
+  --text-button: 0.875rem;    /* 14px */ --text-button--line-height: 1;
+  --text-nav-link: 0.875rem;  /* 14px */ --text-nav-link--line-height: 1.4;
+
+  /* ===== Spacing (4px base) ===== */
+  --space-1: 0.25rem;   /* 4px  — xxs */
+  --space-2: 0.5rem;    /* 8px  — xs */
+  --space-3: 0.75rem;   /* 12px — sm */
+  --space-4: 1rem;      /* 16px — md */
+  --space-6: 1.5rem;    /* 24px — lg */
+  --space-8: 2rem;      /* 32px — xl, card padding */
+  --space-12: 3rem;     /* 48px — xxl */
+  --space-16: 4rem;     /* 64px — footer/cta-band padding, top-nav height */
+  --space-24: 6rem;     /* 96px — section rhythm */
+
+  /* ===== Radius ===== */
+  --radius-xs: 4px;
+  --radius-sm: 6px;
+  --radius-md: 8px;     /* buttons, inputs, tabs */
+  --radius-lg: 12px;    /* cards */
+  --radius-xl: 16px;    /* hero containers */
+  --radius-full: 9999px; /* pills, circular icon buttons */
+
+  /* ===== Shadow (color-block first; shadows rare) ===== */
+  --shadow-subtle: 0 1px 3px rgb(20 20 19 / 0.08);
+
+  /* ===== Motion (not covered by DESIGN.md; house-approved defaults) ===== */
+  --duration-fast: 100ms;
+  --duration-normal: 200ms;
+  --duration-slow: 300ms;
+  --ease-standard: cubic-bezier(0.2, 0, 0, 1);
+
+  /* ===== Control dimensions (component-spec, off spacing scale) ===== */
+  --control-height: 40px;        /* buttons, text-input */
+  --icon-button-size: 36px;
+  --button-padding-inline: 20px;
+  --input-padding-block: 10px;
+  --input-padding-inline: 14px;
+  --tab-padding-inline: 14px;
+}

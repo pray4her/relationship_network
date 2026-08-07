@@ -28,6 +28,8 @@ SYSTEM_PERMISSIONS: Final[dict[str, str]] = {
     "billing:manage": "管理账单与订阅",
     "companies:read": "查看企业及其文档与操作记录",
     "companies:manage": "创建、编辑、归档企业并上传文档",
+    "jobs:read": "查看职位及其材料与操作记录",
+    "jobs:manage": "创建、编辑、启用、关闭、归档职位并上传材料",
 }
 """System-defined permission catalog; codes are stable and assigned to roles."""
 

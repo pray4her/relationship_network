@@ -3,6 +3,17 @@
 import { useActionState } from "react"
 
 import type { MemberActionState } from "@/app/actions/members"
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog"
 import { Button } from "@/components/ui/button"
 
 type RevokeInvitationButtonProps = {
@@ -14,16 +25,38 @@ export function RevokeInvitationButton({ action, invitationId }: RevokeInvitatio
   const [state, formAction, isPending] = useActionState(action, { formError: null })
 
   return (
-    <form action={formAction} className="table-actions">
-      <input name="invitation_id" type="hidden" value={invitationId} />
-      <Button className="btn-small" mode="secondary" type="submit" disabled={isPending}>
-        撤销
-      </Button>
+    <div className="flex flex-col items-start gap-2">
+      <AlertDialog>
+        <AlertDialogTrigger
+          render={
+            <Button size="sm" type="button" variant="secondary" disabled={isPending}>
+              撤销
+            </Button>
+          }
+        />
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>撤销邀请</AlertDialogTitle>
+            <AlertDialogDescription>
+              撤销后该邀请链接将立即失效，被邀请人无法再凭此链接加入租户。确定要撤销吗？
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>取消</AlertDialogCancel>
+            <form action={formAction}>
+              <input name="invitation_id" type="hidden" value={invitationId} />
+              <AlertDialogAction type="submit" variant="destructive" disabled={isPending}>
+                撤销
+              </AlertDialogAction>
+            </form>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
       {state.formError ? (
-        <p className="form-error" role="alert">
+        <p className="text-sm text-destructive" role="alert">
           {state.formError}
         </p>
       ) : null}
-    </form>
+    </div>
   )
 }

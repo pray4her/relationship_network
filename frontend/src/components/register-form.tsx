@@ -4,6 +4,7 @@ import { useActionState } from "react"
 
 import type { AuthFormState } from "@/app/actions/auth"
 import { FormField } from "@/components/form-field"
+import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Button } from "@/components/ui/button"
 
 type RegisterFormProps = {
@@ -17,11 +18,11 @@ export function RegisterForm({ action }: RegisterFormProps) {
   })
 
   return (
-    <form action={formAction} className="auth-form" noValidate>
+    <form action={formAction} className="flex flex-col gap-4" noValidate>
       {state.formError ? (
-        <p className="form-error" role="alert">
-          {state.formError}
-        </p>
+        <Alert variant="destructive">
+          <AlertDescription>{state.formError}</AlertDescription>
+        </Alert>
       ) : null}
 
       <FormField
@@ -54,7 +55,7 @@ export function RegisterForm({ action }: RegisterFormProps) {
         type="text"
       />
 
-      <Button type="submit" disabled={isPending}>
+      <Button className="w-full" disabled={isPending} type="submit">
         {isPending ? "提交中…" : "创建账户"}
       </Button>
     </form>

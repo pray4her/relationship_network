@@ -105,9 +105,7 @@ def _is_docx(data: bytes) -> bool:
             names = set(archive.namelist())
     except zipfile.BadZipFile:
         return False
-    return "[Content_Types].xml" in names and any(
-        name.startswith("word/") for name in names
-    )
+    return "[Content_Types].xml" in names and any(name.startswith("word/") for name in names)
 
 
 def _looks_like_executable(data: bytes) -> bool:
@@ -122,7 +120,7 @@ def _decode_text(data: bytes) -> str:
 
 
 def _extract_pdf(data: bytes) -> str:
-    from pypdf import PdfReader
+    from pypdf import PdfReader  # noqa: PLC0415
 
     reader = PdfReader(io.BytesIO(data))
     parts: list[str] = []
@@ -134,7 +132,7 @@ def _extract_pdf(data: bytes) -> str:
 
 
 def _extract_docx(data: bytes) -> str:
-    from docx import Document
+    from docx import Document  # noqa: PLC0415
 
     document = Document(io.BytesIO(data))
     return "\n".join(paragraph.text for paragraph in document.paragraphs if paragraph.text).strip()

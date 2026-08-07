@@ -6,9 +6,13 @@ import { tenantStatusAction } from "@/app/actions/admin"
 import { AccountPanel } from "@/components/account-panel"
 import { AdminGateNotice } from "@/components/admin/admin-gate-notice"
 import { TenantStatusAction } from "@/components/admin/tenant-status-action"
+import { Badge } from "@/components/ui/badge"
+import { Card, CardContent, CardHeader } from "@/components/ui/card"
+import { Table, TableBody, TableCell, TableHead, TableRow } from "@/components/ui/table"
 import { createAdminTransport, loadAdminTenant } from "@/lib/admin-client"
 import { requireAdminView } from "@/lib/admin-guard"
 import { formatDateTime, tenantStatusLabels } from "@/lib/admin-view"
+import { cn } from "@/lib/utils"
 
 export const metadata: Metadata = {
   title: "租户详情 · Relationship Network",
@@ -17,6 +21,8 @@ export const metadata: Metadata = {
 type AdminTenantPageProps = {
   readonly params: Promise<{ id: string }>
 }
+
+const rowHeadClassName = "w-32 font-mono text-xs tracking-wider text-muted-foreground uppercase"
 
 export default async function AdminTenantPage({ params }: AdminTenantPageProps) {
   const { id } = await params
@@ -45,8 +51,10 @@ export default async function AdminTenantPage({ params }: AdminTenantPageProps) 
         }
         title="租户详情"
       >
-        <p className="field-hint">
-          <Link href="/admin">返回租户列表</Link>
+        <p className="text-sm text-muted-foreground">
+          <Link className="font-medium underline underline-offset-4" href="/admin">
+            返回租户列表
+          </Link>
         </p>
       </AdminGateNotice>
     )
@@ -55,49 +63,72 @@ export default async function AdminTenantPage({ params }: AdminTenantPageProps) 
   const tenant = result.tenant
 
   return (
-    <main className="page-shell">
+    <main className="mx-auto flex w-full max-w-7xl flex-col gap-6 px-6 py-6">
       <AccountPanel />
 
-      <section className="panel" aria-labelledby="tenant-heading">
-        <h1 className="panel-title" id="tenant-heading">
-          {tenant.name}
-        </h1>
-        <table className="data-table">
-          <tbody>
-            <tr>
-              <th>标识</th>
-              <td>{tenant.slug}</td>
-            </tr>
-            <tr>
-              <th>状态</th>
-              <td>
-                <span className={tenant.status === "active" ? "tag" : "tag tag-muted"}>
-                  {tenantStatusLabels[tenant.status]}
-                </span>
-              </td>
-            </tr>
-            <tr>
-              <th>强制 MFA</th>
-              <td>{tenant.mfa_required ? "已开启" : "未开启"}</td>
-            </tr>
-            <tr>
-              <th>成员数</th>
-              <td>{tenant.member_count}</td>
-            </tr>
-            <tr>
-              <th>创建时间</th>
-              <td>{formatDateTime(tenant.created_at)}</td>
-            </tr>
-          </tbody>
-        </table>
-        <TenantStatusAction
-          action={tenantStatusAction}
-          status={tenant.status}
-          tenantId={tenant.id}
-        />
-        <p className="field-hint">
-          <Link href="/admin">返回租户列表</Link>
-        </p>
+      <section aria-labelledby="tenant-heading">
+        <Card>
+          <CardHeader>
+            <h1 className="text-2xl font-bold tracking-tight" id="tenant-heading">
+              {tenant.name}
+            </h1>
+          </CardHeader>
+          <CardContent className="flex flex-col gap-4">
+            <Table>
+              <TableBody>
+                <TableRow>
+                  <TableHead className={rowHeadClassName} scope="row">
+                    标识
+                  </TableHead>
+                  <TableCell>{tenant.slug}</TableCell>
+                </TableRow>
+                <TableRow>
+                  <TableHead className={rowHeadClassName} scope="row">
+                    状态
+                  </TableHead>
+                  <TableCell>
+                    <Badge
+                      className={cn(tenant.status === "active" && "bg-success/10 text-success")}
+                      variant="secondary"
+                    >
+                      {tenantStatusLabels[tenant.status]}
+                    </Badge>
+                  </TableCell>
+                </TableRow>
+                <TableRow>
+                  <TableHead className={rowHeadClassName} scope="row">
+                    强制 MFA
+                  </TableHead>
+                  <TableCell>{tenant.mfa_required ? "已开启" : "未开启"}</TableCell>
+                </TableRow>
+                <TableRow>
+                  <TableHead className={rowHeadClassName} scope="row">
+                    成员数
+                  </TableHead>
+                  <TableCell className="tabular-nums">{tenant.member_count}</TableCell>
+                </TableRow>
+                <TableRow>
+                  <TableHead className={rowHeadClassName} scope="row">
+                    创建时间
+                  </TableHead>
+                  <TableCell className="tabular-nums">
+                    {formatDateTime(tenant.created_at)}
+                  </TableCell>
+                </TableRow>
+              </TableBody>
+            </Table>
+            <TenantStatusAction
+              action={tenantStatusAction}
+              status={tenant.status}
+              tenantId={tenant.id}
+            />
+            <p className="text-sm text-muted-foreground">
+              <Link className="font-medium underline underline-offset-4" href="/admin">
+                返回租户列表
+              </Link>
+            </p>
+          </CardContent>
+        </Card>
       </section>
     </main>
   )

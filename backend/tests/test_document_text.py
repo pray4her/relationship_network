@@ -6,9 +6,9 @@ import zipfile
 import pytest
 
 from relationship_network_api.document_text import (
+    MAX_DOCUMENT_BYTES,
     DocumentTooLargeError,
     InvalidDocumentError,
-    MAX_DOCUMENT_BYTES,
     extract_text,
     validate_document,
 )

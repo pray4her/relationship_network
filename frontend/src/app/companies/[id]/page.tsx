@@ -12,6 +12,18 @@ import { AccountPanel } from "@/components/account-panel"
 import { CompanyArchiveButton } from "@/components/companies/company-archive-button"
 import { CompanyDocumentUpload } from "@/components/companies/company-document-upload"
 import { CompanyEditForm } from "@/components/companies/company-edit-form"
+import { Alert, AlertDescription } from "@/components/ui/alert"
+import { Badge } from "@/components/ui/badge"
+import { Card, CardAction, CardContent, CardHeader } from "@/components/ui/card"
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table"
+import { apiPublicBaseUrl } from "@/lib/api-url"
 import { createAuthTransport, loadAuthSession, SESSION_COOKIE_NAME } from "@/lib/auth-client"
 import { createCompaniesTransport, loadCompanyDetail } from "@/lib/companies-client"
 
@@ -34,6 +46,26 @@ function formatDateTime(value: string): string {
   return new Date(value).toLocaleString("zh-CN", { hour12: false })
 }
 
+const headClassName = "font-mono text-xs tracking-wider text-muted-foreground uppercase"
+
+function NoticeCard({ children }: { readonly children: React.ReactNode }) {
+  return (
+    <main className="mx-auto flex w-full max-w-7xl flex-col gap-6 px-6 py-6">
+      <AccountPanel />
+      <Card>
+        <CardHeader>
+          <h1 className="text-2xl font-bold tracking-tight">企业详情</h1>
+        </CardHeader>
+        <CardContent>
+          <Alert>
+            <AlertDescription>{children}</AlertDescription>
+          </Alert>
+        </CardContent>
+      </Card>
+    </main>
+  )
+}
+
 export default async function CompanyDetailPage({ params }: CompanyDetailPageProps) {
   const { id } = await params
   const store = await cookies()
@@ -41,41 +73,23 @@ export default async function CompanyDetailPage({ params }: CompanyDetailPagePro
 
   if (!session) {
     return (
-      <main className="page-shell">
-        <AccountPanel />
-        <section className="panel">
-          <h1 className="panel-title">企业详情</h1>
-          <p className="notice">
-            请先<Link href="/login">登录</Link>。
-          </p>
-        </section>
-      </main>
+      <NoticeCard>
+        请先
+        <Link className="font-medium underline underline-offset-4" href="/login">
+          登录
+        </Link>
+        。
+      </NoticeCard>
     )
   }
 
   const auth = await loadAuthSession(createAuthTransport(), session)
   if (auth.kind !== "authenticated") {
-    return (
-      <main className="page-shell">
-        <AccountPanel />
-        <section className="panel">
-          <h1 className="panel-title">企业详情</h1>
-          <p className="notice">登录状态无效，请重新登录。</p>
-        </section>
-      </main>
-    )
+    return <NoticeCard>登录状态无效，请重新登录。</NoticeCard>
   }
 
   if (!auth.view.permissions.includes("companies:read")) {
-    return (
-      <main className="page-shell">
-        <AccountPanel />
-        <section className="panel">
-          <h1 className="panel-title">企业详情</h1>
-          <p className="notice">你没有查看企业的权限。</p>
-        </section>
-      </main>
-    )
+    return <NoticeCard>你没有查看企业的权限。</NoticeCard>
   }
 
   const detail = await loadCompanyDetail(createCompaniesTransport(), session, id)
@@ -86,15 +100,7 @@ export default async function CompanyDetailPage({ params }: CompanyDetailPagePro
     notFound()
   }
   if (detail.kind !== "ok") {
-    return (
-      <main className="page-shell">
-        <AccountPanel />
-        <section className="panel">
-          <h1 className="panel-title">企业详情</h1>
-          <p className="notice">企业详情暂时不可用，请稍后再试。</p>
-        </section>
-      </main>
-    )
+    return <NoticeCard>企业详情暂时不可用，请稍后再试。</NoticeCard>
   }
 
   const { company, documents, events } = detail
@@ -102,101 +108,141 @@ export default async function CompanyDetailPage({ params }: CompanyDetailPagePro
   const isActive = company.status === "active"
 
   return (
-    <main className="page-shell">
+    <main className="mx-auto flex w-full max-w-7xl flex-col gap-6 px-6 py-6">
       <AccountPanel />
 
-      <section className="panel" aria-labelledby="company-detail-heading">
-        <p className="notice">
-          <Link href="/companies">← 返回企业列表</Link>
-        </p>
-        <h1 className="panel-title" id="company-detail-heading">
-          {company.name}
-        </h1>
-        <p>
-          <span className={isActive ? "tag" : "tag tag-muted"}>
-            {isActive ? "活跃" : "已归档"}
-          </span>
-        </p>
-        <p className="notice">{company.profile_text || "暂无企业简介。"}</p>
-      </section>
+      <Card aria-labelledby="company-detail-heading">
+        <CardHeader>
+          <h1 className="text-2xl font-bold tracking-tight" id="company-detail-heading">
+            {company.name}
+          </h1>
+          <CardAction>
+            {isActive ? (
+              <Badge className="bg-success/10 text-success">活跃</Badge>
+            ) : (
+              <Badge variant="secondary">已归档</Badge>
+            )}
+          </CardAction>
+        </CardHeader>
+        <CardContent className="flex flex-col gap-3">
+          <p>
+            <Link
+              className="text-sm text-muted-foreground underline underline-offset-4 hover:text-foreground"
+              href="/companies"
+            >
+              ← 返回企业列表
+            </Link>
+          </p>
+          <p className="text-sm text-muted-foreground">
+            {company.profile_text || "暂无企业简介。"}
+          </p>
+        </CardContent>
+      </Card>
 
       {canManage && isActive ? (
-        <section className="panel" aria-labelledby="edit-company-heading">
-          <h2 className="panel-title" id="edit-company-heading">
-            编辑企业
-          </h2>
-          <CompanyEditForm
-            action={updateCompanyAction}
-            companyId={company.id}
-            name={company.name}
-            profileText={company.profile_text}
-          />
-          <CompanyArchiveButton action={archiveCompanyAction} companyId={company.id} />
-        </section>
+        <Card aria-labelledby="edit-company-heading">
+          <CardHeader>
+            <h2 className="text-lg font-semibold" id="edit-company-heading">
+              编辑企业
+            </h2>
+          </CardHeader>
+          <CardContent className="flex flex-col gap-4">
+            <CompanyEditForm
+              action={updateCompanyAction}
+              companyId={company.id}
+              name={company.name}
+              profileText={company.profile_text}
+            />
+            <CompanyArchiveButton action={archiveCompanyAction} companyId={company.id} />
+          </CardContent>
+        </Card>
       ) : null}
 
-      <section className="panel" aria-labelledby="documents-heading">
-        <h2 className="panel-title" id="documents-heading">
-          企业文档
-        </h2>
-        {documents.length === 0 ? (
-          <p className="notice">尚未上传文档。</p>
-        ) : (
-          <table className="data-table">
-            <thead>
-              <tr>
-                <th>文件名</th>
-                <th>大小</th>
-                <th>抽取文本预览</th>
-                <th>上传时间</th>
-              </tr>
-            </thead>
-            <tbody>
-              {documents.map((document) => (
-                <tr key={document.id}>
-                  <td>{document.original_filename}</td>
-                  <td>{document.byte_size} B</td>
-                  <td>{document.extracted_text.slice(0, 120) || "—"}</td>
-                  <td>{formatDateTime(document.created_at)}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        )}
-        {canManage && isActive ? (
-          <CompanyDocumentUpload action={uploadCompanyDocumentAction} companyId={company.id} />
-        ) : null}
-      </section>
+      <Card aria-labelledby="documents-heading">
+        <CardHeader>
+          <h2 className="text-lg font-semibold" id="documents-heading">
+            企业文档
+          </h2>
+        </CardHeader>
+        <CardContent className="flex flex-col gap-4">
+          {documents.length === 0 ? (
+            <p className="text-sm text-muted-foreground">尚未上传文档。</p>
+          ) : (
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead className={headClassName}>文件名</TableHead>
+                  <TableHead className={headClassName}>大小</TableHead>
+                  <TableHead className={headClassName}>抽取文本预览</TableHead>
+                  <TableHead className={headClassName}>上传时间</TableHead>
+                  <TableHead className={headClassName}>下载</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {documents.map((document) => (
+                  <TableRow key={document.id}>
+                    <TableCell>{document.original_filename}</TableCell>
+                    <TableCell className="tabular-nums">{document.byte_size} B</TableCell>
+                    <TableCell className="max-w-md truncate">
+                      {document.extracted_text.slice(0, 120) || "—"}
+                    </TableCell>
+                    <TableCell className="tabular-nums">
+                      {formatDateTime(document.created_at)}
+                    </TableCell>
+                    <TableCell>
+                      <a
+                        className="font-medium underline underline-offset-4"
+                        href={`${apiPublicBaseUrl()}/companies/${company.id}/documents/${document.id}/content`}
+                      >
+                        下载
+                      </a>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          )}
+          {canManage && isActive ? (
+            <CompanyDocumentUpload action={uploadCompanyDocumentAction} companyId={company.id} />
+          ) : null}
+        </CardContent>
+      </Card>
 
-      <section className="panel" aria-labelledby="events-heading">
-        <h2 className="panel-title" id="events-heading">
-          操作记录
-        </h2>
-        {events.length === 0 ? (
-          <p className="notice">暂无操作记录。</p>
-        ) : (
-          <table className="data-table">
-            <thead>
-              <tr>
-                <th>时间</th>
-                <th>动作</th>
-                <th>结果</th>
-                <th>详情</th>
-              </tr>
-            </thead>
-            <tbody>
-              {events.map((event) => (
-                <tr key={event.id}>
-                  <td>{formatDateTime(event.created_at)}</td>
-                  <td>{eventLabels[event.action] ?? event.action}</td>
-                  <td>{event.result}</td>
-                  <td>{event.detail || "—"}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        )}
-      </section>
+      <Card aria-labelledby="events-heading">
+        <CardHeader>
+          <h2 className="text-lg font-semibold" id="events-heading">
+            操作记录
+          </h2>
+        </CardHeader>
+        <CardContent>
+          {events.length === 0 ? (
+            <p className="text-sm text-muted-foreground">暂无操作记录。</p>
+          ) : (
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead className={headClassName}>时间</TableHead>
+                  <TableHead className={headClassName}>动作</TableHead>
+                  <TableHead className={headClassName}>结果</TableHead>
+                  <TableHead className={headClassName}>详情</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {events.map((event) => (
+                  <TableRow key={event.id}>
+                    <TableCell className="tabular-nums">
+                      {formatDateTime(event.created_at)}
+                    </TableCell>
+                    <TableCell>{eventLabels[event.action] ?? event.action}</TableCell>
+                    <TableCell>{event.result}</TableCell>
+                    <TableCell>{event.detail || "—"}</TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          )}
+        </CardContent>
+      </Card>
     </main>
   )
 }

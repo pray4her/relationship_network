@@ -4,7 +4,9 @@ import { useActionState } from "react"
 
 import type { MfaVerifyFormState } from "@/app/actions/auth"
 import { FormField } from "@/components/form-field"
+import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Button } from "@/components/ui/button"
+import { FieldLegend, FieldSet } from "@/components/ui/field"
 
 type MfaVerifyFormProps = {
   readonly action: (state: MfaVerifyFormState, formData: FormData) => Promise<MfaVerifyFormState>
@@ -17,24 +19,37 @@ export function MfaVerifyForm({ action }: MfaVerifyFormProps) {
   })
 
   return (
-    <form action={formAction} className="auth-form" noValidate>
+    <form action={formAction} className="flex flex-col gap-4" noValidate>
       {state.formError ? (
-        <p className="form-error" role="alert">
-          {state.formError}
-        </p>
+        <Alert variant="destructive">
+          <AlertDescription>{state.formError}</AlertDescription>
+        </Alert>
       ) : null}
 
-      <fieldset className="radio-row">
-        <legend className="field-label">验证方式</legend>
-        <label className="radio-option" htmlFor="factor-code">
-          <input defaultChecked id="factor-code" name="factor" type="radio" value="code" />
+      <FieldSet>
+        <FieldLegend variant="label">验证方式</FieldLegend>
+        <label className="flex items-center gap-2 text-sm" htmlFor="factor-code">
+          <input
+            className="size-4 accent-primary"
+            defaultChecked
+            id="factor-code"
+            name="factor"
+            type="radio"
+            value="code"
+          />
           身份验证器验证码
         </label>
-        <label className="radio-option" htmlFor="factor-recovery">
-          <input id="factor-recovery" name="factor" type="radio" value="recovery_code" />
+        <label className="flex items-center gap-2 text-sm" htmlFor="factor-recovery">
+          <input
+            className="size-4 accent-primary"
+            id="factor-recovery"
+            name="factor"
+            type="radio"
+            value="recovery_code"
+          />
           恢复码
         </label>
-      </fieldset>
+      </FieldSet>
 
       <FormField
         autoComplete="one-time-code"
@@ -45,7 +60,7 @@ export function MfaVerifyForm({ action }: MfaVerifyFormProps) {
         type="text"
       />
 
-      <Button type="submit" disabled={isPending}>
+      <Button className="w-full" disabled={isPending} type="submit">
         {isPending ? "验证中…" : "验证并登录"}
       </Button>
     </form>

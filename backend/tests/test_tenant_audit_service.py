@@ -5,10 +5,9 @@ from __future__ import annotations
 import uuid
 from datetime import UTC, datetime
 from types import SimpleNamespace
-from typing import Any, cast
+from typing import TYPE_CHECKING, cast
 
 import pytest
-from sqlalchemy.ext.asyncio import AsyncSession
 
 from relationship_network_api import tenant_audit_service
 from relationship_network_api.models import TenantAuditEvent
@@ -18,6 +17,8 @@ from relationship_network_api.tenant_audit_service import (
     TenantAuditEventView,
 )
 
+if TYPE_CHECKING:
+    from sqlalchemy.ext.asyncio import AsyncSession
 
 pytestmark = pytest.mark.anyio
 
@@ -32,7 +33,7 @@ class SpySession:
         if isinstance(item, TenantAuditEvent):
             self._rows.append(item)
 
-    async def execute(self, _statement: object) -> Any:
+    async def execute(self, _statement: object) -> object:
         ordered = sorted(
             self._rows,
             key=lambda row: row.created_at or datetime.now(UTC),
@@ -48,7 +49,7 @@ async def test_record_and_list_company_events() -> None:
     company_id = uuid.uuid4()
 
     tenant_audit_service.record_event(
-        cast("AsyncSession", session),
+        cast("AsyncSession", cast("object", session)),
         tenant_id=tenant_id,
         actor_user_id=actor_id,
         action="company.create",
@@ -62,7 +63,7 @@ async def test_record_and_list_company_events() -> None:
     event.created_at = datetime.now(UTC)
 
     events = await tenant_audit_service.list_events_for_target(
-        cast("AsyncSession", session),
+        cast("AsyncSession", cast("object", session)),
         tenant_id=tenant_id,
         target_type=TARGET_TYPE_COMPANY,
         target_id=str(company_id),

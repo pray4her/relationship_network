@@ -6,6 +6,7 @@ import { useActionState } from "react"
 
 import type { MfaEnableFormState, MfaSetupStartState } from "@/app/actions/mfa"
 import { FormField } from "@/components/form-field"
+import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Button } from "@/components/ui/button"
 
 type MfaSetupWizardProps = {
@@ -33,42 +34,52 @@ export function MfaSetupWizard({ enableAction, startAction }: MfaSetupWizardProp
 
   if (enableState.recoveryCodes) {
     return (
-      <div className="mfa-step">
-        <p className="notice" role="alert">
-          请立即保存以下恢复码，它们仅显示一次。丢失后将无法在无法使用身份验证器时登录。
-        </p>
-        <ol className="recovery-codes">
+      <div className="flex flex-col gap-4">
+        <Alert variant="destructive">
+          <AlertDescription>
+            请立即保存以下恢复码，它们仅显示一次。丢失后将无法在无法使用身份验证器时登录。
+          </AlertDescription>
+        </Alert>
+        <ol className="grid max-w-md grid-cols-2 gap-2">
           {enableState.recoveryCodes.map((code) => (
-            <li className="mono-value" key={code}>
+            <li
+              className="rounded-md border bg-muted px-2.5 py-1.5 text-center font-mono text-sm break-all"
+              key={code}
+            >
               {code}
             </li>
           ))}
         </ol>
-        <Button type="button" onClick={() => router.refresh()}>
-          我已保存
-        </Button>
+        <div>
+          <Button type="button" onClick={() => router.refresh()}>
+            我已保存
+          </Button>
+        </div>
       </div>
     )
   }
 
   if (startState.setup) {
     return (
-      <div className="mfa-step">
-        <p className="field-hint">
+      <div className="flex flex-col gap-4">
+        <p className="text-sm text-muted-foreground">
           第一步：使用身份验证器（如 Microsoft Authenticator、Google
           Authenticator）扫描下方二维码，或手动输入密钥。
         </p>
-        <div className="qr-wrap">
+        <div className="w-fit rounded-lg border bg-white p-3">
           <QRCodeSVG size={180} value={startState.setup.otpauthUrl} />
         </div>
         <p>
-          手动输入密钥：<span className="mono-value">{startState.setup.secret}</span>
+          手动输入密钥：
+          <span className="rounded-md border bg-muted px-2.5 py-1.5 font-mono text-sm break-all">
+            {startState.setup.secret}
+          </span>
         </p>
-        <form action={enableFormAction} className="auth-form" noValidate>
+        <form action={enableFormAction} className="flex flex-col gap-4" noValidate>
           {enableState.formError ? (
-            <p className="form-error" role="alert">
-              {enableState.formError}
-            </p>
+            <Alert variant="destructive">
+              <AlertDescription>{enableState.formError}</AlertDescription>
+            </Alert>
           ) : null}
           <FormField
             autoComplete="one-time-code"
@@ -78,25 +89,31 @@ export function MfaSetupWizard({ enableAction, startAction }: MfaSetupWizardProp
             label="验证码"
             type="text"
           />
-          <Button type="submit" disabled={enablePending}>
-            {enablePending ? "启用中…" : "启用两步验证"}
-          </Button>
+          <div>
+            <Button type="submit" disabled={enablePending}>
+              {enablePending ? "启用中…" : "启用两步验证"}
+            </Button>
+          </div>
         </form>
       </div>
     )
   }
 
   return (
-    <form action={startFormAction} className="auth-form" noValidate>
+    <form action={startFormAction} className="flex flex-col gap-4" noValidate>
       {startState.formError ? (
-        <p className="form-error" role="alert">
-          {startState.formError}
-        </p>
+        <Alert variant="destructive">
+          <AlertDescription>{startState.formError}</AlertDescription>
+        </Alert>
       ) : null}
-      <p className="field-hint">启用后，登录时除密码外还需输入身份验证器验证码。</p>
-      <Button type="submit" disabled={startPending}>
-        {startPending ? "生成中…" : "设置两步验证"}
-      </Button>
+      <p className="text-sm text-muted-foreground">
+        启用后，登录时除密码外还需输入身份验证器验证码。
+      </p>
+      <div>
+        <Button type="submit" disabled={startPending}>
+          {startPending ? "生成中…" : "设置两步验证"}
+        </Button>
+      </div>
     </form>
   )
 }

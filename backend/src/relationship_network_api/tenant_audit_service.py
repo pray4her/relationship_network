@@ -4,18 +4,22 @@ from __future__ import annotations
 
 import uuid
 from dataclasses import dataclass
-from datetime import datetime
-from typing import Final, final
+from typing import TYPE_CHECKING, Final, final
 
 from sqlalchemy import select
-from sqlalchemy.ext.asyncio import AsyncSession
 
 from relationship_network_api.models import TenantAuditEvent
+
+if TYPE_CHECKING:
+    from datetime import datetime
+
+    from sqlalchemy.ext.asyncio import AsyncSession
 
 AUDIT_RESULT_SUCCESS: Final = "success"
 AUDIT_RESULT_FAILURE: Final = "failure"
 AUDIT_LIST_LIMIT: Final = 200
 TARGET_TYPE_COMPANY: Final = "company"
+TARGET_TYPE_JOB: Final = "job"
 
 
 @final

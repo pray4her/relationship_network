@@ -4,6 +4,7 @@ import { useActionState } from "react"
 
 import type { MfaDisableFormState } from "@/app/actions/mfa"
 import { FormField } from "@/components/form-field"
+import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Button } from "@/components/ui/button"
 
 type MfaDisableFormProps = {
@@ -17,11 +18,11 @@ export function MfaDisableForm({ action }: MfaDisableFormProps) {
   })
 
   return (
-    <form action={formAction} className="auth-form" noValidate>
+    <form action={formAction} className="flex flex-col gap-4" noValidate>
       {state.formError ? (
-        <p className="form-error" role="alert">
-          {state.formError}
-        </p>
+        <Alert variant="destructive">
+          <AlertDescription>{state.formError}</AlertDescription>
+        </Alert>
       ) : null}
       <FormField
         autoComplete="one-time-code"
@@ -31,9 +32,11 @@ export function MfaDisableForm({ action }: MfaDisableFormProps) {
         label="当前验证码"
         type="text"
       />
-      <Button mode="secondary" type="submit" disabled={isPending}>
-        {isPending ? "停用中…" : "停用两步验证"}
-      </Button>
+      <div>
+        <Button type="submit" variant="secondary" disabled={isPending}>
+          {isPending ? "停用中…" : "停用两步验证"}
+        </Button>
+      </div>
     </form>
   )
 }

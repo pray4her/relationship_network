@@ -2,16 +2,18 @@
 
 from __future__ import annotations
 
-from collections.abc import Iterator
 from io import BytesIO
-from typing import Final, final
+from typing import TYPE_CHECKING, Final, final
 
 from minio import Minio
 from minio.error import MinioException
 from urllib3 import PoolManager
 from urllib3.util import Retry, Timeout
 
-from relationship_network_api.config import AppSettings
+if TYPE_CHECKING:
+    from collections.abc import Iterator
+
+    from relationship_network_api.config import AppSettings
 
 DEFAULT_TIMEOUT_SECONDS: Final = 30
 

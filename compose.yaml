@@ -160,6 +160,7 @@ services:
       context: ./frontend
     environment:
       API_INTERNAL_URL: http://api:8000
+      API_PUBLIC_URL: ${API_PUBLIC_URL:-http://localhost:8000}
     healthcheck:
       test: ["CMD", "wget", "-q", "--spider", "http://127.0.0.1:3000"]
       interval: 5s

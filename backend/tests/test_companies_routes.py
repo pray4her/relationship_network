@@ -3,15 +3,13 @@
 from __future__ import annotations
 
 import uuid
-from collections.abc import AsyncIterator
 from datetime import UTC, datetime, timedelta
 from types import SimpleNamespace
-from typing import cast
+from typing import TYPE_CHECKING, cast
 
-import pytest
-from _pytest.monkeypatch import MonkeyPatch
+from fastapi import HTTPException
+from fastapi import status as http_status
 from fastapi.testclient import TestClient
-from sqlalchemy.ext.asyncio import AsyncSession
 
 from relationship_network_api import company_service, tenant_audit_service
 from relationship_network_api.auth_service import Authentication, MembershipView, UserView
@@ -27,9 +25,16 @@ from relationship_network_api.deps import (
     get_tenant_context,
 )
 from relationship_network_api.main import create_app
-from relationship_network_api.models import CompanyStatus
 from relationship_network_api.routers.companies import require_companies_manage
 from relationship_network_api.usage_service import QuotaExceededError
+
+if TYPE_CHECKING:
+    from collections.abc import AsyncIterator
+
+    from _pytest.monkeypatch import MonkeyPatch
+    from sqlalchemy.ext.asyncio import AsyncSession
+
+    from relationship_network_api.models import CompanyStatus
 
 TENANT_ID = uuid.UUID("11111111-1111-1111-1111-111111111111")
 USER_ID = uuid.UUID("22222222-2222-2222-2222-222222222222")
@@ -97,15 +102,11 @@ def make_client(context: TenantContext | None, *, writable: bool = True) -> Test
 
         async def override_writable() -> TenantContext:
             if "companies:manage" not in context.permissions:
-                from fastapi import HTTPException, status as http_status
-
                 raise HTTPException(
                     status_code=http_status.HTTP_403_FORBIDDEN,
                     detail="permission_denied",
                 )
             if not writable:
-                from fastapi import HTTPException, status as http_status
-
                 raise HTTPException(
                     status_code=http_status.HTTP_403_FORBIDDEN,
                     detail="subscription_read_only",
@@ -121,7 +122,8 @@ def test_create_company_requires_manage_permission(monkeypatch: MonkeyPatch) -> 
     client = make_client(make_context(permissions=frozenset({"companies:read"})))
 
     async def fail_create(*_args: object, **_kwargs: object) -> CompanyView:
-        raise AssertionError("create should not run")
+        msg = "create should not run"
+        raise AssertionError(msg)
 
     monkeypatch.setattr(company_service, "create_company", fail_create)
     response = client.post("/companies", json={"name": "A"})
@@ -163,7 +165,8 @@ def test_create_company_rejects_read_only_subscription(monkeypatch: MonkeyPatch)
     )
 
     async def fail_create(*_args: object, **_kwargs: object) -> CompanyView:
-        raise AssertionError("create should not run")
+        msg = "create should not run"
+        raise AssertionError(msg)
 
     monkeypatch.setattr(company_service, "create_company", fail_create)
     response = client.post("/companies", json={"name": "只读"})

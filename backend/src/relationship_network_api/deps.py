@@ -174,7 +174,6 @@ def require_writable_permission(
     permission: str,
 ) -> Callable[..., Coroutine[object, object, TenantContext]]:
     """Require both a permission and a writable (in-period) subscription."""
-
     permission_dependency = require_permission(permission)
 
     async def dependency(

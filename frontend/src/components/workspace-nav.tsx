@@ -1,4 +1,19 @@
+"use client"
+
 import Link from "next/link"
+import { usePathname } from "next/navigation"
+
+import { cn } from "@/lib/utils"
+
+const links = [
+  { href: "/", label: "首页" },
+  { href: "/members", label: "成员", permission: "members:read" },
+  { href: "/companies", label: "企业", permission: "companies:read" },
+  { href: "/jobs", label: "职位", permission: "jobs:read" },
+  { href: "/usage", label: "用量与套餐", permission: "billing:read" },
+  { href: "/settings/security", label: "安全设置" },
+  { href: "/admin", label: "平台管理", admin: true },
+] as const
 
 type WorkspaceNavProps = {
   readonly permissions: readonly string[]
@@ -6,34 +21,36 @@ type WorkspaceNavProps = {
 }
 
 export function WorkspaceNav({ isPlatformAdmin, permissions }: WorkspaceNavProps) {
+  const pathname = usePathname()
+
   return (
-    <nav className="workspace-nav" aria-label="工作区">
-      <Link className="workspace-nav-link" href="/">
-        首页
-      </Link>
-      {permissions.includes("members:read") ? (
-        <Link className="workspace-nav-link" href="/members">
-          成员
-        </Link>
-      ) : null}
-      {permissions.includes("companies:read") ? (
-        <Link className="workspace-nav-link" href="/companies">
-          企业
-        </Link>
-      ) : null}
-      {permissions.includes("billing:read") ? (
-        <Link className="workspace-nav-link" href="/usage">
-          用量与套餐
-        </Link>
-      ) : null}
-      <Link className="workspace-nav-link" href="/settings/security">
-        安全设置
-      </Link>
-      {isPlatformAdmin ? (
-        <Link className="workspace-nav-link" href="/admin">
-          平台管理
-        </Link>
-      ) : null}
+    <nav aria-label="工作区" className="flex flex-wrap gap-1">
+      {links.map((link) => {
+        if (
+          "permission" in link &&
+          link.permission !== undefined &&
+          !permissions.includes(link.permission)
+        ) {
+          return null
+        }
+        if ("admin" in link && link.admin && !isPlatformAdmin) {
+          return null
+        }
+        const isActive = link.href === "/" ? pathname === "/" : pathname.startsWith(link.href)
+        return (
+          <Link
+            aria-current={isActive ? "page" : undefined}
+            className={cn(
+              "rounded-md px-3 py-1.5 text-sm font-medium text-muted-foreground transition-colors duration-200 hover:bg-muted hover:text-foreground",
+              isActive && "bg-muted text-accent",
+            )}
+            href={link.href}
+            key={link.href}
+          >
+            {link.label}
+          </Link>
+        )
+      })}
     </nav>
   )
 }

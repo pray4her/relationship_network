@@ -7,9 +7,9 @@ import { redirect } from "next/navigation"
 import { SESSION_COOKIE_NAME } from "@/lib/auth-client"
 import {
   archiveCompany,
+  type CompanyMutationResult,
   createCompaniesTransport,
   createCompany,
-  type CompanyMutationResult,
   type DocumentUploadResult,
   updateCompany,
   uploadCompanyDocument,

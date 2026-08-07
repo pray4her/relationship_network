@@ -70,6 +70,14 @@ COMPANY_STATUS_ARCHIVED: Final[CompanyStatus] = "archived"
 DocumentScanStatus = Literal["clean", "rejected", "content_checked"]
 """Document content-scan outcomes; stored as lowercase strings."""
 
+JobStatus = Literal["draft", "active", "closed", "archived"]
+"""Lifecycle states a job posting can be in; stored as lowercase strings."""
+
+JOB_STATUS_DRAFT: Final[JobStatus] = "draft"
+JOB_STATUS_ACTIVE: Final[JobStatus] = "active"
+JOB_STATUS_CLOSED: Final[JobStatus] = "closed"
+JOB_STATUS_ARCHIVED: Final[JobStatus] = "archived"
+
 
 class Base(DeclarativeBase):
     pass
@@ -541,6 +549,98 @@ class CompanyDocument(Base):
     company_id: Mapped[uuid.UUID] = mapped_column(
         Uuid,
         ForeignKey("companies.id", ondelete="CASCADE"),
+        index=True,
+    )
+    original_filename: Mapped[str] = mapped_column(String(255))
+    content_type: Mapped[str] = mapped_column(String(100))
+    byte_size: Mapped[int] = mapped_column(Integer)
+    storage_key: Mapped[str] = mapped_column(String(512))
+    sha256: Mapped[str] = mapped_column(String(64))
+    extracted_text: Mapped[str] = mapped_column(Text, server_default="", default="")
+    scan_status: Mapped[DocumentScanStatus] = mapped_column(
+        String(30),
+        server_default="content_checked",
+        default="content_checked",
+    )
+    uploaded_by: Mapped[uuid.UUID | None] = mapped_column(
+        Uuid,
+        ForeignKey("users.id", ondelete="SET NULL"),
+        nullable=True,
+    )
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        server_default=func.now(),
+    )
+
+
+@final
+class Job(Base):
+    """A job posting owned by a tenant, attached to one company."""
+
+    __tablename__ = "jobs"
+    __table_args__ = (
+        CheckConstraint(
+            "status IN ('draft', 'active', 'closed', 'archived')",
+            name="ck_jobs_status",
+        ),
+        Index("ix_jobs_tenant_status", "tenant_id", "status"),
+        Index("ix_jobs_tenant_company", "tenant_id", "company_id"),
+    )
+
+    id: Mapped[uuid.UUID] = mapped_column(Uuid, primary_key=True, default=uuid.uuid4)
+    tenant_id: Mapped[uuid.UUID] = mapped_column(
+        Uuid,
+        ForeignKey("tenants.id", ondelete="CASCADE"),
+        index=True,
+    )
+    company_id: Mapped[uuid.UUID] = mapped_column(
+        Uuid,
+        ForeignKey("companies.id", ondelete="CASCADE"),
+        index=True,
+    )
+    title: Mapped[str] = mapped_column(String(200))
+    description: Mapped[str] = mapped_column(Text, server_default="", default="")
+    status: Mapped[JobStatus] = mapped_column(
+        String(20),
+        server_default=JOB_STATUS_DRAFT,
+        default=JOB_STATUS_DRAFT,
+    )
+    usage_reservation_id: Mapped[uuid.UUID | None] = mapped_column(Uuid, nullable=True)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        server_default=func.now(),
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        server_default=func.now(),
+        onupdate=func.now(),
+    )
+    archived_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+
+
+@final
+class JobMaterial(Base):
+    """A privately stored job posting material with extracted text."""
+
+    __tablename__ = "job_materials"
+    __table_args__ = (
+        CheckConstraint("byte_size > 0", name="ck_job_materials_byte_size"),
+        CheckConstraint(
+            "scan_status IN ('clean', 'rejected', 'content_checked')",
+            name="ck_job_materials_scan_status",
+        ),
+        UniqueConstraint("storage_key", name="uq_job_materials_storage_key"),
+    )
+
+    id: Mapped[uuid.UUID] = mapped_column(Uuid, primary_key=True, default=uuid.uuid4)
+    tenant_id: Mapped[uuid.UUID] = mapped_column(
+        Uuid,
+        ForeignKey("tenants.id", ondelete="CASCADE"),
+        index=True,
+    )
+    job_id: Mapped[uuid.UUID] = mapped_column(
+        Uuid,
+        ForeignKey("jobs.id", ondelete="CASCADE"),
         index=True,
     )
     original_filename: Mapped[str] = mapped_column(String(255))

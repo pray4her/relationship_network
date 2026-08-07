@@ -3,6 +3,7 @@
 import { useActionState } from "react"
 
 import type { TenantMfaPolicyFormState } from "@/app/actions/mfa"
+import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Button } from "@/components/ui/button"
 
 type TenantMfaPolicyFormProps = {
@@ -20,18 +21,18 @@ export function TenantMfaPolicyForm({ action }: TenantMfaPolicyFormProps) {
   })
 
   return (
-    <div className="mfa-step">
+    <div className="flex flex-col gap-4">
       {state.notice ? (
-        <p className="notice notice-info" role="status">
-          {state.notice}
-        </p>
+        <Alert role="status">
+          <AlertDescription>{state.notice}</AlertDescription>
+        </Alert>
       ) : null}
       {state.formError ? (
-        <p className="form-error" role="alert">
-          {state.formError}
-        </p>
+        <Alert variant="destructive">
+          <AlertDescription>{state.formError}</AlertDescription>
+        </Alert>
       ) : null}
-      <p className="field-hint">
+      <p className="text-sm text-muted-foreground">
         开启后，所有未启用两步验证的成员将无法访问租户数据，直到完成 MFA 设置。
         {state.required === null
           ? ""
@@ -39,7 +40,7 @@ export function TenantMfaPolicyForm({ action }: TenantMfaPolicyFormProps) {
             ? "当前状态：已开启。"
             : "当前状态：已关闭。"}
       </p>
-      <div className="table-actions">
+      <div className="flex flex-wrap gap-2">
         <form action={formAction}>
           <input name="required" type="hidden" value="true" />
           <Button type="submit" disabled={isPending}>
@@ -48,7 +49,7 @@ export function TenantMfaPolicyForm({ action }: TenantMfaPolicyFormProps) {
         </form>
         <form action={formAction}>
           <input name="required" type="hidden" value="false" />
-          <Button mode="secondary" type="submit" disabled={isPending}>
+          <Button type="submit" variant="secondary" disabled={isPending}>
             {isPending ? "提交中…" : "关闭强制 MFA"}
           </Button>
         </form>

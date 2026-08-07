@@ -2,6 +2,7 @@ import Link from "next/link"
 import type { ReactNode } from "react"
 
 import { AccountPanel } from "@/components/account-panel"
+import { Alert, AlertDescription } from "@/components/ui/alert"
 import type { AdminGateFailure } from "@/lib/admin-guard"
 
 type AdminGateNoticeProps = {
@@ -34,11 +35,15 @@ function defaultMessage(failure: AdminGateFailure): ReactNode {
 
 export function AdminGateNotice({ children, failure, message, title }: AdminGateNoticeProps) {
   return (
-    <main className="page-shell">
+    <main className="mx-auto flex w-full max-w-7xl flex-col gap-6 px-6 py-6">
       <AccountPanel />
-      <section className="panel">
-        <h1 className="panel-title">{title}</h1>
-        <p className="notice">{message ?? defaultMessage(failure)}</p>
+      <section aria-labelledby="gate-heading" className="flex flex-col gap-4">
+        <h1 className="text-2xl font-bold tracking-tight" id="gate-heading">
+          {title}
+        </h1>
+        <Alert variant={failure === "forbidden" ? "destructive" : "default"}>
+          <AlertDescription>{message ?? defaultMessage(failure)}</AlertDescription>
+        </Alert>
         {children}
       </section>
     </main>

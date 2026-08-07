@@ -3,8 +3,7 @@
 from __future__ import annotations
 
 import uuid
-from collections.abc import AsyncIterator
-from typing import cast
+from typing import TYPE_CHECKING, cast
 
 import pytest
 from httpx import AsyncClient
@@ -16,6 +15,11 @@ from relationship_network_api.tenant_context import set_tenant_context
 from relationship_network_api.usage_service import get_usage_summary
 
 from .conftest import Stack, unique_email
+
+if TYPE_CHECKING:
+    from collections.abc import AsyncIterator
+
+    from sqlalchemy.engine import CursorResult
 
 # Requires local PostgreSQL (+ MinIO for document upload) with alembic head applied.
 
@@ -106,13 +110,17 @@ async def test_company_lifecycle_quota_and_audit(stack: Stack, client: AsyncClie
         assert companies.remaining == 0
 
         audit_rows = (
-            await session.execute(
-                select(TenantAuditEvent).where(
-                    TenantAuditEvent.tenant_id == tenant_id,
-                    TenantAuditEvent.target_id == company_id,
+            (
+                await session.execute(
+                    select(TenantAuditEvent).where(
+                        TenantAuditEvent.tenant_id == tenant_id,
+                        TenantAuditEvent.target_id == company_id,
+                    )
                 )
             )
-        ).scalars().all()
+            .scalars()
+            .all()
+        )
         assert any(row.action == "company.archive" for row in audit_rows)
 
 
@@ -134,8 +142,10 @@ async def test_company_rls_blocks_cross_tenant_access(stack: Stack, client: Asyn
     async with stack.session_factory() as session:
         await set_tenant_context(session, tenant_a)
         visible = (
-            await session.execute(select(Company.id).where(Company.tenant_id == tenant_a))
-        ).scalars().all()
+            (await session.execute(select(Company.id).where(Company.tenant_id == tenant_a)))
+            .scalars()
+            .all()
+        )
         assert company_a in visible
 
     # Tenant B context cannot see tenant A's company rows even without a filter
@@ -157,8 +167,11 @@ async def test_company_rls_blocks_cross_tenant_access(stack: Stack, client: Asyn
             await session.flush()
         await session.rollback()
 
-        result = await session.execute(
-            text("UPDATE companies SET name = 'stolen' WHERE id = :id"),
-            {"id": company_a},
+        result = cast(
+            "CursorResult[tuple[()]]",
+            await session.execute(
+                text("UPDATE companies SET name = 'stolen' WHERE id = :id"),
+                {"id": company_a},
+            ),
         )
         assert result.rowcount == 0
