@@ -1,0 +1,515 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Toast — Component Showcase</title>
+<link rel="stylesheet" href="../src/styles/tokens.css">
+<link rel="stylesheet" href="../src/styles/typography.css">
+<link rel="stylesheet" href="../src/styles/separator.css">
+<link rel="stylesheet" href="../src/styles/button.css">
+<link rel="stylesheet" href="../src/styles/toast.css">
+<style>
+  /* Page chrome — tokens only, no component values. */
+  *, *::before, *::after { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: var(--background);
+    color: var(--foreground);
+    font-family: var(--font-sans);
+    -webkit-font-smoothing: antialiased;
+  }
+  .container { max-width: var(--doc-container-max); margin: 0 auto; padding: 0 var(--space-6); }
+  .page-head { padding: var(--space-16) 0 var(--space-8); border-bottom: var(--border-width) solid var(--border); }
+  .page-head .text--overline { color: var(--primary); display: block; margin-bottom: var(--space-3); }
+  .page-head p { margin: var(--space-4) 0 0; max-width: 72ch; }
+  .demo-block { padding: var(--space-8) 0; }
+  .demo-block > .text--h5 { margin-bottom: var(--space-3); }
+  .demo-lede { margin: 0 0 var(--space-6); max-width: 72ch; color: var(--muted-foreground); }
+  .demo-stack { display: grid; gap: var(--space-3); max-width: calc(var(--space-16) * 6); }
+  .demo-note { margin-top: var(--space-6); max-width: 72ch; color: var(--muted-foreground); }
+  .demo-row { display: flex; flex-wrap: wrap; gap: var(--space-3); align-items: center; }
+  .state-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(var(--doc-grid-min-card), 1fr));
+    gap: var(--space-6);
+  }
+  .state-cell { display: grid; gap: var(--space-3); align-content: start; }
+  .state-caption { color: var(--caption-foreground); }
+  .preview-frame {
+    position: relative;
+    min-height: calc(var(--space-24) * 3);
+    background: var(--surface-soft);
+    border: var(--border-width) solid var(--border-soft);
+    border-radius: var(--radius-lg);
+    overflow: hidden;
+  }
+  /* In-frame viewport: absolute inside the preview, not the window. */
+  .preview-frame .toast-viewport {
+    position: absolute;
+  }
+  .preview-frame--tall { min-height: calc(var(--space-24) * 4); }
+  .token-legend {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(var(--doc-grid-min-card), 1fr));
+    gap: var(--space-3) var(--space-6);
+    margin: 0;
+  }
+  .token-legend dt { color: var(--caption-foreground); }
+  .token-legend dd { margin: var(--space-0-5) 0 0; color: var(--foreground-strong); }
+</style>
+</head>
+<body>
+
+<header class="page-head">
+  <div class="container">
+    <span class="text text--overline">Component</span>
+    <h1 class="text text--h1">Toast</h1>
+    <p class="text text--body-md">
+      Elevated transient notices. Surface stays readable
+      (<code class="text text--code">--popover</code> +
+      <code class="text text--code">--shadow-lift</code>); status speaks
+      through the accent icon and leading edge. One polite live region on
+      the viewport — never per-toast
+      <code class="text text--code">role="alert"</code>. Auto-dismiss pauses
+      while the toast is hovered or focused.
+    </p>
+  </div>
+</header>
+
+<main class="container">
+
+  <!-- ===================== Variants ===================== -->
+  <section class="demo-block" aria-labelledby="variants-heading">
+    <h2 class="text text--h5" id="variants-heading">Variants — elevated surface, semantic accent</h2>
+    <p class="text text--body-sm demo-lede">
+      Neutral → info → success → warning → destructive. Each row shows the
+      full anatomy: icon, title, description, optional action, close.
+    </p>
+    <div class="demo-stack" id="toast-variants">
+
+      <div class="toast toast--neutral toast--visible">
+        <svg class="toast__icon" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+          <circle cx="12" cy="12" r="8.5" stroke="currentColor"/>
+          <path d="M8 12h8" stroke="currentColor" stroke-linecap="round"/>
+        </svg>
+        <div class="toast__body">
+          <h3 class="toast__title">Draft saved locally</h3>
+          <p class="toast__description">Offline edits sync when you reconnect.</p>
+          <div class="toast__action">
+            <button class="btn btn--secondary btn--sm" type="button">Open draft</button>
+          </div>
+        </div>
+        <button class="toast__close" type="button" aria-label="Dismiss draft saved notice">
+          <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+            <path d="m7 7 10 10M17 7 7 17" stroke="currentColor" stroke-linecap="round"/>
+          </svg>
+        </button>
+      </div>
+
+      <div class="toast toast--info toast--visible">
+        <svg class="toast__icon" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+          <circle cx="12" cy="12" r="8.5" stroke="currentColor"/>
+          <path d="M12 11v5" stroke="currentColor" stroke-linecap="round"/>
+          <circle cx="12" cy="8" r="0.5" fill="currentColor"/>
+        </svg>
+        <div class="toast__body">
+          <h3 class="toast__title">Matching index is syncing</h3>
+          <p class="toast__description">New embeddings appear in search within a few minutes.</p>
+          <div class="toast__action">
+            <button class="btn btn--secondary btn--sm" type="button">View status</button>
+          </div>
+        </div>
+        <button class="toast__close" type="button" aria-label="Dismiss sync notice">
+          <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+            <path d="m7 7 10 10M17 7 7 17" stroke="currentColor" stroke-linecap="round"/>
+          </svg>
+        </button>
+      </div>
+
+      <div class="toast toast--success toast--visible">
+        <svg class="toast__icon" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+          <circle cx="12" cy="12" r="8.5" stroke="currentColor"/>
+          <path d="m8 12.5 2.5 2.5L16 9.5" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+        <div class="toast__body">
+          <h3 class="toast__title">Invite sent</h3>
+          <p class="toast__description">Mei Chen will receive an email to join Acme.</p>
+          <div class="toast__action">
+            <button class="btn btn--secondary btn--sm" type="button">View members</button>
+          </div>
+        </div>
+        <button class="toast__close" type="button" aria-label="Dismiss invite sent notice">
+          <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+            <path d="m7 7 10 10M17 7 7 17" stroke="currentColor" stroke-linecap="round"/>
+          </svg>
+        </button>
+      </div>
+
+      <div class="toast toast--warning toast--visible">
+        <svg class="toast__icon" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+          <path d="M10.3 4.3 2.6 18a2 2 0 0 0 1.7 3h15.4a2 2 0 0 0 1.7-3L13.7 4.3a2 2 0 0 0-3.4 0Z" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"/>
+          <path d="M12 9v4" stroke="currentColor" stroke-linecap="round"/>
+          <path d="M12 17h.01" stroke="currentColor" stroke-linecap="round"/>
+        </svg>
+        <div class="toast__body">
+          <h3 class="toast__title">Subscription expires in 5 days</h3>
+          <p class="toast__description">The tenant becomes read-only after expiry.</p>
+          <div class="toast__action">
+            <button class="btn btn--secondary btn--sm" type="button">Renew plan</button>
+          </div>
+        </div>
+        <button class="toast__close" type="button" aria-label="Dismiss expiry notice">
+          <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+            <path d="m7 7 10 10M17 7 7 17" stroke="currentColor" stroke-linecap="round"/>
+          </svg>
+        </button>
+      </div>
+
+      <div class="toast toast--destructive toast--visible">
+        <svg class="toast__icon" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+          <circle cx="12" cy="12" r="8.5" stroke="currentColor"/>
+          <path d="m9 9 6 6M15 9l-6 6" stroke="currentColor" stroke-linecap="round"/>
+        </svg>
+        <div class="toast__body">
+          <h3 class="toast__title">Document upload failed</h3>
+          <p class="toast__description">File exceeds the 25&nbsp;MB limit. Compress and retry.</p>
+          <div class="toast__action">
+            <button class="btn btn--secondary btn--sm" type="button">Try again</button>
+          </div>
+        </div>
+        <button class="toast__close is-focus-visible" type="button" aria-label="Dismiss upload failure notice" tabindex="-1">
+          <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+            <path d="m7 7 10 10M17 7 7 17" stroke="currentColor" stroke-linecap="round"/>
+          </svg>
+        </button>
+      </div>
+
+    </div>
+    <p class="text text--caption demo-note">
+      Accent (icon + inset leading edge) maps to
+      <code class="text text--code">--info</code> /
+      <code class="text text--code">--success</code> /
+      <code class="text text--code">--warning</code> /
+      <code class="text text--code">--destructive</code>
+      (neutral → <code class="text text--code">--muted-foreground</code>).
+      Title/description stay
+      <code class="text text--code">--foreground</code> /
+      <code class="text text--code">--muted-foreground</code> for contrast
+      on the elevated surface. The destructive close shows
+      <code class="text text--code">.is-focus-visible</code>.
+    </p>
+  </section>
+
+  <hr class="separator separator--horizontal separator--subtle" role="presentation">
+
+  <!-- ===================== Lifecycle states ===================== -->
+  <section class="demo-block" aria-labelledby="states-heading">
+    <h2 class="text text--h5" id="states-heading">Lifecycle — entering · visible · exiting</h2>
+    <p class="text text--body-sm demo-lede">
+      Static modifiers freeze each pose. Motion distance is
+      <code class="text text--code">--space-4</code>; timing is
+      <code class="text text--code">--duration-normal</code> /
+      <code class="text text--code">--ease-standard</code>. Reduced motion
+      drops the slide and keeps opacity only.
+    </p>
+    <div class="state-grid">
+      <div class="state-cell">
+        <span class="text text--caption state-caption">entering</span>
+        <div class="toast toast--info toast--entering">
+          <svg class="toast__icon" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+            <circle cx="12" cy="12" r="8.5" stroke="currentColor"/>
+            <path d="M12 11v5" stroke="currentColor" stroke-linecap="round"/>
+            <circle cx="12" cy="8" r="0.5" fill="currentColor"/>
+          </svg>
+          <div class="toast__body">
+            <h3 class="toast__title">Entering</h3>
+            <p class="toast__description">Opacity 0 · translated by --space-4.</p>
+          </div>
+          <button class="toast__close" type="button" aria-label="Dismiss" tabindex="-1">
+            <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+              <path d="m7 7 10 10M17 7 7 17" stroke="currentColor" stroke-linecap="round"/>
+            </svg>
+          </button>
+        </div>
+      </div>
+      <div class="state-cell">
+        <span class="text text--caption state-caption">visible</span>
+        <div class="toast toast--success toast--visible">
+          <svg class="toast__icon" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+            <circle cx="12" cy="12" r="8.5" stroke="currentColor"/>
+            <path d="m8 12.5 2.5 2.5L16 9.5" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+          <div class="toast__body">
+            <h3 class="toast__title">Visible</h3>
+            <p class="toast__description">Resting pose — full opacity, no offset.</p>
+          </div>
+          <button class="toast__close" type="button" aria-label="Dismiss" tabindex="-1">
+            <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+              <path d="m7 7 10 10M17 7 7 17" stroke="currentColor" stroke-linecap="round"/>
+            </svg>
+          </button>
+        </div>
+      </div>
+      <div class="state-cell">
+        <span class="text text--caption state-caption">exiting</span>
+        <div class="toast toast--warning toast--exiting">
+          <svg class="toast__icon" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+            <path d="M10.3 4.3 2.6 18a2 2 0 0 0 1.7 3h15.4a2 2 0 0 0 1.7-3L13.7 4.3a2 2 0 0 0-3.4 0Z" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"/>
+            <path d="M12 9v4" stroke="currentColor" stroke-linecap="round"/>
+            <path d="M12 17h.01" stroke="currentColor" stroke-linecap="round"/>
+          </svg>
+          <div class="toast__body">
+            <h3 class="toast__title">Exiting</h3>
+            <p class="toast__description">Fading out · same --space-4 travel.</p>
+          </div>
+          <button class="toast__close" type="button" aria-label="Dismiss" tabindex="-1">
+            <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+              <path d="m7 7 10 10M17 7 7 17" stroke="currentColor" stroke-linecap="round"/>
+            </svg>
+          </button>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <hr class="separator separator--horizontal separator--subtle" role="presentation">
+
+  <!-- ===================== Stack + placement ===================== -->
+  <section class="demo-block" aria-labelledby="stack-heading">
+    <h2 class="text text--h5" id="stack-heading">Stack &amp; placement</h2>
+    <p class="text text--body-sm demo-lede">
+      Viewport gap <code class="text text--code">--space-3</code>, inset
+      <code class="text text--code">--space-6</code>, layer
+      <code class="text text--code">--z-popover</code>. Bottom placements
+      use <code class="text text--code">column-reverse</code> so the newest
+      toast sits nearest the edge.
+    </p>
+    <div class="preview-frame preview-frame--tall" id="stack-preview">
+      <div
+        class="toast-viewport toast-viewport--bottom-right"
+        aria-live="polite"
+        aria-relevant="additions text"
+        aria-atomic="false"
+        data-static-stack
+      >
+        <div class="toast toast--success toast--visible">
+          <svg class="toast__icon" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+            <circle cx="12" cy="12" r="8.5" stroke="currentColor"/>
+            <path d="m8 12.5 2.5 2.5L16 9.5" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+          <div class="toast__body">
+            <h3 class="toast__title">Profile published</h3>
+            <p class="toast__description">Newest — nearest the bottom edge.</p>
+          </div>
+          <button class="toast__close" type="button" aria-label="Dismiss" tabindex="-1">
+            <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+              <path d="m7 7 10 10M17 7 7 17" stroke="currentColor" stroke-linecap="round"/>
+            </svg>
+          </button>
+        </div>
+        <div class="toast toast--info toast--visible">
+          <svg class="toast__icon" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+            <circle cx="12" cy="12" r="8.5" stroke="currentColor"/>
+            <path d="M12 11v5" stroke="currentColor" stroke-linecap="round"/>
+            <circle cx="12" cy="8" r="0.5" fill="currentColor"/>
+          </svg>
+          <div class="toast__body">
+            <h3 class="toast__title">Index syncing</h3>
+            <p class="toast__description">Middle of the stack.</p>
+          </div>
+          <button class="toast__close" type="button" aria-label="Dismiss" tabindex="-1">
+            <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+              <path d="m7 7 10 10M17 7 7 17" stroke="currentColor" stroke-linecap="round"/>
+            </svg>
+          </button>
+        </div>
+        <div class="toast toast--neutral toast--visible">
+          <svg class="toast__icon" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+            <circle cx="12" cy="12" r="8.5" stroke="currentColor"/>
+            <path d="M8 12h8" stroke="currentColor" stroke-linecap="round"/>
+          </svg>
+          <div class="toast__body">
+            <h3 class="toast__title">Draft autosaved</h3>
+            <p class="toast__description">Oldest — farthest from the edge.</p>
+          </div>
+          <button class="toast__close" type="button" aria-label="Dismiss" tabindex="-1">
+            <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+              <path d="m7 7 10 10M17 7 7 17" stroke="currentColor" stroke-linecap="round"/>
+            </svg>
+          </button>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <hr class="separator separator--horizontal separator--subtle" role="presentation">
+
+  <!-- ===================== Live demo ===================== -->
+  <section class="demo-block" aria-labelledby="live-heading">
+    <h2 class="text text--h5" id="live-heading">Live region &amp; pause on interact</h2>
+    <p class="text text--body-sm demo-lede">
+      Push toasts into a polite viewport. Auto-dismiss lasts 16×
+      <code class="text text--code">--duration-slow</code> (read from the
+      token at runtime). Hover or focus a toast to pause; leave to
+      resume. Close is always available.
+    </p>
+    <div class="demo-row" id="toast-triggers">
+      <button class="btn btn--secondary btn--sm" type="button" data-toast="neutral">Neutral</button>
+      <button class="btn btn--secondary btn--sm" type="button" data-toast="info">Info</button>
+      <button class="btn btn--secondary btn--sm" type="button" data-toast="success">Success</button>
+      <button class="btn btn--secondary btn--sm" type="button" data-toast="warning">Warning</button>
+      <button class="btn btn--secondary btn--sm" type="button" data-toast="destructive">Destructive</button>
+    </div>
+    <div class="preview-frame preview-frame--tall" style="margin-top: var(--space-6);">
+      <div
+        id="live-viewport"
+        class="toast-viewport toast-viewport--bottom-right"
+        aria-live="polite"
+        aria-relevant="additions text"
+        aria-atomic="false"
+      ></div>
+    </div>
+    <p class="text text--caption demo-note">
+      The viewport — not each toast — owns
+      <code class="text text--code">aria-live="polite"</code>. Screen readers
+      hear additions without assertive interruption when several toasts
+      land in sequence.
+    </p>
+  </section>
+
+  <hr class="separator separator--horizontal separator--subtle" role="presentation">
+
+  <!-- ===================== Token legend ===================== -->
+  <section class="demo-block" aria-labelledby="tokens-heading">
+    <h2 class="text text--h5" id="tokens-heading">Token mapping (summary)</h2>
+    <dl class="token-legend">
+      <div>
+        <dt class="text text--caption">surface</dt>
+        <dd class="text text--body-sm"><code class="text text--code">--popover</code> · <code class="text text--code">--border</code> · <code class="text text--code">--shadow-lift</code></dd>
+      </div>
+      <div>
+        <dt class="text text--caption">text</dt>
+        <dd class="text text--body-sm"><code class="text text--code">--foreground</code> · <code class="text text--code">--muted-foreground</code></dd>
+      </div>
+      <div>
+        <dt class="text text--caption">accent</dt>
+        <dd class="text text--body-sm"><code class="text text--code">--info</code> / <code class="text text--code">--success</code> / <code class="text text--code">--warning</code> / <code class="text text--code">--destructive</code></dd>
+      </div>
+      <div>
+        <dt class="text text--caption">radius / space</dt>
+        <dd class="text text--body-sm"><code class="text text--code">--radius-lg</code> · pad <code class="text text--code">--space-4</code> · stack gap <code class="text text--code">--space-3</code> · inset <code class="text text--code">--space-6</code></dd>
+      </div>
+      <div>
+        <dt class="text text--caption">motion</dt>
+        <dd class="text text--body-sm"><code class="text text--code">--duration-normal</code> · <code class="text text--code">--ease-standard</code> · travel <code class="text text--code">--space-4</code></dd>
+      </div>
+      <div>
+        <dt class="text text--caption">layer</dt>
+        <dd class="text text--body-sm"><code class="text text--code">--z-popover</code> <span class="text text--caption">(gap: no --z-toast)</span></dd>
+      </div>
+    </dl>
+  </section>
+
+</main>
+
+<!-- Fixed page-level live viewport for any overflow demos (unused when preview frames host their own). -->
+
+<script>
+(() => {
+  const ICONS = {
+    neutral: '<circle cx="12" cy="12" r="8.5" stroke="currentColor"/><path d="M8 12h8" stroke="currentColor" stroke-linecap="round"/>',
+    info: '<circle cx="12" cy="12" r="8.5" stroke="currentColor"/><path d="M12 11v5" stroke="currentColor" stroke-linecap="round"/><circle cx="12" cy="8" r="0.5" fill="currentColor"/>',
+    success: '<circle cx="12" cy="12" r="8.5" stroke="currentColor"/><path d="m8 12.5 2.5 2.5L16 9.5" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"/>',
+    warning: '<path d="M10.3 4.3 2.6 18a2 2 0 0 0 1.7 3h15.4a2 2 0 0 0 1.7-3L13.7 4.3a2 2 0 0 0-3.4 0Z" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"/><path d="M12 9v4" stroke="currentColor" stroke-linecap="round"/><path d="M12 17h.01" stroke="currentColor" stroke-linecap="round"/>',
+    destructive: '<circle cx="12" cy="12" r="8.5" stroke="currentColor"/><path d="m9 9 6 6M15 9l-6 6" stroke="currentColor" stroke-linecap="round"/>',
+  };
+
+  const COPY = {
+    neutral: { title: "Draft saved locally", description: "Offline edits sync when you reconnect." },
+    info: { title: "Matching index is syncing", description: "New embeddings appear shortly." },
+    success: { title: "Invite sent", description: "Mei Chen will receive an email." },
+    warning: { title: "Subscription expires soon", description: "Renew to keep the tenant writable." },
+    destructive: { title: "Upload failed", description: "File exceeds the 25 MB limit." },
+  };
+
+  /* Durations read from tokens.css — never hard-coded ms literals. */
+  const rootStyles = getComputedStyle(document.documentElement);
+  const ms = (token, fallback) => {
+    const raw = rootStyles.getPropertyValue(token).trim();
+    const n = Number.parseFloat(raw);
+    return Number.isFinite(n) ? n : fallback;
+  };
+  const DURATION_SLOW_MS = ms("--duration-slow", 300);
+  const EXIT_MS = ms("--duration-normal", 200);
+  const AUTO_DISMISS_MS = DURATION_SLOW_MS * 16; /* ~4.8s — several slow ticks */
+
+  const viewport = document.getElementById("live-viewport");
+
+  function dismissToast(toast) {
+    if (toast.dataset.exiting === "true") return;
+    toast.dataset.exiting = "true";
+    clearTimeout(toast._dismissTimer);
+    toast.classList.remove("toast--visible", "toast--entering");
+    toast.classList.add("toast--exiting");
+    window.setTimeout(() => toast.remove(), EXIT_MS);
+  }
+
+  function scheduleDismiss(toast) {
+    clearTimeout(toast._dismissTimer);
+    if (toast.dataset.paused === "true") return;
+    toast._dismissTimer = window.setTimeout(() => dismissToast(toast), AUTO_DISMISS_MS);
+  }
+
+  function pauseToast(toast) {
+    toast.dataset.paused = "true";
+    clearTimeout(toast._dismissTimer);
+  }
+
+  function resumeToast(toast) {
+    toast.dataset.paused = "false";
+    scheduleDismiss(toast);
+  }
+
+  function pushToast(variant) {
+    const copy = COPY[variant];
+    const toast = document.createElement("div");
+    toast.className = `toast toast--${variant} toast--entering`;
+    toast.innerHTML = `
+      <svg class="toast__icon" viewBox="0 0 24 24" fill="none" aria-hidden="true">${ICONS[variant]}</svg>
+      <div class="toast__body">
+        <h3 class="toast__title">${copy.title}</h3>
+        <p class="toast__description">${copy.description}</p>
+      </div>
+      <button class="toast__close" type="button" aria-label="Dismiss ${copy.title}">
+        <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+          <path d="m7 7 10 10M17 7 7 17" stroke="currentColor" stroke-linecap="round"/>
+        </svg>
+      </button>
+    `;
+
+    toast.querySelector(".toast__close").addEventListener("click", () => dismissToast(toast));
+    toast.addEventListener("mouseenter", () => pauseToast(toast));
+    toast.addEventListener("mouseleave", () => resumeToast(toast));
+    toast.addEventListener("focusin", () => pauseToast(toast));
+    toast.addEventListener("focusout", (event) => {
+      if (!toast.contains(event.relatedTarget)) resumeToast(toast);
+    });
+
+    viewport.appendChild(toast);
+    /* Force layout so the entering → visible transition runs. */
+    void toast.offsetWidth;
+    toast.classList.remove("toast--entering");
+    toast.classList.add("toast--visible");
+    scheduleDismiss(toast);
+  }
+
+  document.getElementById("toast-triggers").addEventListener("click", (event) => {
+    const btn = event.target.closest("[data-toast]");
+    if (btn) pushToast(btn.dataset.toast);
+  });
+})();
+</script>
+
+</body>
+</html>

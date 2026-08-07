@@ -1,0 +1,351 @@
+/* ==========================================================================
+   Toast
+   Token mapping — every value below references tokens.css, nothing else.
+
+   A transient, elevated status notice that floats above the page. Variants
+   are semantic roles resolved to status tokens for the accent (icon +
+   leading edge) — never to arbitrary blue / green / yellow / red picks.
+   Unlike Alert (inline soft-tint banners), Toast keeps a readable elevated
+   surface and speaks status through the accent alone.
+
+   Anatomy (markup contract):
+     .toast-viewport          fixed stack host; ONE polite live region
+     .toast                   individual notice; variant + lifecycle modifier
+     .toast__icon             leading status SVG (decorative: aria-hidden)
+     .toast__body             title + description + optional action column
+     .toast__title            short heading
+     .toast__description      supporting copy
+     .toast__action           optional action — compose real .btn / .link
+     .toast__close            required close <button aria-label="Dismiss …">
+
+   LIVE-REGION CONTRACT (do not repeatedly interrupt):
+     The VIEWPORT is the live region — aria-live="polite" +
+     aria-relevant="additions text" + aria-atomic="false". New toasts are
+     announced politely as they enter; individual toasts do NOT carry
+     role="alert" / aria-live (that would re-announce on every DOM churn
+     and interrupt). Destructive meaning still paints via the variant
+     accent; urgency of interruption stays polite so a stack of toasts
+     does not bark over the user. aria-atomic="false" announces only the
+     added toast, not the whole stack.
+
+   LIFECYCLE STATES (modifiers on .toast — controller drives them):
+     .toast--entering   opacity 0 → 1, translate from --space-4 toward rest
+     .toast--visible    resting pose (opacity 1, translate 0)
+     .toast--exiting    opacity 1 → 0, translate back by --space-4
+     Motion uses --duration-normal / --ease-standard. Under
+     prefers-reduced-motion, transforms are dropped and opacity snaps
+     over --duration-fast (or instant if the UA prefers none).
+
+   DISMISSAL PAUSE CONTRACT (controller, not CSS):
+     Auto-dismiss timers MUST pause while the toast (or its viewport
+     descendants) has :hover or :focus-within — pointer / keyboard
+     interaction means the user is reading or actuating. Resume when
+     both leave. Close remains available at all times. Showcase JS
+     demonstrates the contract; CSS only styles the chrome.
+
+   Resolution model: the toast declares aliases
+   (--_bg / --_border / --_fg / --_muted / --_accent / --_close /
+   --_shadow); variants only re-declare --_accent (and neutral keeps the
+   muted accent). Geometry is shared.
+
+   VARIANT → TOKEN (surface shared; accent is the status signal)
+   ─────────────────────────────────────────────────────────────────────────
+   surface (all)     bg --popover (= canvas); border --border;
+                     shadow --shadow-lift (floating elevation — Card's
+                     second elevation level, the right rung for overlays)
+   text (all)        title --foreground; description --muted-foreground
+   close (all)       color --muted-foreground; hover bg --accent ·
+                     color --accent-foreground
+   accent / icon
+     neutral         --muted-foreground
+     info            --info
+     success         --success
+     warning         --warning
+     destructive     --destructive
+   Leading status edge is an inset bar:
+     box-shadow --shadow-lift + inset --border-width-strong 0 0 --_accent
+     (reuses the strong-hairline token; no component-local width)
+
+   PROPERTY → TOKEN
+   ─────────────────────────────────────────────────────────────────────────
+   TOAST
+     layout          grid; columns auto 1fr auto (icon · body · close);
+                     gap --space-3; align-items start
+     padding         --space-4
+     radius          --radius-lg
+     border width    --border-width
+     width           100%; max-width calc(--space-16 * 6)
+                     (= 384px — same calc recipe as --sidebar-width)
+     typography      title --font-sans --text-title-sm --font-weight-medium;
+                     description --text-body-sm --font-weight-regular
+     body stack      gap --space-1; action margin-top --space-3
+     icon            --icon-size-md; color --_accent; stroke
+                     --stroke-width-icon; margin-top --space-0-5
+     close           --icon-size-sm hit; × glyph --icon-size-xs;
+                     radius --radius-full; focus ring --ring-width /
+                     --ring-focus
+     motion          enter/exit opacity + translateY(--space-4) over
+                     --duration-normal --ease-standard; color/bg/shadow
+                     transitions on chrome use --duration-fast
+
+   VIEWPORT (stack + placement)
+     position        fixed; z-index --z-popover (overlay rung — same as
+                     datepicker; flagged below if a higher toast rung is
+                     needed)
+     stack           flex column; gap --space-3 (tokenized stack rhythm)
+     inset           --space-6 from the chosen edges
+     placements      --bottom-right (default) · --bottom-left ·
+                     --top-right · --top-left
+     width           min(100% - 2×inset, toast max-width) via the toast's
+                     own max-width; viewport is shrink-wrapped
+
+   REPORTED TOKEN GAPS (not silently invented):
+   •  No dedicated --z-toast above --z-popover. Toasts currently share
+      --z-popover (30). If toasts must paint above an open datepicker /
+      sidebar overlay, tokens.css needs e.g. --z-toast: 40.
+   •  No dedicated --toast-max-width; width uses calc(--space-16 * 6),
+      matching the sidebar calc precedent. A named token would be clearer.
+   ========================================================================== */
+
+/* ===== Viewport (stack host + polite live region) ===== */
+
+.toast-viewport {
+  position: fixed;
+  z-index: var(--z-popover);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  width: calc(var(--space-16) * 6);
+  max-width: calc(100% - (var(--space-6) * 2));
+  margin: 0;
+  padding: 0;
+  pointer-events: none; /* clicks pass through empty stack space */
+  list-style: none;
+}
+
+.toast-viewport > .toast {
+  pointer-events: auto; /* toasts themselves receive interaction */
+}
+
+/* Placement — every inset is --space-6 */
+.toast-viewport--bottom-right {
+  right: var(--space-6);
+  bottom: var(--space-6);
+}
+
+.toast-viewport--bottom-left {
+  left: var(--space-6);
+  bottom: var(--space-6);
+}
+
+.toast-viewport--top-right {
+  right: var(--space-6);
+  top: var(--space-6);
+}
+
+.toast-viewport--top-left {
+  left: var(--space-6);
+  top: var(--space-6);
+}
+
+/* Top placements stack downward (first toast nearest the edge);
+   bottom placements stack upward so the newest sits closest to the edge. */
+.toast-viewport--bottom-right,
+.toast-viewport--bottom-left {
+  flex-direction: column-reverse;
+}
+
+/* ===== Toast ===== */
+
+.toast {
+  --_bg: var(--popover);
+  --_border: var(--border);
+  --_fg: var(--foreground);
+  --_muted: var(--muted-foreground);
+  --_accent: var(--muted-foreground);
+  --_close: var(--muted-foreground);
+  --_shadow: var(--shadow-lift);
+
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  align-items: start;
+  gap: var(--space-3);
+  width: 100%;
+  padding: var(--space-4);
+  background: var(--_bg);
+  color: var(--_fg);
+  border: var(--border-width) solid var(--_border);
+  border-radius: var(--radius-lg);
+  box-shadow:
+    var(--_shadow),
+    inset var(--border-width-strong) 0 0 var(--_accent);
+  font-family: var(--font-sans);
+  transition:
+    opacity var(--duration-normal) var(--ease-standard),
+    translate var(--duration-normal) var(--ease-standard),
+    background-color var(--duration-fast) var(--ease-standard),
+    border-color var(--duration-fast) var(--ease-standard),
+    box-shadow var(--duration-fast) var(--ease-standard);
+}
+
+/* ===== Variants (explicit; accent only — surface/text stay readable) ===== */
+
+.toast--neutral {
+  --_accent: var(--muted-foreground);
+}
+
+.toast--info {
+  --_accent: var(--info);
+}
+
+.toast--success {
+  --_accent: var(--success);
+}
+
+.toast--warning {
+  --_accent: var(--warning);
+}
+
+.toast--destructive {
+  --_accent: var(--destructive);
+}
+
+/* ===== Lifecycle states ===== */
+
+.toast--entering {
+  opacity: 0;
+  translate: 0 var(--space-4);
+}
+
+.toast--visible {
+  opacity: 1;
+  translate: 0 0;
+}
+
+.toast--exiting {
+  opacity: 0;
+  translate: 0 var(--space-4);
+}
+
+/* Top-edge viewports enter/exit upward (negative translate) so motion
+   always originates from the nearest screen edge. */
+.toast-viewport--top-right .toast--entering,
+.toast-viewport--top-left .toast--entering,
+.toast-viewport--top-right .toast--exiting,
+.toast-viewport--top-left .toast--exiting {
+  translate: 0 calc(var(--space-4) * -1);
+}
+
+/* ===== Parts ===== */
+
+.toast__icon {
+  flex: none;
+  width: var(--icon-size-md);
+  height: var(--icon-size-md);
+  margin-top: var(--space-0-5);
+  color: var(--_accent);
+}
+
+.toast__icon path,
+.toast__icon circle,
+.toast__icon line {
+  stroke-width: var(--stroke-width-icon);
+}
+
+.toast__body {
+  display: grid;
+  gap: var(--space-1);
+  min-width: 0;
+}
+
+.toast__title {
+  margin: 0;
+  font-family: var(--font-sans);
+  font-size: var(--text-title-sm);
+  font-weight: var(--font-weight-medium);
+  line-height: var(--text-title-sm--line-height);
+  color: var(--_fg);
+}
+
+.toast__description {
+  margin: 0;
+  font-family: var(--font-sans);
+  font-size: var(--text-body-sm);
+  font-weight: var(--font-weight-regular);
+  line-height: var(--text-body-sm--line-height);
+  color: var(--_muted);
+}
+
+.toast__action {
+  margin-top: var(--space-3);
+}
+
+.toast__close {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: var(--icon-size-sm);
+  height: var(--icon-size-sm);
+  padding: 0;
+  background: transparent;
+  color: var(--_close);
+  border: 0;
+  border-radius: var(--radius-full);
+  cursor: pointer;
+  transition:
+    background-color var(--duration-fast) var(--ease-standard),
+    color var(--duration-fast) var(--ease-standard),
+    box-shadow var(--duration-fast) var(--ease-standard);
+}
+
+.toast__close:hover,
+.toast__close.is-hover {
+  background: var(--accent);
+  color: var(--accent-foreground);
+}
+
+.toast__close:focus-visible,
+.toast__close.is-focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 var(--ring-width) var(--ring-focus);
+}
+
+.toast__close:disabled,
+.toast__close.is-disabled {
+  opacity: var(--opacity-disabled);
+  cursor: not-allowed;
+  pointer-events: none;
+}
+
+.toast__close svg {
+  width: var(--icon-size-xs);
+  height: var(--icon-size-xs);
+}
+
+.toast__close svg path {
+  stroke-width: var(--stroke-width-icon);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .toast {
+    transition:
+      opacity var(--duration-fast) var(--ease-standard),
+      background-color var(--duration-fast) var(--ease-standard),
+      border-color var(--duration-fast) var(--ease-standard),
+      box-shadow var(--duration-fast) var(--ease-standard);
+  }
+
+  .toast--entering,
+  .toast--exiting,
+  .toast-viewport--top-right .toast--entering,
+  .toast-viewport--top-left .toast--entering,
+  .toast-viewport--top-right .toast--exiting,
+  .toast-viewport--top-left .toast--exiting {
+    translate: 0 0; /* no slide — opacity alone */
+  }
+
+  .toast__close {
+    transition: none;
+  }
+}

@@ -1,0 +1,228 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Alert — Component Showcase</title>
+<link rel="stylesheet" href="../src/styles/tokens.css">
+<link rel="stylesheet" href="../src/styles/typography.css">
+<link rel="stylesheet" href="../src/styles/separator.css">
+<link rel="stylesheet" href="../src/styles/button.css">
+<link rel="stylesheet" href="../src/styles/link.css">
+<link rel="stylesheet" href="../src/styles/alert.css">
+<style>
+  /* Page chrome — tokens only, no component values. */
+  *, *::before, *::after { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: var(--background);
+    color: var(--foreground);
+    font-family: var(--font-sans);
+    -webkit-font-smoothing: antialiased;
+  }
+  .container { max-width: var(--doc-container-max); margin: 0 auto; padding: 0 var(--space-6); }
+  .page-head { padding: var(--space-16) 0 var(--space-8); border-bottom: var(--border-width) solid var(--border); }
+  .page-head .text--overline { color: var(--primary); display: block; margin-bottom: var(--space-3); }
+  .page-head p { margin: var(--space-4) 0 0; max-width: 72ch; }
+  .demo-block { padding: var(--space-8) 0 var(--space-16); }
+  .demo-block > .text--h5 { margin-bottom: var(--space-3); }
+  .demo-lede { margin: 0 0 var(--space-6); max-width: 72ch; color: var(--muted-foreground); }
+  .demo-stack { display: grid; gap: var(--space-4); max-width: 42rem; }
+  .demo-note { margin-top: var(--space-6); max-width: 72ch; color: var(--muted-foreground); }
+  .action-label {
+    font-family: var(--font-sans);
+    font-size: var(--text-caption-up);
+    font-weight: var(--font-weight-medium);
+    line-height: var(--text-caption-up--line-height);
+    letter-spacing: var(--text-caption-up--letter-spacing);
+    text-transform: uppercase;
+    color: var(--caption-foreground);
+  }
+</style>
+</head>
+<body>
+
+<header class="page-head">
+  <div class="container">
+    <span class="text text--overline">Component</span>
+    <h1 class="text text--h1">Alert</h1>
+    <p class="text text--body-md">
+      Every variant is explicit and token-driven: background, border, icon,
+      and text all resolve to semantic status tokens — never hand-picked
+      blues, greens, yellows, or reds. Interactive actions show both default
+      and <code class="text text--code">focus-visible</code> in the same stack.
+    </p>
+  </div>
+</header>
+
+<main class="container">
+
+  <section class="demo-block" aria-labelledby="hierarchy-heading">
+    <h2 class="text text--h5" id="hierarchy-heading">Status hierarchy</h2>
+    <p class="text text--body-sm demo-lede">
+      Neutral → info → success → warning → destructive in one stack. Each
+      row carries the full anatomy (icon, title, description, action,
+      dismiss). Action rows pair a default control with a static
+      <code class="text text--code">.is-focus-visible</code> twin; the
+      dismiss control shows the same focus ring.
+    </p>
+
+    <div class="demo-stack" id="alert-hierarchy">
+
+      <!-- Neutral -->
+      <div class="alert alert--neutral" role="region" aria-labelledby="h-neutral-title">
+        <svg class="alert__icon" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+          <circle cx="12" cy="12" r="8.5" stroke="currentColor"/>
+          <path d="M8 12h8" stroke="currentColor" stroke-linecap="round"/>
+        </svg>
+        <div class="alert__body">
+          <h3 class="alert__title" id="h-neutral-title">Offline drafts are stored locally</h3>
+          <p class="alert__description">
+            Changes sync when the connection returns. Neutral uses canvas
+            text roles — no status accent.
+          </p>
+          <div class="alert__actions">
+            <span class="action-label">Action</span>
+            <button class="btn btn--secondary btn--sm" type="button">Open drafts</button>
+            <span class="action-label">Focus</span>
+            <button class="btn btn--secondary btn--sm is-focus-visible" type="button" tabindex="-1">Open drafts</button>
+          </div>
+        </div>
+        <button class="alert__dismiss is-focus-visible" type="button" aria-label="Dismiss offline drafts notice" tabindex="-1">
+          <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+            <path d="m7 7 10 10M17 7 7 17" stroke="currentColor" stroke-linecap="round"/>
+          </svg>
+        </button>
+      </div>
+
+      <!-- Info -->
+      <div class="alert alert--info" role="region" aria-labelledby="h-info-title">
+        <svg class="alert__icon" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+          <circle cx="12" cy="12" r="8.5" stroke="currentColor"/>
+          <path d="M12 11v5" stroke="currentColor" stroke-linecap="round"/>
+          <circle cx="12" cy="8" r="0.5" fill="currentColor"/>
+        </svg>
+        <div class="alert__body">
+          <h3 class="alert__title" id="h-info-title">Matching index is syncing</h3>
+          <p class="alert__description">
+            New talent embeddings appear in search within a few minutes.
+            Existing results stay available while the index catches up.
+          </p>
+          <div class="alert__actions">
+            <span class="action-label">Action</span>
+            <button class="btn btn--secondary btn--sm" type="button">View status</button>
+            <span class="action-label">Focus</span>
+            <button class="btn btn--secondary btn--sm is-focus-visible" type="button" tabindex="-1">View status</button>
+          </div>
+        </div>
+        <button class="alert__dismiss is-focus-visible" type="button" aria-label="Dismiss matching index notice" tabindex="-1">
+          <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+            <path d="m7 7 10 10M17 7 7 17" stroke="currentColor" stroke-linecap="round"/>
+          </svg>
+        </button>
+      </div>
+
+      <!-- Success -->
+      <div class="alert alert--success" role="status" aria-labelledby="h-success-title">
+        <svg class="alert__icon" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+          <circle cx="12" cy="12" r="8.5" stroke="currentColor"/>
+          <path d="m8 12.5 2.5 2.5L16 9.5" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+        <div class="alert__body">
+          <h3 class="alert__title" id="h-success-title">Invite sent</h3>
+          <p class="alert__description">
+            Mei Chen will receive an email with a link to join the Acme tenant.
+          </p>
+          <div class="alert__actions">
+            <span class="action-label">Action</span>
+            <button class="btn btn--secondary btn--sm" type="button">View members</button>
+            <span class="action-label">Focus</span>
+            <button class="btn btn--secondary btn--sm is-focus-visible" type="button" tabindex="-1">View members</button>
+          </div>
+        </div>
+        <button class="alert__dismiss is-focus-visible" type="button" aria-label="Dismiss invite sent notice" tabindex="-1">
+          <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+            <path d="m7 7 10 10M17 7 7 17" stroke="currentColor" stroke-linecap="round"/>
+          </svg>
+        </button>
+      </div>
+
+      <!-- Warning -->
+      <div class="alert alert--warning" role="status" aria-labelledby="h-warning-title">
+        <svg class="alert__icon" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+          <path d="M10.3 4.3 2.6 18a2 2 0 0 0 1.7 3h15.4a2 2 0 0 0 1.7-3L13.7 4.3a2 2 0 0 0-3.4 0Z" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"/>
+          <path d="M12 9v4" stroke="currentColor" stroke-linecap="round"/>
+          <path d="M12 17h.01" stroke="currentColor" stroke-linecap="round"/>
+        </svg>
+        <div class="alert__body">
+          <h3 class="alert__title" id="h-warning-title">Subscription expires in 5 days</h3>
+          <p class="alert__description">
+            After expiry the tenant becomes read-only until a plan is renewed.
+          </p>
+          <div class="alert__actions">
+            <span class="action-label">Action</span>
+            <button class="btn btn--secondary btn--sm" type="button">Renew plan</button>
+            <span class="action-label">Focus</span>
+            <button class="btn btn--secondary btn--sm is-focus-visible" type="button" tabindex="-1">Renew plan</button>
+          </div>
+        </div>
+        <button class="alert__dismiss is-focus-visible" type="button" aria-label="Dismiss subscription expiry notice" tabindex="-1">
+          <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+            <path d="m7 7 10 10M17 7 7 17" stroke="currentColor" stroke-linecap="round"/>
+          </svg>
+        </button>
+      </div>
+
+      <!-- Destructive -->
+      <div class="alert alert--destructive" role="alert" aria-labelledby="h-destructive-title">
+        <svg class="alert__icon" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+          <circle cx="12" cy="12" r="8.5" stroke="currentColor"/>
+          <path d="m9 9 6 6M15 9l-6 6" stroke="currentColor" stroke-linecap="round"/>
+        </svg>
+        <div class="alert__body">
+          <h3 class="alert__title" id="h-destructive-title">Document upload failed</h3>
+          <p class="alert__description">
+            The file exceeds the 25&nbsp;MB limit. Compress it or split into
+            smaller parts, then try again.
+          </p>
+          <div class="alert__actions">
+            <span class="action-label">Action</span>
+            <button class="btn btn--secondary btn--sm" type="button">Try again</button>
+            <span class="action-label">Focus</span>
+            <button class="btn btn--secondary btn--sm is-focus-visible" type="button" tabindex="-1">Try again</button>
+          </div>
+        </div>
+        <button class="alert__dismiss is-focus-visible" type="button" aria-label="Dismiss upload failure notice" tabindex="-1">
+          <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+            <path d="m7 7 10 10M17 7 7 17" stroke="currentColor" stroke-linecap="round"/>
+          </svg>
+        </button>
+      </div>
+
+    </div>
+
+    <p class="text text--caption demo-note">
+      Token map per semantic variant:
+      soft surface (<code class="text text--code">--*-soft</code>) ·
+      border / icon / title / description / dismiss
+      (<code class="text text--code">--info</code> /
+      <code class="text text--code">--success</code> /
+      <code class="text text--code">--warning</code> /
+      <code class="text text--code">--destructive</code>).
+      Neutral:
+      <code class="text text--code">--card</code> ·
+      <code class="text text--code">--border</code> ·
+      <code class="text text--code">--foreground</code> /
+      <code class="text text--code">--muted-foreground</code>.
+      Focus rings use
+      <code class="text text--code">--ring-width</code> /
+      <code class="text text--code">--ring-focus</code> on both
+      <code class="text text--code">.btn</code> and
+      <code class="text text--code">.alert__dismiss</code>.
+    </p>
+  </section>
+
+</main>
+
+</body>
+</html>
