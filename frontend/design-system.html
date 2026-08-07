@@ -21,6 +21,7 @@
   .t-title-lg   { font-family: var(--font-sans); font-size: var(--text-title-lg); font-weight: 500; line-height: var(--text-title-lg--line-height); }
   .t-title-md   { font-family: var(--font-sans); font-size: var(--text-title-md); font-weight: 500; line-height: var(--text-title-md--line-height); }
   .t-title-sm   { font-family: var(--font-sans); font-size: var(--text-title-sm); font-weight: 500; line-height: var(--text-title-sm--line-height); }
+  .t-body-lg    { font-family: var(--font-sans); font-size: var(--text-body-lg); font-weight: 400; line-height: var(--text-body-lg--line-height); }
   .t-body-md    { font-family: var(--font-sans); font-size: var(--text-body-md); font-weight: 400; line-height: var(--text-body-md--line-height); }
   .t-body-sm    { font-family: var(--font-sans); font-size: var(--text-body-sm); font-weight: 400; line-height: var(--text-body-sm--line-height); }
   .t-caption    { font-family: var(--font-sans); font-size: var(--text-caption); font-weight: 500; line-height: var(--text-caption--line-height); }
@@ -46,19 +47,19 @@
     line-height: var(--text-body-md--line-height);
     -webkit-font-smoothing: antialiased;
   }
-  .container { max-width: 1200px; margin: 0 auto; padding: 0 var(--space-6); }
+  .container { max-width: var(--doc-container-max); margin: 0 auto; padding: 0 var(--space-6); }
 
   /* Top nav */
   .topnav {
     position: sticky; top: 0; z-index: 10;
     height: var(--space-16);
     background: var(--background);
-    border-bottom: 1px solid var(--border-soft);
+    border-bottom: var(--border-width) solid var(--border-soft);
   }
   .topnav .container { height: var(--space-16); display: flex; align-items: center; gap: var(--space-8); }
   .brand { display: flex; align-items: center; gap: var(--space-2); color: var(--foreground); text-decoration: none; }
-  .brand-mark { width: 20px; height: 20px; flex: none; }
-  .brand-name { font-family: var(--font-display); font-size: 20px; letter-spacing: -0.3px; }
+  .brand-mark { width: var(--brand-mark-size); height: var(--brand-mark-size); flex: none; }
+  .brand-name { font-family: var(--font-display); font-size: var(--doc-brand-name-size); letter-spacing: var(--text-display-sm--letter-spacing); }
   .topnav-links { display: flex; gap: var(--space-6); margin-left: auto; }
   .topnav-links a { color: var(--foreground); text-decoration: none; }
   .topnav-links a:active { color: var(--primary-active); }
@@ -86,35 +87,35 @@
   /* Color swatches */
   .swatch-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+    grid-template-columns: repeat(auto-fill, minmax(var(--doc-grid-min-swatch), 1fr));
     gap: var(--space-4);
   }
   .swatch {
     background: var(--background);
-    border: 1px solid var(--border);
+    border: var(--border-width) solid var(--border);
     border-radius: var(--radius-lg);
     overflow: hidden;
   }
-  .swatch-chip { height: 88px; }
+  .swatch-chip { height: var(--doc-swatch-chip-height); }
   .swatch-meta { padding: var(--space-3) var(--space-4) var(--space-4); }
   .swatch-name { color: var(--foreground); }
-  .swatch-hex { color: var(--muted-foreground); display: block; margin-top: 2px; }
+  .swatch-hex { color: var(--muted-foreground); display: block; margin-top: var(--space-0-5); }
   .swatch-contrast { color: var(--caption-foreground); display: block; margin-top: var(--space-2); }
   .swatch-contrast strong { color: var(--foreground-strong); font-weight: 500; }
 
   /* Typography specimens */
   .specimen {
     display: grid;
-    grid-template-columns: 260px 1fr;
+    grid-template-columns: var(--doc-specimen-meta-width) 1fr;
     gap: var(--space-8);
     padding: var(--space-8) 0;
-    border-top: 1px solid var(--border);
+    border-top: var(--border-width) solid var(--border);
     align-items: start;
   }
   .specimen:first-of-type { border-top: 0; padding-top: 0; }
   .specimen-meta .token { color: var(--primary-active); }
   .specimen-meta dl { margin: var(--space-3) 0 0; }
-  .specimen-meta div { display: flex; justify-content: space-between; gap: var(--space-4); padding: 3px 0; }
+  .specimen-meta div { display: flex; justify-content: space-between; gap: var(--space-4); padding: var(--space-0-75) 0; }
   .specimen-meta dt { color: var(--caption-foreground); }
   .specimen-meta dd { margin: 0; color: var(--foreground-strong); }
   .specimen-sample { color: var(--foreground); overflow-wrap: break-word; }
@@ -122,21 +123,21 @@
 
   /* Spacing bars */
   .space-row { display: flex; align-items: center; gap: var(--space-6); padding: var(--space-3) 0; }
-  .space-label { width: 160px; flex: none; }
+  .space-label { width: var(--doc-space-label-width); flex: none; }
   .space-label .px { color: var(--caption-foreground); margin-left: var(--space-2); }
   .space-bar { height: var(--space-6); background: var(--surface-dark); border-radius: var(--radius-xs); }
 
   /* Radius & elevation boxes */
   .shape-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+    grid-template-columns: repeat(auto-fill, minmax(var(--doc-grid-min-shape), 1fr));
     gap: var(--space-6);
   }
   .shape-cell { text-align: left; }
   .shape-box {
     height: var(--space-24);
     background: var(--card);
-    border: 1px solid var(--border);
+    border: var(--border-width) solid var(--border);
     margin-bottom: var(--space-3);
   }
   .shape-name { color: var(--foreground); display: block; }
@@ -144,17 +145,17 @@
 
   .elev-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(190px, 1fr));
+    grid-template-columns: repeat(auto-fill, minmax(var(--doc-grid-min-elev), 1fr));
     gap: var(--space-6);
   }
   .elev-box {
-    height: 120px;
+    height: var(--doc-elev-box-height);
     display: flex; align-items: flex-end;
     padding: var(--space-4);
     margin-bottom: var(--space-3);
   }
   .elev-flat { background: var(--background); border: 0; }
-  .elev-hairline { background: var(--background); border: 1px solid var(--border); }
+  .elev-hairline { background: var(--background); border: var(--border-width) solid var(--border); }
   .elev-cream { background: var(--card); }
   .elev-dark { background: var(--surface-dark); color: var(--on-dark-soft); }
   .elev-shadow { background: var(--background); box-shadow: var(--shadow-subtle); }
@@ -166,7 +167,7 @@
   .demo-block > .t-title-md { margin: 0 0 var(--space-6); color: var(--foreground-strong); }
   .demo-row { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-4); }
   .demo-row + .demo-row { margin-top: var(--space-4); }
-  .demo-label { width: 150px; flex: none; color: var(--caption-foreground); }
+  .demo-label { width: var(--doc-demo-label-width); flex: none; color: var(--caption-foreground); }
   .demo-dark {
     background: var(--surface-dark);
     border-radius: var(--radius-lg);
@@ -189,7 +190,7 @@
   }
   .btn-secondary {
     background: var(--background); color: var(--foreground);
-    border: 1px solid var(--border);
+    border: var(--border-width) solid var(--border);
   }
   .btn-secondary-on-dark { background: var(--surface-dark-elevated); color: var(--on-dark); }
   .btn-text-link {
@@ -201,18 +202,21 @@
     width: var(--icon-button-size); height: var(--icon-button-size); padding: 0;
     border-radius: var(--radius-full);
     background: var(--background); color: var(--foreground);
-    border: 1px solid var(--border);
+    border: var(--border-width) solid var(--border);
   }
+  .btn-icon-circular svg { width: var(--icon-size-sm); height: var(--icon-size-sm); }
+  .feature-card .icon svg { width: var(--icon-size-md); height: var(--icon-size-md); }
+  .btn-icon-circular svg path, .feature-card .icon svg path { stroke-width: var(--stroke-width-icon); }
   .text-link { color: var(--primary); background: transparent; text-decoration: none; }
   .text-link:active { text-decoration: underline; }
 
   /* Inputs */
-  .field { display: grid; gap: var(--space-2); max-width: 360px; }
+  .field { display: grid; gap: var(--space-2); max-width: var(--doc-field-max-width); }
   .field label { color: var(--foreground-strong); }
   .input {
     height: var(--control-height); padding: var(--input-padding-block) var(--input-padding-inline);
     background: var(--background); color: var(--foreground);
-    border: 1px solid var(--border);
+    border: var(--border-width) solid var(--border);
     border-radius: var(--radius-md);
     font-family: var(--font-sans); font-size: var(--text-body-md); line-height: var(--text-body-md--line-height);
     width: 100%;
@@ -221,14 +225,14 @@
   .input:focus, .input.is-focused {
     outline: none;
     border-color: var(--primary);
-    box-shadow: 0 0 0 3px var(--ring-focus);
+    box-shadow: 0 0 0 var(--ring-width) var(--ring-focus);
   }
   .field .hint { color: var(--muted-foreground); }
 
   /* Cards */
   .card-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    grid-template-columns: repeat(auto-fill, minmax(var(--doc-grid-min-card), 1fr));
     gap: var(--space-6);
   }
   .feature-card {
@@ -240,7 +244,7 @@
     width: var(--icon-button-size); height: var(--icon-button-size);
     display: flex; align-items: center; justify-content: center;
     background: var(--background);
-    border: 1px solid var(--border);
+    border: var(--border-width) solid var(--border);
     border-radius: var(--radius-md);
     margin-bottom: var(--space-6);
     color: var(--primary-active);
@@ -312,19 +316,19 @@
 
   /* Table */
   .table-wrap {
-    border: 1px solid var(--border);
+    border: var(--border-width) solid var(--border);
     border-radius: var(--radius-lg);
     overflow-x: auto;
     background: var(--background);
   }
-  table.ds { border-collapse: collapse; width: 100%; min-width: 560px; }
+  table.ds { border-collapse: collapse; width: 100%; min-width: var(--doc-table-min-width); }
   table.ds th {
     text-align: left;
     font-family: var(--font-sans); font-size: var(--text-caption-up); font-weight: 500;
     letter-spacing: var(--text-caption-up--letter-spacing); text-transform: uppercase;
     color: var(--muted-foreground);
     padding: var(--space-4) var(--space-6);
-    border-bottom: 1px solid var(--border);
+    border-bottom: var(--border-width) solid var(--border);
   }
   table.ds td {
     padding: var(--space-4) var(--space-6);
@@ -342,10 +346,10 @@
   footer.site .brand { color: var(--on-dark); }
   footer.site .foot-note { margin: var(--space-4) 0 0; max-width: 60ch; }
 
-  /* Responsive */
+  /* Responsive — 768px stays literal: @media cannot consume var() in plain CSS */
   @media (max-width: 768px) {
-    .t-display-xl { font-size: 32px; letter-spacing: -0.5px; }
-    .t-display-lg { font-size: 30px; }
+    .t-display-xl { font-size: var(--text-display-xl-compact); letter-spacing: var(--text-display-xl-compact--letter-spacing); }
+    .t-display-lg { font-size: var(--text-display-lg-compact); }
     .topnav-links { display: none; }
     .specimen { grid-template-columns: 1fr; gap: var(--space-4); }
     .demo-label { width: 100%; }
@@ -361,7 +365,7 @@
   <div class="container">
     <a class="brand" href="#top" aria-label="Claude Design System">
       <svg class="brand-mark" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-        <g style="stroke: var(--foreground);" stroke-width="2.1" stroke-linecap="round">
+        <g style="stroke: var(--foreground); stroke-width: var(--stroke-width-brand);" stroke-linecap="round">
           <line x1="12" y1="1.5" x2="12" y2="6.2"/>
           <line x1="12" y1="17.8" x2="12" y2="22.5"/>
           <line x1="1.5" y1="12" x2="6.2" y2="12"/>
@@ -380,6 +384,7 @@
       <a href="#typography">Typography</a>
       <a href="#spacing">Spacing</a>
       <a href="#shape">Shape</a>
+      <a href="#motion">Motion</a>
       <a href="#components">Components</a>
     </nav>
     <span class="badge-pill">Alpha</span>
@@ -440,6 +445,10 @@
           <div class="swatch-meta"><span class="swatch-name t-title-sm">accent-amber</span>
           <span class="swatch-hex t-code">#e8a55a</span>
           <span class="swatch-contrast t-caption"><strong>2.00:1</strong> vs canvas · badges / highlights</span></div></div>
+        <div class="swatch"><div class="swatch-chip" style="background: var(--link-visited);"></div>
+          <div class="swatch-meta"><span class="swatch-name t-title-sm">link-visited</span>
+          <span class="swatch-hex t-code">#a9583e</span>
+          <span class="swatch-contrast t-caption"><strong>4.80:1</strong> vs canvas · = primary-active, "seen" reads darker</span></div></div>
       </div>
 
       <h3 class="subhead t-title-lg">Surfaces</h3>
@@ -504,7 +513,7 @@
           <div class="swatch-meta"><span class="swatch-name t-title-sm">muted-soft</span>
           <span class="swatch-hex t-code">#8e8b82</span>
           <span class="swatch-contrast t-caption"><strong>3.23:1</strong> vs canvas · large text only</span></div></div>
-        <div class="swatch"><div class="swatch-chip" style="background: var(--primary-foreground); border-bottom: 1px solid var(--border-soft);"></div>
+        <div class="swatch"><div class="swatch-chip" style="background: var(--primary-foreground); border-bottom: var(--border-width) solid var(--border-soft);"></div>
           <div class="swatch-meta"><span class="swatch-name t-title-sm">on-primary</span>
           <span class="swatch-hex t-code">#ffffff</span>
           <span class="swatch-contrast t-caption"><strong>1.05:1</strong> vs canvas · on coral only</span></div></div>
@@ -516,7 +525,24 @@
           <div class="swatch-meta"><span class="swatch-name t-title-sm">on-dark-soft</span>
           <span class="swatch-hex t-code">#a09d96</span>
           <span class="swatch-contrast t-caption"><strong>2.57:1</strong> vs canvas · on dark only</span></div></div>
+        <div class="swatch"><div class="swatch-chip" style="background: var(--inverse-hover);"></div>
+          <div class="swatch-meta"><span class="swatch-name t-title-sm">inverse-hover</span>
+          <span class="swatch-hex t-code">#eae6dd</span>
+          <span class="swatch-contrast t-caption"><strong>14.38:1</strong> vs surface-dark · on dark only</span></div></div>
+        <div class="swatch"><div class="swatch-chip" style="background: var(--inverse-active);"></div>
+          <div class="swatch-meta"><span class="swatch-name t-title-sm">inverse-active</span>
+          <span class="swatch-hex t-code">#dad5ca</span>
+          <span class="swatch-contrast t-caption"><strong>12.24:1</strong> vs surface-dark · on dark only</span></div></div>
       </div>
+      <p class="t-caption" style="color:var(--caption-foreground); margin-top:var(--space-4);">
+        shadcn role aliases resolve onto the tokens above: <span class="t-code">--card-foreground</span>,
+        <span class="t-code">--popover-foreground</span>, <span class="t-code">--secondary-foreground</span>,
+        and <span class="t-code">--accent-foreground</span> are ink; <span class="t-code">--muted</span> and
+        <span class="t-code">--secondary</span> are surface-soft, <span class="t-code">--accent</span> is
+        surface-card, <span class="t-code">--popover</span> is canvas, <span class="t-code">--input</span> is
+        the hairline. Visited links dim to link-visited; underlines sit at
+        <span class="t-code">--link-underline-offset</span> (2px).
+      </p>
 
       <h3 class="subhead t-title-lg">Semantic</h3>
       <div class="swatch-grid">
@@ -532,6 +558,187 @@
           <div class="swatch-meta"><span class="swatch-name t-title-sm">error</span>
           <span class="swatch-hex t-code">#c64545</span>
           <span class="swatch-contrast t-caption"><strong>4.59:1</strong> vs canvas · AA</span></div></div>
+        <div class="swatch"><div class="swatch-chip" style="background: var(--info);"></div>
+          <div class="swatch-meta"><span class="swatch-name t-title-sm">info</span>
+          <span class="swatch-hex t-code">#5db8a6</span>
+          <span class="swatch-contrast t-caption"><strong>2.25:1</strong> vs canvas · = accent-teal</span></div></div>
+      </div>
+      <p class="t-caption" style="color:var(--caption-foreground); margin-top:var(--space-4);">
+        Bright semantic fills take ink text: <span class="t-code">--success-foreground</span>,
+        <span class="t-code">--warning-foreground</span>, and <span class="t-code">--info-foreground</span>
+        are #141413; <span class="t-code">--destructive-foreground</span> is #ffffff.
+      </p>
+
+      <h3 class="subhead t-title-lg">Semantic tints</h3>
+      <div class="swatch-grid">
+        <div class="swatch"><div class="swatch-chip" style="background: var(--success-soft);"></div>
+          <div class="swatch-meta"><span class="swatch-name t-title-sm">success-soft</span>
+          <span class="swatch-hex t-code">#e1efe0</span>
+          <span class="swatch-contrast t-caption"><strong>1.13:1</strong> vs canvas · subtle fill</span></div></div>
+        <div class="swatch"><div class="swatch-chip" style="background: var(--warning-soft);"></div>
+          <div class="swatch-meta"><span class="swatch-name t-title-sm">warning-soft</span>
+          <span class="swatch-hex t-code">#f4ebd1</span>
+          <span class="swatch-contrast t-caption"><strong>1.13:1</strong> vs canvas · subtle fill</span></div></div>
+        <div class="swatch"><div class="swatch-chip" style="background: var(--destructive-soft);"></div>
+          <div class="swatch-meta"><span class="swatch-name t-title-sm">destructive-soft</span>
+          <span class="swatch-hex t-code">#f2dcd9</span>
+          <span class="swatch-contrast t-caption"><strong>1.24:1</strong> vs canvas · subtle fill</span></div></div>
+        <div class="swatch"><div class="swatch-chip" style="background: var(--info-soft);"></div>
+          <div class="swatch-meta"><span class="swatch-name t-title-sm">info-soft</span>
+          <span class="swatch-hex t-code">#e1efe8</span>
+          <span class="swatch-contrast t-caption"><strong>1.13:1</strong> vs canvas · subtle fill</span></div></div>
+      </div>
+      <p class="t-caption" style="color:var(--caption-foreground); margin-top:var(--space-4);">
+        Each tint is the semantic color at 16% over the canvas — badge fills, never text.
+      </p>
+
+      <h3 class="subhead t-title-lg">Interactive states</h3>
+      <div class="swatch-grid">
+        <div class="swatch"><div class="swatch-chip" style="background: var(--primary-hover);"></div>
+          <div class="swatch-meta"><span class="swatch-name t-title-sm">primary-hover</span>
+          <span class="swatch-hex t-code">#bd6a4e</span>
+          <span class="swatch-contrast t-caption"><strong>3.74:1</strong> vs canvas · midway to primary-active</span></div></div>
+        <div class="swatch"><div class="swatch-chip" style="background: var(--destructive-hover);"></div>
+          <div class="swatch-meta"><span class="swatch-name t-title-sm">destructive-hover</span>
+          <span class="swatch-hex t-code">#b23b3b</span>
+          <span class="swatch-contrast t-caption"><strong>5.57:1</strong> vs canvas · AA</span></div></div>
+        <div class="swatch"><div class="swatch-chip" style="background: var(--destructive-active);"></div>
+          <div class="swatch-meta"><span class="swatch-name t-title-sm">destructive-active</span>
+          <span class="swatch-hex t-code">#9e3232</span>
+          <span class="swatch-contrast t-caption"><strong>6.74:1</strong> vs canvas · AA</span></div></div>
+        <div class="swatch"><div class="swatch-chip" style="background: var(--info-hover);"></div>
+          <div class="swatch-meta"><span class="swatch-name t-title-sm">info-hover</span>
+          <span class="swatch-hex t-code">#54a795</span>
+          <span class="swatch-contrast t-caption"><strong>2.72:1</strong> vs canvas · graphics / large text</span></div></div>
+        <div class="swatch"><div class="swatch-chip" style="background: var(--info-active);"></div>
+          <div class="swatch-meta"><span class="swatch-name t-title-sm">info-active</span>
+          <span class="swatch-hex t-code">#4a9585</span>
+          <span class="swatch-contrast t-caption"><strong>3.36:1</strong> vs canvas · graphics / large text</span></div></div>
+        <div class="swatch"><div class="swatch-chip" style="background: var(--success-hover);"></div>
+          <div class="swatch-meta"><span class="swatch-name t-title-sm">success-hover</span>
+          <span class="swatch-hex t-code">#54a667</span>
+          <span class="swatch-contrast t-caption"><strong>2.84:1</strong> vs canvas · graphics / large text</span></div></div>
+        <div class="swatch"><div class="swatch-chip" style="background: var(--success-active);"></div>
+          <div class="swatch-meta"><span class="swatch-name t-title-sm">success-active</span>
+          <span class="swatch-hex t-code">#4a935b</span>
+          <span class="swatch-contrast t-caption"><strong>3.55:1</strong> vs canvas · graphics / large text</span></div></div>
+        <div class="swatch"><div class="swatch-chip" style="background: var(--warning-hover);"></div>
+          <div class="swatch-meta"><span class="swatch-name t-title-sm">warning-hover</span>
+          <span class="swatch-hex t-code">#bf9015</span>
+          <span class="swatch-contrast t-caption"><strong>2.76:1</strong> vs canvas · graphics / large text</span></div></div>
+        <div class="swatch"><div class="swatch-chip" style="background: var(--warning-active);"></div>
+          <div class="swatch-meta"><span class="swatch-name t-title-sm">warning-active</span>
+          <span class="swatch-hex t-code">#aa8012</span>
+          <span class="swatch-contrast t-caption"><strong>3.43:1</strong> vs canvas · graphics / large text</span></div></div>
+        <div class="swatch"><div class="swatch-chip" style="background: var(--foreground-hover);"></div>
+          <div class="swatch-meta"><span class="swatch-name t-title-sm">foreground-hover</span>
+          <span class="swatch-hex t-code">#0d0d0c</span>
+          <span class="swatch-contrast t-caption"><strong>18.46:1</strong> vs canvas · AAA</span></div></div>
+        <div class="swatch"><div class="swatch-chip" style="background: var(--foreground-active);"></div>
+          <div class="swatch-meta"><span class="swatch-name t-title-sm">foreground-active</span>
+          <span class="swatch-hex t-code">#000000</span>
+          <span class="swatch-contrast t-caption"><strong>19.93:1</strong> vs canvas · AAA</span></div></div>
+        <div class="swatch"><div class="swatch-chip" style="background: var(--muted-foreground-hover);"></div>
+          <div class="swatch-meta"><span class="swatch-name t-title-sm">muted-foreground-hover</span>
+          <span class="swatch-hex t-code">#5f5d58</span>
+          <span class="swatch-contrast t-caption"><strong>6.24:1</strong> vs canvas · AA</span></div></div>
+        <div class="swatch"><div class="swatch-chip" style="background: var(--muted-foreground-active);"></div>
+          <div class="swatch-meta"><span class="swatch-name t-title-sm">muted-foreground-active</span>
+          <span class="swatch-hex t-code">#545350</span>
+          <span class="swatch-contrast t-caption"><strong>7.30:1</strong> vs canvas · AA</span></div></div>
+      </div>
+      <p class="t-caption" style="color:var(--caption-foreground); margin-top:var(--space-4);">
+        Every hover/active pair darkens its base in the same direction as the
+        primary / destructive pairs. Disabled states reuse the same colors at
+        <span class="t-code">--opacity-disabled</span> (0.5).
+      </p>
+
+      <h3 class="subhead t-title-lg">Selection &amp; pressed surfaces</h3>
+      <div class="swatch-grid">
+        <div class="swatch"><div class="swatch-chip" style="background: var(--selected-bg);"></div>
+          <div class="swatch-meta"><span class="swatch-name t-title-sm">selected-bg</span>
+          <span class="swatch-hex t-code">#e8e0d2</span>
+          <span class="swatch-contrast t-caption"><strong>1.24:1</strong> vs canvas · = surface-cream-strong</span></div></div>
+        <div class="swatch"><div class="swatch-chip" style="background: var(--selected-border);"></div>
+          <div class="swatch-meta"><span class="swatch-name t-title-sm">selected-border</span>
+          <span class="swatch-hex t-code">#cc785c</span>
+          <span class="swatch-contrast t-caption"><strong>3.11:1</strong> vs canvas · = ring</span></div></div>
+        <div class="swatch"><div class="swatch-chip" style="background: var(--surface-cream-pressed);"></div>
+          <div class="swatch-meta"><span class="swatch-name t-title-sm">surface-cream-pressed</span>
+          <span class="swatch-hex t-code">#e6dfd8</span>
+          <span class="swatch-contrast t-caption"><strong>1.25:1</strong> vs canvas · pressed track, = hairline</span></div></div>
+      </div>
+
+      <h3 class="subhead t-title-lg">Presence</h3>
+      <div class="swatch-grid">
+        <div class="swatch"><div class="swatch-chip" style="background: var(--status-online);"></div>
+          <div class="swatch-meta"><span class="swatch-name t-title-sm">status-online</span>
+          <span class="swatch-hex t-code">#5db8a6</span>
+          <span class="swatch-contrast t-caption"><strong>2.25:1</strong> vs canvas · = accent-teal</span></div></div>
+        <div class="swatch"><div class="swatch-chip" style="background: var(--status-offline);"></div>
+          <div class="swatch-meta"><span class="swatch-name t-title-sm">status-offline</span>
+          <span class="swatch-hex t-code">#8e8b82</span>
+          <span class="swatch-contrast t-caption"><strong>3.23:1</strong> vs canvas · = caption-foreground</span></div></div>
+        <div class="swatch"><div class="swatch-chip" style="background: var(--status-busy);"></div>
+          <div class="swatch-meta"><span class="swatch-name t-title-sm">status-busy</span>
+          <span class="swatch-hex t-code">#c64545</span>
+          <span class="swatch-contrast t-caption"><strong>4.59:1</strong> vs canvas · = destructive</span></div></div>
+        <div class="swatch"><div class="swatch-chip" style="background: var(--status-away);"></div>
+          <div class="swatch-meta"><span class="swatch-name t-title-sm">status-away</span>
+          <span class="swatch-hex t-code">#d4a017</span>
+          <span class="swatch-contrast t-caption"><strong>2.25:1</strong> vs canvas · = warning</span></div></div>
+      </div>
+
+      <h3 class="subhead t-title-lg">Lines &amp; focus</h3>
+      <div class="swatch-grid">
+        <div class="swatch"><div class="swatch-chip" style="background: var(--border-strong);"></div>
+          <div class="swatch-meta"><span class="swatch-name t-title-sm">border-strong</span>
+          <span class="swatch-hex t-code">#6c6a64</span>
+          <span class="swatch-contrast t-caption"><strong>5.13:1</strong> vs canvas · hover borders, strong dividers</span></div></div>
+        <div class="swatch"><div class="swatch-chip" style="background: var(--ring);"></div>
+          <div class="swatch-meta"><span class="swatch-name t-title-sm">ring</span>
+          <span class="swatch-hex t-code">#cc785c</span>
+          <span class="swatch-contrast t-caption"><strong>3.11:1</strong> vs canvas · = primary, 3px spread</span></div></div>
+        <div class="swatch"><div class="swatch-chip" style="background: var(--ring-focus);"></div>
+          <div class="swatch-meta"><span class="swatch-name t-title-sm">ring-focus</span>
+          <span class="swatch-hex t-code">rgb(204 120 92 / 0.15)</span>
+          <span class="swatch-contrast t-caption">coral at 15% alpha · focus ring</span></div></div>
+        <div class="swatch"><div class="swatch-chip" style="background: var(--ring-destructive);"></div>
+          <div class="swatch-meta"><span class="swatch-name t-title-sm">ring-destructive</span>
+          <span class="swatch-hex t-code">rgb(198 69 69 / 0.15)</span>
+          <span class="swatch-contrast t-caption">destructive at 15% alpha · invalid-field ring</span></div></div>
+      </div>
+      <p class="t-caption" style="color:var(--caption-foreground); margin-top:var(--space-4);">
+        Border widths: <span class="t-code">--border-width</span> 1px for every hairline,
+        <span class="t-code">--border-width-strong</span> 2px for emphasized dividers.
+      </p>
+
+      <h3 class="subhead t-title-lg">Code &amp; charts</h3>
+      <div class="swatch-grid">
+        <div class="swatch"><div class="swatch-chip" style="background: var(--surface-dark);"><div style="height:100%; display:flex; align-items:center; justify-content:center; color:var(--syntax-keyword); font-family:var(--font-mono); font-size:var(--text-code);">keyword</div></div>
+          <div class="swatch-meta"><span class="swatch-name t-title-sm">syntax-keyword</span>
+          <span class="swatch-hex t-code">#8fb8d8</span>
+          <span class="swatch-contrast t-caption">on dark surfaces only · code mockups</span></div></div>
+        <div class="swatch"><div class="swatch-chip" style="background: var(--chart-1);"></div>
+          <div class="swatch-meta"><span class="swatch-name t-title-sm">chart-1</span>
+          <span class="swatch-hex t-code">#cc785c</span>
+          <span class="swatch-contrast t-caption"><strong>3.11:1</strong> vs canvas · = primary</span></div></div>
+        <div class="swatch"><div class="swatch-chip" style="background: var(--chart-2);"></div>
+          <div class="swatch-meta"><span class="swatch-name t-title-sm">chart-2</span>
+          <span class="swatch-hex t-code">#f8e9e4</span>
+          <span class="swatch-contrast t-caption"><strong>1.12:1</strong> vs canvas · pale fill</span></div></div>
+        <div class="swatch"><div class="swatch-chip" style="background: var(--chart-3);"></div>
+          <div class="swatch-meta"><span class="swatch-name t-title-sm">chart-3</span>
+          <span class="swatch-hex t-code">#965a46</span>
+          <span class="swatch-contrast t-caption"><strong>5.18:1</strong> vs canvas</span></div></div>
+        <div class="swatch"><div class="swatch-chip" style="background: var(--chart-4);"></div>
+          <div class="swatch-meta"><span class="swatch-name t-title-sm">chart-4</span>
+          <span class="swatch-hex t-code">#ebc2b4</span>
+          <span class="swatch-contrast t-caption"><strong>1.54:1</strong> vs canvas</span></div></div>
+        <div class="swatch"><div class="swatch-chip" style="background: var(--chart-5);"></div>
+          <div class="swatch-meta"><span class="swatch-name t-title-sm">chart-5</span>
+          <span class="swatch-hex t-code">#6c4335</span>
+          <span class="swatch-contrast t-caption"><strong>8.00:1</strong> vs canvas</span></div></div>
       </div>
     </div>
   </section>
@@ -545,7 +752,8 @@
         <p class="t-body-md">
           Serif display at weight 400 with negative tracking, humanist sans for
           everything else. The split is unbreakable: never sans headlines, never bold serif.
-          Each style below renders at its true size.
+          Each style below renders at its true size. On narrow viewports (&le;768px),
+          display-xl and display-lg step down to their compact sizes, 32px and 30px.
         </p>
       </div>
 
@@ -645,6 +853,23 @@
           </dl>
         </div>
         <p class="specimen-sample t-title-sm" style="margin:0;">Connector tile titles and list labels</p>
+      </div>
+
+      <div class="specimen">
+        <div class="specimen-meta">
+          <span class="token t-code">body-lg</span>
+          <dl class="t-caption">
+            <div><dt>font</dt><dd>StyreneB / sans</dd></div>
+            <div><dt>weight</dt><dd>400</dd></div>
+            <div><dt>size</dt><dd>18px</dd></div>
+            <div><dt>line-height</dt><dd>1.55</dd></div>
+            <div><dt>tracking</dt><dd>0</dd></div>
+          </dl>
+        </div>
+        <p class="specimen-sample t-body-lg" style="margin:0;">
+          Lead paragraphs open a section at 18px before the running text settles
+          back to 16px.
+        </p>
       </div>
 
       <div class="specimen">
@@ -765,6 +990,8 @@
         </p>
       </div>
 
+      <div class="space-row"><span class="space-label t-title-sm">micro<span class="px t-caption">2px</span></span><span class="space-bar" style="width: var(--space-0-5);"></span></div>
+      <div class="space-row"><span class="space-label t-title-sm">micro<span class="px t-caption">3px</span></span><span class="space-bar" style="width: var(--space-0-75);"></span></div>
       <div class="space-row"><span class="space-label t-title-sm">xxs<span class="px t-caption">4px</span></span><span class="space-bar" style="width: var(--space-1);"></span></div>
       <div class="space-row"><span class="space-label t-title-sm">xs<span class="px t-caption">8px</span></span><span class="space-bar" style="width: var(--space-2);"></span></div>
       <div class="space-row"><span class="space-label t-title-sm">sm<span class="px t-caption">12px</span></span><span class="space-bar" style="width: var(--space-3);"></span></div>
@@ -772,7 +999,12 @@
       <div class="space-row"><span class="space-label t-title-sm">lg<span class="px t-caption">24px</span></span><span class="space-bar" style="width: var(--space-6);"></span></div>
       <div class="space-row"><span class="space-label t-title-sm">xl<span class="px t-caption">32px</span></span><span class="space-bar" style="width: var(--space-8);"></span></div>
       <div class="space-row"><span class="space-label t-title-sm">xxl<span class="px t-caption">48px</span></span><span class="space-bar" style="width: var(--space-12);"></span></div>
+      <div class="space-row"><span class="space-label t-title-sm">band<span class="px t-caption">64px</span></span><span class="space-bar" style="width: var(--space-16);"></span></div>
       <div class="space-row"><span class="space-label t-title-sm">section<span class="px t-caption">96px</span></span><span class="space-bar" style="width: var(--space-24);"></span></div>
+      <p class="t-caption" style="color:var(--caption-foreground); margin-top:var(--space-4);">
+        2px and 3px are micro nudges for doc-page meta rows; 64px pads footer and CTA
+        bands and sets the top-nav height.
+      </p>
     </div>
   </section>
 
@@ -815,7 +1047,111 @@
         <div><div class="elev-box elev-dark" style="border-radius: var(--radius-lg);"><span class="t-caption">Dark surface</span></div>
           <span class="shape-val t-caption">Surface-dark fill. Code mockups, footer.</span></div>
         <div><div class="elev-box elev-shadow" style="border-radius: var(--radius-lg);"><span class="t-caption" style="color:var(--caption-foreground);">Subtle shadow</span></div>
-          <span class="shape-val t-caption t-code" style="font-size:12px;">0 1px 3px rgba(20,20,19,0.08) · used rarely</span></div>
+          <span class="shape-val t-caption t-code" style="font-size: var(--text-caption-up);">0 1px 3px rgba(20,20,19,0.08) · used rarely</span></div>
+        <div><div class="elev-box" style="border-radius: var(--radius-lg); background: var(--background); box-shadow: var(--shadow-lift);"><span class="t-caption" style="color:var(--caption-foreground);">Hover lift</span></div>
+          <span class="shape-val t-caption t-code" style="font-size: var(--text-caption-up);">0 4px 12px rgba(20,20,19,0.12) · hover on elevated surfaces</span></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ======================= Motion, layering & dimensions ======================= -->
+  <section class="band" id="motion">
+    <div class="container">
+      <div class="section-head">
+        <span class="kicker t-caption-up">Tokens</span>
+        <h2 class="t-display-lg">Motion, layering &amp; dimensions</h2>
+        <p class="t-body-md">
+          House-approved defaults beyond the color and type systems: one easing curve,
+          three durations, a small z-index ladder, and the fixed dimensions components
+          are built to.
+        </p>
+      </div>
+
+      <h3 class="subhead t-title-lg">Duration &amp; easing</h3>
+      <div class="table-wrap" style="margin-bottom:var(--space-8);">
+        <table class="ds">
+          <thead>
+            <tr><th>Token</th><th>Value</th><th>Used for</th></tr>
+          </thead>
+          <tbody>
+            <tr><td class="model-name t-code">duration-fast</td><td class="t-code">100ms</td><td>Micro feedback — hovers, state flips</td></tr>
+            <tr><td class="model-name t-code">duration-normal</td><td class="t-code">200ms</td><td>Default transitions</td></tr>
+            <tr><td class="model-name t-code">duration-slow</td><td class="t-code">300ms</td><td>Overlays and larger moves</td></tr>
+            <tr><td class="model-name t-code">ease-standard</td><td class="t-code">cubic-bezier(0.2, 0, 0, 1)</td><td>The only easing curve</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <h3 class="subhead t-title-lg">Layering</h3>
+      <div class="table-wrap" style="margin-bottom:var(--space-8);">
+        <table class="ds">
+          <thead>
+            <tr><th>Token</th><th>Value</th><th>Used for</th></tr>
+          </thead>
+          <tbody>
+            <tr><td class="model-name t-code">z-sticky</td><td class="t-code">10</td><td>Sticky chrome (doc topnav)</td></tr>
+            <tr><td class="model-name t-code">z-dropdown</td><td class="t-code">20</td><td>Anchored menus (select, combobox)</td></tr>
+            <tr><td class="model-name t-code">z-popover</td><td class="t-code">30</td><td>Overlays above menus (datepicker)</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <h3 class="subhead t-title-lg">Control dimensions</h3>
+      <div class="table-wrap" style="margin-bottom:var(--space-8);">
+        <table class="ds">
+          <thead>
+            <tr><th>Token</th><th>Value</th><th>Used for</th></tr>
+          </thead>
+          <tbody>
+            <tr><td class="model-name t-code">control-height-sm</td><td class="t-code">32px</td><td>Compact controls (= space-8)</td></tr>
+            <tr><td class="model-name t-code">control-height</td><td class="t-code">40px</td><td>Buttons, text input</td></tr>
+            <tr><td class="model-name t-code">control-height-lg</td><td class="t-code">48px</td><td>Large controls (= space-12)</td></tr>
+            <tr><td class="model-name t-code">icon-button-size</td><td class="t-code">36px</td><td>Circular icon buttons</td></tr>
+            <tr><td class="model-name t-code">button-padding-inline</td><td class="t-code">16 / 20 / 24px</td><td>sm / default / lg</td></tr>
+            <tr><td class="model-name t-code">input-padding</td><td class="t-code">10px / 14px</td><td>block / inline</td></tr>
+            <tr><td class="model-name t-code">tab-padding-inline</td><td class="t-code">14px</td><td>Category tabs</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <h3 class="subhead t-title-lg">Icons &amp; strokes</h3>
+      <div class="table-wrap" style="margin-bottom:var(--space-8);">
+        <table class="ds">
+          <thead>
+            <tr><th>Token</th><th>Value</th><th>Used for</th></tr>
+          </thead>
+          <tbody>
+            <tr><td class="model-name t-code">icon-size-xs</td><td class="t-code">12px</td><td>Inline micro icons</td></tr>
+            <tr><td class="model-name t-code">icon-size-sm</td><td class="t-code">16px</td><td>Icon buttons</td></tr>
+            <tr><td class="model-name t-code">icon-size-md</td><td class="t-code">18px</td><td>Feature-card icons</td></tr>
+            <tr><td class="model-name t-code">icon-size-lg</td><td class="t-code">24px</td><td>Section icons</td></tr>
+            <tr><td class="model-name t-code">icon-size-xl</td><td class="t-code">32px</td><td>Avatar fallback glyphs</td></tr>
+            <tr><td class="model-name t-code">brand-mark-size</td><td class="t-code">20px</td><td>Logo glyph</td></tr>
+            <tr><td class="model-name t-code">stroke-width-icon</td><td class="t-code">1.6</td><td>UI icon strokes</td></tr>
+            <tr><td class="model-name t-code">stroke-width-brand</td><td class="t-code">2.1</td><td>Brand mark strokes</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <h3 class="subhead t-title-lg">Component size scales</h3>
+      <div class="table-wrap">
+        <table class="ds">
+          <thead>
+            <tr><th>Component</th><th>Scale</th><th>Notes</th></tr>
+          </thead>
+          <tbody>
+            <tr><td class="model-name t-code">avatar-size</td><td class="t-code">24 / 32 / 40 / 48 / 64px</td><td>xs–xl; md = control-height, lg = control-height-lg</td></tr>
+            <tr><td class="model-name t-code">checkbox-size</td><td class="t-code">16 / 18 / 20px</td><td>sm / md / lg</td></tr>
+            <tr><td class="model-name t-code">slider-track-height</td><td class="t-code">2 / 4 / 8px</td><td>sm / md / lg</td></tr>
+            <tr><td class="model-name t-code">slider-thumb</td><td class="t-code">12 / 16 / 20px</td><td>= icon-size-xs / sm / brand-mark-size</td></tr>
+            <tr><td class="model-name t-code">slider-tick</td><td class="t-code">#8e8b82</td><td>Step ticks = caption-foreground</td></tr>
+            <tr><td class="model-name t-code">switch-track-height</td><td class="t-code">16 / 24 / 32px</td><td>sm / md / lg</td></tr>
+            <tr><td class="model-name t-code">textarea-min-height</td><td class="t-code">64 / 96 / 128px</td><td>sm / md / lg</td></tr>
+            <tr><td class="model-name t-code">calendar-cell-size</td><td class="t-code">32px</td><td>= control-height-sm</td></tr>
+            <tr><td class="model-name t-code">menu-max-height</td><td class="t-code">6 × control-height</td><td>Six option rows</td></tr>
+            <tr><td class="model-name t-code">today-indicator</td><td class="t-code">#cc785c</td><td>Datepicker today ring = primary</td></tr>
+          </tbody>
+        </table>
       </div>
     </div>
   </section>
@@ -861,8 +1197,8 @@
         <div class="demo-row">
           <span class="demo-label t-caption">icon circular</span>
           <button class="btn btn-icon-circular" type="button" aria-label="Next">
-            <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true">
-              <path d="M3 8h10M9 4l4 4-4 4" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
+            <svg viewBox="0 0 16 16" fill="none" aria-hidden="true">
+              <path d="M3 8h10M9 4l4 4-4 4" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"/>
             </svg>
           </button>
           <span class="t-caption" style="color:var(--caption-foreground);">36px, carousel arrows and share</span>
@@ -903,8 +1239,8 @@
         <div class="card-grid">
           <div class="feature-card">
             <div class="icon" aria-hidden="true">
-              <svg width="18" height="18" viewBox="0 0 18 18" fill="none">
-                <path d="M3 13.5 7.5 9 3 4.5M8.5 13.5H15" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
+              <svg viewBox="0 0 18 18" fill="none">
+                <path d="M3 13.5 7.5 9 3 4.5M8.5 13.5H15" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"/>
               </svg>
             </div>
             <h4 class="t-title-md">feature-card</h4>
@@ -925,7 +1261,7 @@
             <div class="code-status t-caption"><span class="status-dot"></span>Connected to workspace</div>
           </div>
 
-          <div class="feature-card" style="background:var(--background); border:1px solid var(--border);">
+          <div class="feature-card" style="background:var(--background); border:var(--border-width) solid var(--border);">
             <span class="badge-pill">Opus</span>
             <h4 class="t-title-md" style="margin-top:var(--space-4);">model-comparison-card</h4>
             <p class="t-body-md">Canvas fill with a hairline border. Model name, a capability blurb, and a coral text link.</p>
@@ -987,7 +1323,7 @@
     <div class="container">
       <a class="brand" href="#top" aria-label="Back to top">
         <svg class="brand-mark" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-          <g style="stroke: var(--on-dark);" stroke-width="2.1" stroke-linecap="round">
+          <g style="stroke: var(--on-dark); stroke-width: var(--stroke-width-brand);" stroke-linecap="round">
             <line x1="12" y1="1.5" x2="12" y2="6.2"/>
             <line x1="12" y1="17.8" x2="12" y2="22.5"/>
             <line x1="1.5" y1="12" x2="6.2" y2="12"/>
