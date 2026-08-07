@@ -1,0 +1,394 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Select — Component Showcase</title>
+<link rel="stylesheet" href="../src/styles/tokens.css">
+<link rel="stylesheet" href="../src/styles/typography.css">
+<link rel="stylesheet" href="../src/styles/separator.css">
+<link rel="stylesheet" href="../src/styles/form-field.css">
+<link rel="stylesheet" href="../src/styles/select.css">
+<style>
+  /* Page chrome — tokens only, no component values. */
+  *, *::before, *::after { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: var(--background);
+    color: var(--foreground);
+    font-family: var(--font-sans);
+    -webkit-font-smoothing: antialiased;
+  }
+  .container { max-width: var(--doc-container-max); margin: 0 auto; padding: 0 var(--space-6); }
+  .page-head { padding: var(--space-16) 0 var(--space-8); border-bottom: var(--border-width) solid var(--border); }
+  .page-head .text--overline { color: var(--primary); display: block; margin-bottom: var(--space-3); }
+  .page-head p { margin: var(--space-4) 0 0; max-width: 64ch; }
+  .demo-block { padding: var(--space-8) 0; }
+  .demo-block > .text--h5 { margin-bottom: var(--space-6); }
+  .demo-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(var(--doc-grid-min-card), 1fr)); gap: var(--space-8); align-items: start; }
+  .demo-note { margin-top: var(--space-4); max-width: 72ch; color: var(--muted-foreground); }
+  .demo-caption { margin-bottom: var(--space-2); color: var(--caption-foreground); }
+</style>
+</head>
+<body>
+
+<header class="page-head">
+  <div class="container">
+    <span class="text text--overline">Component</span>
+    <h1 class="text text--h1">Select</h1>
+    <p class="text text--body-md">
+      A WAI-ARIA listbox: the trigger shares the Input family's field chrome, the
+      menu floats on <code class="text text--code">--popover</code> with the system's only
+      shadow. Focus stays on the trigger and the menu navigates through
+      <code class="text text--code">aria-activedescendant</code> — Arrow keys move,
+      Enter/Space select, Escape closes, Home/End jump to the ends. The script
+      below is the keyboard layer only; every visual comes from
+      <code class="text text--code">select.css</code> tokens.
+    </p>
+  </div>
+</header>
+
+<main class="container">
+
+  <!-- ===================== Core states ===================== -->
+  <section class="demo-block" aria-labelledby="states-heading">
+    <h2 class="text text--h5" id="states-heading">States</h2>
+    <div class="demo-grid">
+
+      <div class="field">
+        <div class="field__header"><label class="field__label" id="lb-role" for="sel-role">Role</label></div>
+        <div class="field__control">
+          <div class="select" data-select>
+            <button class="select__trigger" type="button" id="sel-role"
+                    aria-haspopup="listbox" aria-expanded="false"
+                    aria-labelledby="lb-role sel-role-value">
+              <span class="select__value is-placeholder" id="sel-role-value">Choose a role</span>
+              <svg class="select__chevron" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+                <path d="m4 6 4 4 4-4" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"/>
+              </svg>
+            </button>
+            <ul class="select__menu" role="listbox" aria-labelledby="lb-role" hidden>
+              <li class="select__option" role="option" aria-selected="false">Owner
+                <svg class="select__check" viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="m3 8.5 3.5 3.5L13 4.5" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"/></svg></li>
+              <li class="select__option" role="option" aria-selected="false">Admin
+                <svg class="select__check" viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="m3 8.5 3.5 3.5L13 4.5" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"/></svg></li>
+              <li class="select__option" role="option" aria-selected="false">Member
+                <svg class="select__check" viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="m3 8.5 3.5 3.5L13 4.5" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"/></svg></li>
+            </ul>
+          </div>
+        </div>
+        <p class="field__description">default + placeholder — value at --caption-foreground until chosen.</p>
+      </div>
+
+      <div class="field">
+        <div class="field__header"><label class="field__label" id="lb-plan" for="sel-plan">Plan</label></div>
+        <div class="field__control">
+          <div class="select" data-select data-value="Team">
+            <button class="select__trigger" type="button" id="sel-plan"
+                    aria-haspopup="listbox" aria-expanded="false"
+                    aria-labelledby="lb-plan sel-plan-value">
+              <span class="select__value" id="sel-plan-value">Team</span>
+              <svg class="select__chevron" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+                <path d="m4 6 4 4 4-4" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"/>
+              </svg>
+            </button>
+            <ul class="select__menu" role="listbox" aria-labelledby="lb-plan" hidden>
+              <li class="select__option" role="option" aria-selected="false">Solo
+                <svg class="select__check" viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="m3 8.5 3.5 3.5L13 4.5" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"/></svg></li>
+              <li class="select__option" role="option" aria-selected="true">Team
+                <svg class="select__check" viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="m3 8.5 3.5 3.5L13 4.5" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"/></svg></li>
+              <li class="select__option" role="option" aria-selected="false">Enterprise
+                <svg class="select__check" viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="m3 8.5 3.5 3.5L13 4.5" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"/></svg></li>
+            </ul>
+          </div>
+        </div>
+        <p class="field__description">filled — selected value at --foreground; hover and tab in for the live ring.</p>
+      </div>
+
+      <div class="field">
+        <div class="field__header"><label class="field__label" id="sel-open-label" for="sel-open">Sort members by</label></div>
+        <div class="field__control">
+          <div class="select" data-select data-open>
+            <button class="select__trigger" type="button" id="sel-open"
+                    aria-haspopup="listbox" aria-expanded="true"
+                    aria-labelledby="sel-open-label sel-open-value"
+                    aria-activedescendant="sel-open-opt-2">
+              <span class="select__value" id="sel-open-value">Recently active</span>
+              <svg class="select__chevron" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+                <path d="m4 6 4 4 4-4" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"/>
+              </svg>
+            </button>
+            <ul class="select__menu" role="listbox" aria-labelledby="sel-open-label">
+              <li class="select__option" role="option" aria-selected="false" id="sel-open-opt-1">Name
+                <svg class="select__check" viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="m3 8.5 3.5 3.5L13 4.5" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"/></svg></li>
+              <li class="select__option is-active" role="option" aria-selected="true" id="sel-open-opt-2">Recently active
+                <svg class="select__check" viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="m3 8.5 3.5 3.5L13 4.5" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"/></svg></li>
+              <li class="select__option" role="option" aria-selected="false" id="sel-open-opt-3">Date joined
+                <svg class="select__check" viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="m3 8.5 3.5 3.5L13 4.5" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"/></svg></li>
+              <li class="select__option" role="option" aria-selected="false" aria-disabled="true" id="sel-open-opt-4">Usage (Enterprise)
+                <svg class="select__check" viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="m3 8.5 3.5 3.5L13 4.5" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"/></svg></li>
+            </ul>
+          </div>
+        </div>
+        <p class="field__description">
+          open — chevron rotated, ring held, active descendant on --accent, selected on
+          --surface-cream-strong with a --primary check, last option disabled.
+        </p>
+      </div>
+
+      <div class="field">
+        <div class="field__header"><label class="field__label" id="sel-disabled-label">Tenant region</label></div>
+        <div class="field__control">
+          <div class="select" data-select>
+            <button class="select__trigger" type="button" disabled
+                    aria-haspopup="listbox" aria-expanded="false"
+                    aria-labelledby="sel-disabled-label sel-disabled-value">
+              <span class="select__value" id="sel-disabled-value">EU (Frankfurt)</span>
+              <svg class="select__chevron" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+                <path d="m4 6 4 4 4-4" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"/>
+              </svg>
+            </button>
+            <ul class="select__menu" role="listbox" hidden></ul>
+          </div>
+        </div>
+        <p class="field__description">disabled — the attribute makes it inert; opacity is only the signal.</p>
+      </div>
+
+      <div class="field field--error">
+        <div class="field__header">
+          <label class="field__label" id="sel-error-label" for="sel-error">Billing country <span class="field__required" aria-hidden="true">*</span></label>
+        </div>
+        <div class="field__control">
+          <div class="select select--error" data-select>
+            <button class="select__trigger" type="button" id="sel-error"
+                    aria-haspopup="listbox" aria-expanded="false" aria-invalid="true"
+                    aria-labelledby="sel-error-label sel-error-value"
+                    aria-describedby="sel-error-error">
+              <span class="select__value is-placeholder" id="sel-error-value">Select a country</span>
+              <svg class="select__chevron" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+                <path d="m4 6 4 4 4-4" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"/>
+              </svg>
+            </button>
+            <ul class="select__menu" role="listbox" aria-labelledby="sel-error-label" hidden>
+              <li class="select__option" role="option" aria-selected="false">Germany
+                <svg class="select__check" viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="m3 8.5 3.5 3.5L13 4.5" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"/></svg></li>
+              <li class="select__option" role="option" aria-selected="false">United Kingdom
+                <svg class="select__check" viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="m3 8.5 3.5 3.5L13 4.5" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"/></svg></li>
+            </ul>
+          </div>
+        </div>
+        <p class="field__error" id="sel-error-error" role="alert">Required to issue invoices.</p>
+      </div>
+
+    </div>
+  </section>
+
+  <hr class="separator separator--horizontal separator--subtle" role="presentation">
+
+  <!-- ===================== Sizes ===================== -->
+  <section class="demo-block" aria-labelledby="sizes-heading">
+    <h2 class="text text--h5" id="sizes-heading">Sizes</h2>
+    <div class="demo-grid">
+      <div>
+        <p class="text text--caption demo-caption">sm — --control-height-sm, --text-body-sm</p>
+        <div class="select select--sm" data-select data-value="All statuses">
+          <button class="select__trigger" type="button" aria-haspopup="listbox" aria-expanded="false" aria-label="Filter by status">
+            <span class="select__value">All statuses</span>
+            <svg class="select__chevron" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+              <path d="m4 6 4 4 4-4" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+          </button>
+          <ul class="select__menu" role="listbox" aria-label="Filter by status" hidden>
+            <li class="select__option" role="option" aria-selected="true">All statuses
+              <svg class="select__check" viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="m3 8.5 3.5 3.5L13 4.5" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"/></svg></li>
+            <li class="select__option" role="option" aria-selected="false">Active
+              <svg class="select__check" viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="m3 8.5 3.5 3.5L13 4.5" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"/></svg></li>
+            <li class="select__option" role="option" aria-selected="false">Suspended
+              <svg class="select__check" viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="m3 8.5 3.5 3.5L13 4.5" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"/></svg></li>
+          </ul>
+        </div>
+      </div>
+      <div>
+        <p class="text text--caption demo-caption">lg — --control-height-lg, leading icon</p>
+        <div class="select select--lg" data-select data-value="Berlin, DE">
+          <button class="select__trigger" type="button" aria-haspopup="listbox" aria-expanded="false" aria-label="Office location">
+            <svg class="select__leading" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+              <path d="M8 14s5-4.6 5-8a5 5 0 1 0-10 0c0 3.4 5 8 5 8Z" stroke="currentColor" stroke-linejoin="round"/>
+              <circle cx="8" cy="6" r="1.8" stroke="currentColor"/>
+            </svg>
+            <span class="select__value">Berlin, DE</span>
+            <svg class="select__chevron" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+              <path d="m4 6 4 4 4-4" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+          </button>
+          <ul class="select__menu" role="listbox" aria-label="Office location" hidden>
+            <li class="select__option" role="option" aria-selected="true">Berlin, DE
+              <svg class="select__check" viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="m3 8.5 3.5 3.5L13 4.5" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"/></svg></li>
+            <li class="select__option" role="option" aria-selected="false">London, UK
+              <svg class="select__check" viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="m3 8.5 3.5 3.5L13 4.5" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"/></svg></li>
+            <li class="select__option" role="option" aria-selected="false">Remote
+              <svg class="select__check" viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="m3 8.5 3.5 3.5L13 4.5" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"/></svg></li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <hr class="separator separator--horizontal separator--subtle" role="presentation">
+
+  <!-- ===================== Option groups ===================== -->
+  <section class="demo-block" aria-labelledby="groups-heading">
+    <h2 class="text text--h5" id="groups-heading">Option groups</h2>
+    <div class="demo-grid">
+      <div class="field">
+        <div class="field__header"><label class="field__label" id="sel-groups-label" for="sel-groups">Invite as</label></div>
+        <div class="field__control">
+          <div class="select" data-select data-value="Recruiter">
+            <button class="select__trigger" type="button" id="sel-groups"
+                    aria-haspopup="listbox" aria-expanded="false"
+                    aria-labelledby="sel-groups-label sel-groups-value">
+              <span class="select__value" id="sel-groups-value">Recruiter</span>
+              <svg class="select__chevron" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+                <path d="m4 6 4 4 4-4" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"/>
+              </svg>
+            </button>
+            <ul class="select__menu" role="listbox" aria-labelledby="sel-groups-label" hidden>
+              <li class="select__group" role="group" aria-labelledby="sel-groups-g1">
+                <div class="select__group-label" id="sel-groups-g1">Hiring</div>
+                <ul>
+                  <li class="select__option" role="option" aria-selected="true">Recruiter
+                    <svg class="select__check" viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="m3 8.5 3.5 3.5L13 4.5" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"/></svg></li>
+                  <li class="select__option" role="option" aria-selected="false">Hiring manager
+                    <svg class="select__check" viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="m3 8.5 3.5 3.5L13 4.5" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"/></svg></li>
+                </ul>
+              </li>
+              <li class="select__group" role="group" aria-labelledby="sel-groups-g2">
+                <div class="select__group-label" id="sel-groups-g2">Operations</div>
+                <ul>
+                  <li class="select__option" role="option" aria-selected="false">Finance
+                    <svg class="select__check" viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="m3 8.5 3.5 3.5L13 4.5" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"/></svg></li>
+                  <li class="select__option" role="option" aria-selected="false" aria-disabled="true">Platform admin (restricted)
+                    <svg class="select__check" viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="m3 8.5 3.5 3.5L13 4.5" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"/></svg></li>
+                </ul>
+              </li>
+            </ul>
+          </div>
+        </div>
+        <p class="field__description">
+          Groups use <code class="text text--code">role="group"</code> with a caption-up
+          label and a --border-soft divider; the disabled option is skipped by arrow keys.
+        </p>
+      </div>
+    </div>
+    <p class="text text--caption demo-note">
+      Try it: Tab to any trigger, press ArrowDown to open, arrows to move, Home/End to
+      jump, Enter to commit, Escape to close without changing the value. Disabled
+      options are never reachable by keyboard.
+    </p>
+  </section>
+
+</main>
+
+<script>
+/* Keyboard layer for the listbox pattern. Focus stays on the trigger;
+   the menu navigates via aria-activedescendant. Visuals live entirely
+   in select.css — this script only toggles state attributes/classes. */
+for (const root of document.querySelectorAll("[data-select]")) {
+  const trigger = root.querySelector(".select__trigger");
+  const menu = root.querySelector(".select__menu");
+  const value = root.querySelector(".select__value");
+  if (!trigger || !menu || !value || trigger.disabled) continue;
+
+  const options = () =>
+    [...menu.querySelectorAll('.select__option:not([aria-disabled="true"])')];
+  options().forEach((opt, i) => {
+    if (!opt.id) opt.id = `${root.id || "select"}-opt-${i}`;
+  });
+
+  const isOpen = () => trigger.getAttribute("aria-expanded") === "true";
+  const active = () => menu.querySelector(".select__option.is-active");
+
+  function open(moveTo) {
+    trigger.setAttribute("aria-expanded", "true");
+    menu.hidden = false;
+    const target =
+      moveTo ??
+      menu.querySelector('.select__option[aria-selected="true"]:not([aria-disabled="true"])') ??
+      options()[0];
+    setActive(target);
+  }
+  function close() {
+    trigger.setAttribute("aria-expanded", "false");
+    menu.hidden = true;
+    setActive(null);
+  }
+  function setActive(opt) {
+    for (const o of menu.querySelectorAll(".select__option")) o.classList.remove("is-active");
+    if (opt) {
+      opt.classList.add("is-active");
+      trigger.setAttribute("aria-activedescendant", opt.id);
+      opt.scrollIntoView({ block: "nearest" });
+    } else {
+      trigger.removeAttribute("aria-activedescendant");
+    }
+  }
+  function move(delta) {
+    const list = options();
+    const i = list.indexOf(active());
+    setActive(list[(i + delta + list.length) % list.length]);
+  }
+  function commit(opt) {
+    for (const o of menu.querySelectorAll(".select__option"))
+      o.setAttribute("aria-selected", String(o === opt));
+    value.textContent = opt.textContent.trim();
+    value.classList.remove("is-placeholder");
+    close();
+  }
+
+  trigger.addEventListener("click", () => (isOpen() ? close() : open()));
+  trigger.addEventListener("keydown", (event) => {
+    switch (event.key) {
+      case "ArrowDown":
+        event.preventDefault();
+        isOpen() ? move(1) : open();
+        break;
+      case "ArrowUp":
+        event.preventDefault();
+        isOpen() ? move(-1) : open(options().at(-1));
+        break;
+      case "Home":
+        if (isOpen()) { event.preventDefault(); setActive(options()[0]); }
+        break;
+      case "End":
+        if (isOpen()) { event.preventDefault(); setActive(options().at(-1)); }
+        break;
+      case "Enter":
+      case " ":
+        event.preventDefault();
+        if (isOpen() && active()) commit(active());
+        else open();
+        break;
+      case "Escape":
+        if (isOpen()) { event.preventDefault(); close(); }
+        break;
+    }
+  });
+  menu.addEventListener("click", (event) => {
+    const opt = event.target.closest(".select__option");
+    if (opt && opt.getAttribute("aria-disabled") !== "true") {
+      commit(opt);
+      trigger.focus();
+    }
+  });
+  menu.addEventListener("pointermove", (event) => {
+    const opt = event.target.closest('.select__option:not([aria-disabled="true"])');
+    if (opt) setActive(opt);
+  });
+  document.addEventListener("pointerdown", (event) => {
+    if (isOpen() && !root.contains(event.target)) close();
+  });
+}
+</script>
+
+</body>
+</html>

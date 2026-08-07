@@ -1,0 +1,260 @@
+/* ==========================================================================
+   Switch
+   Token mapping — every value below references tokens.css, nothing else.
+
+   A <button type="button" role="switch" aria-checked="true|false"> — the ARIA
+   switch pattern: Space/Enter fire the native button click (nothing
+   reimplemented), a tiny controller flips aria-checked, and every visual
+   state is driven by that attribute, never by JS-set inline styles.
+
+   Anatomy (markup contract):
+     .switch                  the button; aria-label when used alone
+     .switch__thumb           sliding knob (real element so it can host the
+                              loading spinner — a ::before cannot)
+     .switch__spinner         child of the thumb, shown only while loading
+     .switch-field            optional <label> wrapper: track + text row
+     .switch-field__text      text block (label + description)
+     .switch-field__label     label line
+     .switch-field__description   optional second line
+
+   Loading contract: `disabled` + `aria-busy="true"` + .is-loading — activation
+   is impossible and assistive tech announces busy. Busy ≠ unavailable:
+   loading overrides the disabled opacity (same precedent as Button).
+
+   DIMENSION DERIVATION (no raw numbers anywhere)
+     track height   --_track-h: size token (sm/md/lg below)
+     track width    calc(--_track-h * 2) — 2:1 is the switch's structural
+                    ratio, not a visual value (same status as a line-height)
+     thumb          calc(--_track-h - 2·--_inset - 2·--border-width)
+     thumb travel   = inner width − thumb = --_track-h exactly, so the
+                    checked translate is `var(--_track-h)`, derived from the
+                    same token — resize the track and the travel follows
+
+   PROPERTY → TOKEN
+   ─────────────────────────────────────────────────────────────────────────
+   track height    sm --switch-track-height-sm (16) / md
+                   --switch-track-height-md (24) / lg
+                   --switch-track-height-lg (32) — dedicated scale, added
+                   to tokens.css with this component
+   track inset     --space-0-5 (thumb padding inside the track)
+   track bg (off)  --surface-cream-strong (token note: "emphasized bands" —
+                   the strongest cream, reads as the resting trough)
+   track bg (on)   --primary; hover --primary-hover; active --primary-active
+                   (same recipe as the checked Checkbox)
+   border          --border-width solid --input
+   hover (off)     border-color --border-strong (token note: "strong line:
+                   hover borders" — Input and Checkbox still interim)
+   active (off)    bg --surface-cream-pressed (one elevation step darker
+                   than --surface-cream-strong; token note: "cream pressed
+                   track")
+   thumb bg        --primary-foreground (constant across states)
+   thumb shadow    --shadow-subtle (the one shadow token; tokens.css notes
+                   "shadows rare" — the thumb is the rare case, it lifts
+                   above the track)
+   focus ring      0 0 0 --ring-width --ring-focus
+   disabled        :disabled → opacity --opacity-disabled (token note:
+                   "same colors, reduced opacity") + cursor not-allowed;
+                   applies to both off and on
+   loading         spinner ring --primary on the constant --primary-foreground
+                   thumb; ring thickness --space-0-5 (Button precedent)
+   radius          --radius-full (track and thumb — the pill geometry
+                   defines the component)
+   label text      --font-sans --text-body-md (+ --line-height),
+                   color --foreground-strong; sm → --text-body-sm
+   description     --font-sans --text-body-sm (+ --line-height),
+                   color --muted-foreground
+   gap (track↔text) --space-2
+   motion          colors/border/ring --duration-fast --ease-standard;
+                   thumb translate --duration-normal --ease-standard (the
+                   travel is the one motion meant to be perceived);
+                   spinner spin --duration-slow linear infinite;
+                   all killed under prefers-reduced-motion
+
+   REPORTED TOKEN GAPS (not silently invented — flagged for tokens.css):
+   ‡  All resolved: tokens.css now ships --switch-track-height-sm/md/lg,
+      --border-strong (hover border) and --surface-cream-pressed (pressed
+      track), and this file references all three. Input and Checkbox still
+      report the hover-border interim in their own headers.
+   ========================================================================== */
+
+.switch {
+  /* Component-local aliases — every referenced value is a tokens.css token. */
+  --_track-h: var(--switch-track-height-md); /* md */
+  --_inset: var(--space-0-5);
+  --_thumb: calc(var(--_track-h) - 2 * var(--_inset) - 2 * var(--border-width));
+
+  position: relative;
+  display: inline-block;
+  flex: none;
+  width: calc(var(--_track-h) * 2);
+  height: var(--_track-h);
+  margin: 0;
+  padding: 0;
+  background: var(--surface-cream-strong);
+  border: var(--border-width) solid var(--input);
+  border-radius: var(--radius-full);
+  cursor: pointer;
+  transition:
+    background-color var(--duration-fast) var(--ease-standard),
+    border-color var(--duration-fast) var(--ease-standard),
+    box-shadow var(--duration-fast) var(--ease-standard);
+}
+
+/* The thumb sits on the padding box, so --_thumb and the travel below stay
+   exact at every size. */
+.switch__thumb {
+  position: absolute;
+  top: var(--_inset);
+  left: var(--_inset);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: var(--_thumb);
+  height: var(--_thumb);
+  background: var(--primary-foreground);
+  border-radius: var(--radius-full);
+  box-shadow: var(--shadow-subtle);
+  transition: translate var(--duration-normal) var(--ease-standard);
+}
+
+/* Travel = track width − 2·inset − 2·border − thumb = --_track-h exactly. */
+.switch[aria-checked="true"] .switch__thumb {
+  translate: var(--_track-h) 0;
+}
+
+/* ===== On ===== */
+
+.switch[aria-checked="true"] {
+  background: var(--primary);
+  border-color: var(--primary);
+}
+
+/* ===== Interactive states =====
+   .is-hover / .is-active / .is-focus-visible mirror the pseudo-classes so
+   static showcases and tests can render the states without interaction
+   (Button precedent). */
+
+.switch:hover:not(:disabled),
+.switch.is-hover {
+  border-color: var(--border-strong);
+}
+.switch[aria-checked="true"]:hover:not(:disabled),
+.switch[aria-checked="true"].is-hover {
+  background: var(--primary-hover);
+  border-color: var(--primary-hover);
+}
+
+.switch:active:not(:disabled),
+.switch.is-active {
+  background: var(--surface-cream-pressed);
+}
+.switch[aria-checked="true"]:active:not(:disabled),
+.switch[aria-checked="true"].is-active {
+  background: var(--primary-active);
+  border-color: var(--primary-active);
+}
+
+.switch:focus-visible,
+.switch.is-focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 var(--ring-width) var(--ring-focus);
+}
+
+.switch:disabled {
+  opacity: var(--opacity-disabled);
+  cursor: not-allowed;
+}
+
+/* ===== Loading ===== */
+
+.switch.is-loading {
+  pointer-events: none;
+  cursor: progress;
+}
+.switch.is-loading:disabled {
+  opacity: 1;
+}
+
+.switch__spinner {
+  width: calc(var(--_thumb) - 2 * var(--space-0-5));
+  height: calc(var(--_thumb) - 2 * var(--space-0-5));
+  border: var(--space-0-5) solid var(--primary);
+  border-top-color: transparent;
+  border-radius: var(--radius-full);
+  animation: switch-spin var(--duration-slow) linear infinite;
+}
+/* Hidden until loading — never occupies layout space (Button precedent). */
+.switch:not(.is-loading) .switch__spinner {
+  display: none;
+}
+
+@keyframes switch-spin {
+  to {
+    rotate: 360deg;
+  }
+}
+
+/* ===== Sizes ===== */
+
+.switch--sm {
+  --_track-h: var(--switch-track-height-sm);
+}
+.switch--lg {
+  --_track-h: var(--switch-track-height-lg);
+}
+
+/* ===== Label & description assembly (mirrors checkbox-field) ===== */
+
+.switch-field {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  cursor: pointer;
+  width: fit-content;
+}
+/* Loading is disabled-but-busy: dim the text only for true disabled. */
+.switch-field:has(.switch:disabled:not(.is-loading)) {
+  cursor: not-allowed;
+}
+.switch-field:has(.switch:disabled:not(.is-loading)) .switch-field__text {
+  opacity: var(--opacity-disabled);
+}
+
+.switch-field__text {
+  display: grid;
+  gap: var(--space-0-5);
+}
+
+.switch-field__label {
+  font-family: var(--font-sans);
+  font-size: var(--text-body-md);
+  font-weight: 400;
+  line-height: var(--text-body-md--line-height);
+  color: var(--foreground-strong);
+}
+.switch-field__description {
+  font-family: var(--font-sans);
+  font-size: var(--text-body-sm);
+  line-height: var(--text-body-sm--line-height);
+  color: var(--muted-foreground);
+}
+
+/* sm assembly scales the text down with the track */
+.switch-field:has(.switch--sm) .switch-field__label {
+  font-size: var(--text-body-sm);
+  line-height: var(--text-body-sm--line-height);
+}
+.switch-field:has(.switch--sm) .switch-field__description {
+  font-size: var(--text-caption);
+  line-height: var(--text-caption--line-height);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .switch,
+  .switch__thumb {
+    transition: none;
+  }
+  .switch__spinner {
+    animation: none;
+  }
+}

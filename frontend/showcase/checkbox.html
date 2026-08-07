@@ -1,0 +1,190 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Checkbox — Component Showcase</title>
+<link rel="stylesheet" href="../src/styles/tokens.css">
+<link rel="stylesheet" href="../src/styles/typography.css">
+<link rel="stylesheet" href="../src/styles/separator.css">
+<link rel="stylesheet" href="../src/styles/form-field.css">
+<link rel="stylesheet" href="../src/styles/checkbox.css">
+<style>
+  /* Page chrome — tokens only, no component values. */
+  *, *::before, *::after { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: var(--background);
+    color: var(--foreground);
+    font-family: var(--font-sans);
+    -webkit-font-smoothing: antialiased;
+  }
+  .container { max-width: var(--doc-container-max); margin: 0 auto; padding: 0 var(--space-6); }
+  .page-head { padding: var(--space-16) 0 var(--space-8); border-bottom: var(--border-width) solid var(--border); }
+  .page-head .text--overline { color: var(--primary); display: block; margin-bottom: var(--space-3); }
+  .page-head p { margin: var(--space-4) 0 0; max-width: 64ch; }
+  .demo-block { padding: var(--space-8) 0; }
+  .demo-block > .text--h5 { margin-bottom: var(--space-6); }
+  .demo-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(var(--doc-grid-min-card), 1fr)); gap: var(--space-6) var(--space-8); align-items: start; }
+  .demo-note { margin-top: var(--space-4); max-width: 72ch; color: var(--muted-foreground); }
+  .demo-caption { margin-bottom: var(--space-3); color: var(--caption-foreground); }
+  .demo-cell { display: grid; gap: var(--space-3); justify-items: start; }
+</style>
+</head>
+<body>
+
+<header class="page-head">
+  <div class="container">
+    <span class="text text--overline">Component</span>
+    <h1 class="text text--h1">Checkbox</h1>
+    <p class="text text--body-md">
+      A native <code class="text text--code">&lt;input type="checkbox"&gt;</code> under
+      <code class="text text--code">appearance: none</code> — Space toggles, Tab focuses, forms
+      submit, nothing reimplemented. The check and the indeterminate dash are drawn
+      from CSS borders in <code class="text text--code">currentColor</code>, so their color is
+      always the <code class="text text--code">--primary-foreground</code> token, never an
+      asset or a raw hex.
+    </p>
+  </div>
+</header>
+
+<main class="container">
+
+  <!-- ===================== States ===================== -->
+  <section class="demo-block" aria-labelledby="states-heading">
+    <h2 class="text text--h5" id="states-heading">States (md)</h2>
+    <div class="demo-grid">
+      <div class="demo-cell">
+        <p class="text text--caption demo-caption">unchecked</p>
+        <input class="checkbox" type="checkbox" aria-label="Unchecked example">
+      </div>
+      <div class="demo-cell">
+        <p class="text text--caption demo-caption">checked</p>
+        <input class="checkbox" type="checkbox" checked aria-label="Checked example">
+      </div>
+      <div class="demo-cell">
+        <p class="text text--caption demo-caption">indeterminate — set via JS, :indeterminate styled</p>
+        <input class="checkbox" type="checkbox" data-indeterminate aria-label="Select all members">
+      </div>
+      <div class="demo-cell">
+        <p class="text text--caption demo-caption">hover / active / focus-visible — live: hover, press, Tab</p>
+        <input class="checkbox" type="checkbox" aria-label="Interactive example">
+      </div>
+      <div class="demo-cell">
+        <p class="text text--caption demo-caption">disabled unchecked</p>
+        <input class="checkbox" type="checkbox" disabled aria-label="Disabled unchecked example">
+      </div>
+      <div class="demo-cell">
+        <p class="text text--caption demo-caption">disabled checked</p>
+        <input class="checkbox" type="checkbox" checked disabled aria-label="Disabled checked example">
+      </div>
+      <div class="demo-cell">
+        <p class="text text--caption demo-caption">error — [aria-invalid] drives the border</p>
+        <input class="checkbox" type="checkbox" aria-invalid="true" aria-label="Error example">
+      </div>
+      <div class="demo-cell">
+        <p class="text text--caption demo-caption">error checked</p>
+        <input class="checkbox" type="checkbox" checked aria-invalid="true" aria-label="Error checked example">
+      </div>
+    </div>
+    <p class="text text--caption demo-note">
+      Keyboard is the native contract: Tab moves focus (token ring appears),
+      Space toggles. Indeterminate clears to a definite state on the first
+      toggle — the platform's own behavior, kept intact.
+    </p>
+  </section>
+
+  <hr class="separator separator--horizontal separator--subtle" role="presentation">
+
+  <!-- ===================== Sizes ===================== -->
+  <section class="demo-block" aria-labelledby="sizes-heading">
+    <h2 class="text text--h5" id="sizes-heading">Sizes</h2>
+    <div class="demo-grid">
+      <div class="demo-cell">
+        <p class="text text--caption demo-caption">sm — --checkbox-size-sm (16px)</p>
+        <label class="checkbox-field">
+          <input class="checkbox checkbox--sm" type="checkbox" checked>
+          <span class="checkbox-field__text">
+            <span class="checkbox-field__label">Compact row</span>
+          </span>
+        </label>
+      </div>
+      <div class="demo-cell">
+        <p class="text text--caption demo-caption">md — --checkbox-size-md (18px)</p>
+        <label class="checkbox-field">
+          <input class="checkbox" type="checkbox" checked>
+          <span class="checkbox-field__text">
+            <span class="checkbox-field__label">Standard row</span>
+          </span>
+        </label>
+      </div>
+      <div class="demo-cell">
+        <p class="text text--caption demo-caption">lg — --checkbox-size-lg (20px)</p>
+        <label class="checkbox-field">
+          <input class="checkbox checkbox--lg" type="checkbox" checked>
+          <span class="checkbox-field__text">
+            <span class="checkbox-field__label">Emphasized row</span>
+          </span>
+        </label>
+      </div>
+    </div>
+  </section>
+
+  <hr class="separator separator--horizontal separator--subtle" role="presentation">
+
+  <!-- ===================== Assemblies ===================== -->
+  <section class="demo-block" aria-labelledby="assemblies-heading">
+    <h2 class="text text--h5" id="assemblies-heading">Assemblies</h2>
+    <div class="demo-grid">
+      <div class="demo-cell">
+        <p class="text text--caption demo-caption">checkbox only — aria-label carries the name</p>
+        <input class="checkbox" type="checkbox" aria-label="Select row: Ada Okonkwo">
+      </div>
+      <div class="demo-cell">
+        <p class="text text--caption demo-caption">checkbox + label — wrapping &lt;label&gt;, click anywhere</p>
+        <label class="checkbox-field">
+          <input class="checkbox" type="checkbox" checked>
+          <span class="checkbox-field__text">
+            <span class="checkbox-field__label">Email me application updates</span>
+          </span>
+        </label>
+      </div>
+      <div class="demo-cell">
+        <p class="text text--caption demo-caption">checkbox + label + description</p>
+        <label class="checkbox-field">
+          <input class="checkbox" type="checkbox">
+          <span class="checkbox-field__text">
+            <span class="checkbox-field__label">Share profile with partner companies</span>
+            <span class="checkbox-field__description">
+              Partner tenants see your public profile and open roles. Nothing is
+              shared until a match is confirmed.
+            </span>
+          </span>
+        </label>
+      </div>
+      <div class="demo-cell">
+        <p class="text text--caption demo-caption">label + description, disabled</p>
+        <label class="checkbox-field">
+          <input class="checkbox" type="checkbox" checked disabled>
+          <span class="checkbox-field__text">
+            <span class="checkbox-field__label">Two-step verification</span>
+            <span class="checkbox-field__description">
+              Enforced for platform administrators — it cannot be turned off.
+            </span>
+          </span>
+        </label>
+      </div>
+    </div>
+  </section>
+
+</main>
+
+<script>
+  /* Indeterminate is a JS-only property — no HTML attribute exists. */
+  for (const box of document.querySelectorAll("[data-indeterminate]")) {
+    box.indeterminate = true;
+  }
+</script>
+
+</body>
+</html>

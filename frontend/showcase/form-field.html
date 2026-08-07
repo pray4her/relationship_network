@@ -1,0 +1,211 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>FormField — Component Showcase</title>
+<link rel="stylesheet" href="../src/styles/tokens.css">
+<link rel="stylesheet" href="../src/styles/typography.css">
+<link rel="stylesheet" href="../src/styles/separator.css">
+<link rel="stylesheet" href="../src/styles/form-field.css">
+<style>
+  /* Page chrome — tokens only, no component values. */
+  *, *::before, *::after { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: var(--background);
+    color: var(--foreground);
+    font-family: var(--font-sans);
+    -webkit-font-smoothing: antialiased;
+  }
+  .container { max-width: var(--doc-container-max); margin: 0 auto; padding: 0 var(--space-6); }
+  .page-head { padding: var(--space-16) 0 var(--space-8); border-bottom: var(--border-width) solid var(--border); }
+  .page-head .text--overline { color: var(--primary); display: block; margin-bottom: var(--space-3); }
+  .page-head p { margin: var(--space-4) 0 0; max-width: 64ch; }
+  .demo-block { padding: var(--space-8) 0; }
+  .demo-block > .text--h5 { margin-bottom: var(--space-6); }
+  .demo-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(var(--doc-grid-min-card), 1fr)); gap: var(--space-8); }
+  .demo-note { margin-top: var(--space-4); max-width: 72ch; color: var(--muted-foreground); }
+
+  /* Demo control — page chrome, NOT part of the FormField component.
+     It exists only so the control slot has something to hold; the field
+     never styles it. Tokens only. */
+  .demo-input {
+    width: 100%;
+    height: var(--control-height);
+    padding: var(--input-padding-block) var(--input-padding-inline);
+    background: var(--background);
+    color: var(--foreground);
+    border: var(--border-width) solid var(--border);
+    border-radius: var(--radius-md);
+    font-family: var(--font-sans);
+    font-size: var(--text-body-md);
+    line-height: var(--text-body-md--line-height);
+  }
+  .demo-input::placeholder { color: var(--caption-foreground); }
+  .demo-input:focus-visible, .demo-input.is-focused {
+    outline: none;
+    border-color: var(--primary);
+    box-shadow: 0 0 0 var(--ring-width) var(--ring-focus);
+  }
+  .demo-input:disabled { opacity: var(--opacity-disabled); cursor: not-allowed; }
+  .demo-input[aria-invalid="true"] { border-color: var(--destructive); }
+  textarea.demo-input { height: auto; min-height: var(--space-24); resize: vertical; }
+</style>
+</head>
+<body>
+
+<header class="page-head">
+  <div class="container">
+    <span class="text text--overline">Component</span>
+    <h1 class="text text--h1">FormField</h1>
+    <p class="text text--body-md">
+      Label, required marker, control slot, helper text, error message, optional
+      character count — wired together with <code class="text text--code">for</code> /
+      <code class="text text--code">id</code> /
+      <code class="text text--code">aria-describedby</code> /
+      <code class="text text--code">aria-invalid</code>. The control slot is unstyled:
+      state coordination happens through <code class="text text--code">:has()</code>, so the
+      control's own classes keep full ownership of its chrome.
+    </p>
+  </div>
+</header>
+
+<main class="container">
+
+  <!-- ===================== Anatomy / default ===================== -->
+  <section class="demo-block" aria-labelledby="default-heading">
+    <h2 class="text text--h5" id="default-heading">Default — full anatomy</h2>
+    <div class="demo-grid">
+      <div class="field">
+        <div class="field__header">
+          <label class="field__label" for="ff-email">
+            Work email <span class="field__required" aria-hidden="true">*</span>
+          </label>
+        </div>
+        <div class="field__control">
+          <input class="demo-input" id="ff-email" type="email" required
+                 placeholder="you@company.com" aria-describedby="ff-email-desc">
+        </div>
+        <p class="field__description" id="ff-email-desc">
+          Invites and billing receipts go here. The asterisk is decorative — the
+          control's own <code class="text text--code">required</code> attribute announces it.
+        </p>
+      </div>
+
+      <div class="field">
+        <div class="field__header">
+          <label class="field__label" for="ff-bio">Company tagline</label>
+          <span class="field__count" id="ff-bio-count" aria-live="polite">38 / 120</span>
+        </div>
+        <div class="field__control">
+          <textarea class="demo-input" id="ff-bio"
+                    aria-describedby="ff-bio-desc ff-bio-count">Precise talent matching for global teams.</textarea>
+        </div>
+        <p class="field__description" id="ff-bio-desc">
+          Shown on your public profile. The count is polite-live, so updates don't
+          interrupt typing.
+        </p>
+      </div>
+    </div>
+  </section>
+
+  <hr class="separator separator--horizontal separator--subtle" role="presentation">
+
+  <!-- ===================== Focused child ===================== -->
+  <section class="demo-block" aria-labelledby="focus-heading">
+    <h2 class="text text--h5" id="focus-heading">Focused child — coordination via :has()</h2>
+    <div class="demo-grid">
+      <div class="field">
+        <div class="field__header">
+          <label class="field__label" for="ff-focus">Workspace name</label>
+        </div>
+        <div class="field__control">
+          <input class="demo-input is-focused" id="ff-focus" type="text"
+                 value="Northwind Talent" aria-describedby="ff-focus-desc">
+        </div>
+        <p class="field__description" id="ff-focus-desc">
+          Simulated with <code class="text text--code">.is-focused</code> on the control —
+          in production the field reacts to the real
+          <code class="text text--code">:focus-visible</code>. The label steps up to
+          <code class="text text--code">--foreground</code>; the ring belongs to the control.
+        </p>
+      </div>
+    </div>
+  </section>
+
+  <hr class="separator separator--horizontal separator--subtle" role="presentation">
+
+  <!-- ===================== Disabled child ===================== -->
+  <section class="demo-block" aria-labelledby="disabled-heading">
+    <h2 class="text text--h5" id="disabled-heading">Disabled child</h2>
+    <div class="demo-grid">
+      <div class="field">
+        <div class="field__header">
+          <label class="field__label" for="ff-disabled">Tenant slug</label>
+        </div>
+        <div class="field__control">
+          <input class="demo-input" id="ff-disabled" type="text" value="northwind"
+                 disabled aria-describedby="ff-disabled-desc">
+        </div>
+        <p class="field__description" id="ff-disabled-desc">
+          Locked after creation. The field detects
+          <code class="text text--code">:disabled</code> through
+          <code class="text text--code">:has()</code> and dims its own text at
+          <code class="text text--code">--opacity-disabled</code> — no class toggling.
+        </p>
+      </div>
+    </div>
+  </section>
+
+  <hr class="separator separator--horizontal separator--subtle" role="presentation">
+
+  <!-- ===================== Error & success ===================== -->
+  <section class="demo-block" aria-labelledby="states-heading">
+    <h2 class="text text--h5" id="states-heading">Error &amp; success</h2>
+    <div class="demo-grid">
+      <div class="field field--error">
+        <div class="field__header">
+          <label class="field__label" for="ff-error">
+            Work email <span class="field__required" aria-hidden="true">*</span>
+          </label>
+        </div>
+        <div class="field__control">
+          <input class="demo-input" id="ff-error" type="email" required
+                 value="ada@lovelace" aria-invalid="true"
+                 aria-describedby="ff-error-desc ff-error-error">
+        </div>
+        <p class="field__description" id="ff-error-desc">
+          We never share your address.
+        </p>
+        <p class="field__error" id="ff-error-error" role="alert">
+          Enter a complete email address, including a domain.
+        </p>
+      </div>
+
+      <div class="field field--success">
+        <div class="field__header">
+          <label class="field__label" for="ff-success">Invite code</label>
+        </div>
+        <div class="field__control">
+          <input class="demo-input" id="ff-success" type="text" value="NWT-2026-8841"
+                 aria-describedby="ff-success-desc">
+        </div>
+        <p class="field__description" id="ff-success-desc">
+          Code accepted — the helper slot recolors to
+          <code class="text text--code">--success</code>, the only green the token set offers.
+        </p>
+      </div>
+    </div>
+    <p class="text text--caption demo-note">
+      Error wiring: <code class="text text--code">aria-invalid="true"</code> on the control,
+      the error's id joins <code class="text text--code">aria-describedby</code> alongside the
+      helper's, and <code class="text text--code">role="alert"</code> announces it on appear.
+      The helper stays visible — context and complaint are both on record.
+    </p>
+  </section>
+
+</main>
+
+</body>
+</html>

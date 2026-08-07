@@ -1,0 +1,227 @@
+/* ==========================================================================
+   Input
+   Token mapping — every value below references tokens.css, nothing else.
+
+   Anatomy (markup contract):
+     .input-wrap            the field chrome: border, height, radius, bg,
+                            focus ring. Owns ALL state styling.
+     .input                 the native control: borderless, transparent,
+                            fills the wrap. Never carries state classes.
+     .input__icon           decorative leading/trailing icon (aria-hidden)
+     .input__prefix / .input__suffix   text affixes in the flex flow
+     .input__clear          clear action — a real <button>, focusable,
+                            auto-hidden while the input is empty
+
+   Why a wrapper: leading/trailing icons, prefix/suffix text, and a clear
+   button all need to sit INSIDE the field frame. Absolute positioning
+   breaks with variable-width text affixes, so the wrap is a flex row and
+   the input is its borderless flex child. A plain input is just a wrap
+   with one child.
+
+   PROPERTY → TOKEN
+   ─────────────────────────────────────────────────────────────────────────
+   background      --background (readonly: --muted, the "muted bg" token)
+   text            --foreground
+   placeholder     --caption-foreground
+   border          --border-width solid --input
+   hover border    --border-strong
+   focus border    --primary
+   focus ring      box-shadow 0 0 0 --ring-width --ring-focus (on the wrap,
+                   via :focus-within; the input's own outline is removed)
+   error           border --destructive; error focus ring --ring-destructive
+   success         border --success (token exists)
+   disabled        opacity --opacity-disabled on the whole wrap via
+                   :has(:disabled); the control's own `disabled` attribute
+                   blocks interaction natively
+   readonly        background --muted; control stays focusable/copyable,
+                   so NO opacity — the two states must read differently
+   height          sm --control-height-sm / md --control-height /
+                   lg --control-height-lg
+   padding         --input-padding-inline (block padding is 0 — the fixed
+                   control height centers the line box)
+   radius          --radius-md (token note: "buttons, inputs, tabs")
+   icon size       --icon-size-sm; path stroke --stroke-width-icon
+   icon color      --caption-foreground (decorative, quiet)
+   affix color     --muted-foreground
+   clear action    color --muted-foreground → hover --foreground;
+                   focus ring --ring-width --ring-focus, radius --radius-xs
+   gap             --space-2 (icon/affix/clear ↔ text)
+   typography      --font-sans; md/lg --text-body-md (+ --line-height),
+                   sm --text-body-sm (+ --line-height)
+   motion          border-color & box-shadow over --duration-fast
+                   --ease-standard
+
+   STATES are read from the control, never duplicated on the wrap:
+     focus-visible  :focus-within (ring shows for keyboard AND mouse focus —
+                    deliberate: inputs announce focus on any entry)
+     disabled       :has(.input:disabled)
+     readonly       :has(.input[readonly])
+     error          .input-wrap--error on the wrap (paired with
+                    aria-invalid="true" on the control — FormField's
+                    contract — and the wrap class can be driven by it)
+     success        .input-wrap--success
+     filled         no visual change by design: filled text is already
+                    --foreground; the :placeholder-shown pseudo-class is
+                    used only to auto-hide the clear button
+
+   REPORTED TOKEN GAPS (not silently invented — flagged for tokens.css):
+   •  None open. Resolved: hover border → --border-strong; invalid focus
+      ring → --ring-destructive; --font-weight-regular/medium now exist
+      (the control inherits regular — no literal to map here).
+   ========================================================================== */
+
+.input-wrap {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  width: 100%;
+  height: var(--control-height);
+  padding: 0 var(--input-padding-inline);
+  background: var(--background);
+  border: var(--border-width) solid var(--input);
+  border-radius: var(--radius-md);
+  transition:
+    border-color var(--duration-fast) var(--ease-standard),
+    box-shadow var(--duration-fast) var(--ease-standard);
+}
+
+/* The native control: chrome-free, fills the wrap. */
+.input {
+  flex: 1;
+  min-width: 0;
+  height: 100%;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  font-family: var(--font-sans);
+  font-size: var(--text-body-md);
+  line-height: var(--text-body-md--line-height);
+  color: var(--foreground);
+}
+.input:focus {
+  outline: none; /* the wrap's :focus-within ring speaks for it */
+}
+.input::placeholder {
+  color: var(--caption-foreground);
+}
+/* Native decorations the token system has no values for. */
+.input::-webkit-outer-spin-button,
+.input::-webkit-inner-spin-button {
+  margin: 0;
+}
+
+/* ===== Sizes ===== */
+
+.input-wrap--sm {
+  height: var(--control-height-sm);
+}
+.input-wrap--sm .input {
+  font-size: var(--text-body-sm);
+  line-height: var(--text-body-sm--line-height);
+}
+.input-wrap--lg {
+  height: var(--control-height-lg);
+}
+
+/* ===== States (read from the control via :has / :focus-within) ===== */
+
+.input-wrap:hover {
+  border-color: var(--border-strong);
+}
+
+.input-wrap:focus-within {
+  border-color: var(--primary);
+  box-shadow: 0 0 0 var(--ring-width) var(--ring-focus);
+}
+
+.input-wrap:has(.input:disabled) {
+  opacity: var(--opacity-disabled);
+  cursor: not-allowed;
+}
+.input-wrap:has(.input:disabled) .input {
+  cursor: not-allowed;
+}
+
+.input-wrap:has(.input[readonly]) {
+  background: var(--muted);
+}
+
+.input-wrap--error,
+.input-wrap:has(.input[aria-invalid="true"]) {
+  border-color: var(--destructive);
+}
+
+/* Invalid focus: swap the coral ring for the destructive one. */
+.input-wrap--error:focus-within,
+.input-wrap:has(.input[aria-invalid="true"]):focus-within {
+  box-shadow: 0 0 0 var(--ring-width) var(--ring-destructive);
+}
+
+.input-wrap--success {
+  border-color: var(--success);
+}
+
+/* ===== Icons, affixes, clear ===== */
+
+.input__icon {
+  width: var(--icon-size-sm);
+  height: var(--icon-size-sm);
+  flex: none;
+  color: var(--caption-foreground);
+}
+.input__icon path {
+  stroke-width: var(--stroke-width-icon);
+}
+
+.input__prefix,
+.input__suffix {
+  flex: none;
+  font-family: var(--font-sans);
+  font-size: var(--text-body-md);
+  line-height: var(--text-body-md--line-height);
+  color: var(--muted-foreground);
+  user-select: none;
+}
+.input-wrap--sm :is(.input__prefix, .input__suffix) {
+  font-size: var(--text-body-sm);
+  line-height: var(--text-body-sm--line-height);
+}
+
+.input__clear {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: none;
+  padding: 0;
+  border: 0;
+  border-radius: var(--radius-xs);
+  background: transparent;
+  color: var(--muted-foreground);
+  cursor: pointer;
+  transition: color var(--duration-fast) var(--ease-standard);
+}
+.input__clear:hover {
+  color: var(--foreground);
+}
+.input__clear:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 var(--ring-width) var(--ring-focus);
+}
+.input__clear svg {
+  width: var(--icon-size-sm);
+  height: var(--icon-size-sm);
+}
+.input__clear svg path {
+  stroke-width: var(--stroke-width-icon);
+}
+/* No point offering "clear" on an empty field. */
+.input-wrap:has(.input:placeholder-shown) .input__clear {
+  display: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .input-wrap,
+  .input__clear {
+    transition: none;
+  }
+}

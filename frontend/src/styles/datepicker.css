@@ -1,0 +1,417 @@
+/* ==========================================================================
+   DatePicker
+   Token mapping — every value below references tokens.css, nothing else.
+
+   ARIA APG date-picker-dialog pattern: a text field with
+   aria-haspopup="dialog" + a toggle button opens a popover dialog holding a
+   calendar <table>. Day cells are real <button>s with a roving tabindex —
+   the controller moves focus (Arrows ±1/±7 days, Home/End to week edges,
+   PageUp/PageDown ±1 month, Enter/Space selects, Esc closes), while every
+   visual state is styled from attributes: [aria-selected], [data-today],
+   [data-outside], [data-range], :disabled. Days carry full-date aria-labels
+   ("Friday, March 20, 2026") so navigation announces dates; on selection
+   focus returns to the input, whose updated value is announced.
+
+   Anatomy (markup contract):
+     .datepicker-field            label + control + optional error line
+     .datepicker-field__label     label line
+     .datepicker-field__error     error line (input gets aria-invalid +
+                                  aria-describedby)
+     .datepicker__control         relative wrapper: input + toggle + popover
+     .datepicker__input           the text field (aria-haspopup, aria-expanded)
+     .datepicker__toggle          calendar-icon button
+     .datepicker__popover         role="dialog" calendar surface
+     .datepicker__nav             prev / month-heading / next row
+     .datepicker__nav-btn         month navigation buttons
+     .datepicker__cal             the calendar <table>
+     .datepicker__weekday         <th scope="col"> weekday letters
+     .datepicker__day             day <button> inside each <td>
+
+   DIMENSION DERIVATION (no raw numbers anywhere)
+     day cell        --calendar-cell-size (32) square — dedicated token
+                     (token note: "= --control-height-sm")
+     calendar width  calc(7 · --calendar-cell-size) — derived from the same
+                     token, so the grid follows the day size
+     toggle inset    right --space-0-5, which equals
+                     (--control-height − --icon-button-size) / 2 — the toggle
+                     stays centered in the field
+     input padding   --input-padding-block / --input-padding-inline (Input
+                     tokens); right padding calc(--icon-button-size +
+                     --space-2) leaves room for the toggle, derived
+     range band      td background gradient at 50% stops — the half-cell fade
+                     is geometry, not a color value; "transparent" is a
+                     keyword, not a raw color
+     grid spacing    0 by design: range bands must be contiguous, so the
+                     rhythm comes from the cell size token, not gaps
+     popover stack   z-index --z-popover (30) — the overlay layer of the
+                     z-index scale (token note: "overlays above menus")
+
+   PROPERTY → TOKEN
+   ─────────────────────────────────────────────────────────────────────────
+   FIELD
+     bg / fg         --background / --foreground; placeholder
+                     --caption-foreground
+     border          --border-width solid --input; radius --radius-md
+     hover           border-color --border-strong (token note: "strong line:
+                     hover borders" — Input still reports the interim)
+     focus-visible   border-color --primary + 0 0 0 --ring-width --ring-focus
+     open            [aria-expanded="true"] keeps the focus ring recipe —
+                     the field reads "active" while its popover is open
+     disabled        opacity --opacity-disabled (token note: "same colors,
+                     reduced opacity") + cursor not-allowed
+     error           border-color --destructive (aria-invalid drives it);
+                     error line --text-caption in --destructive
+   CALENDAR SURFACE
+     bg / fg         --popover / --popover-foreground
+     border          --border-width solid --border; radius --radius-lg
+     shadow          --shadow-subtle (the one shadow token; a popover is the
+                     rare elevated case)
+     padding         --space-4; offset below field --space-1
+   NAVIGATION
+     month heading   --font-sans --text-title-sm weight
+                     --font-weight-medium (house precedent, now a token),
+                     color --foreground
+     nav buttons     --control-height-sm square, radius --radius-md,
+                     color --muted-foreground; hover bg --accent +
+                     color --muted-foreground-hover; active bg
+                     --surface-cream-strong + color --muted-foreground-active
+                     (the icon-state token pairs added with Icon)
+     chevrons        inline SVG, currentColor, --icon-size-sm,
+                     stroke --stroke-width-icon
+   CALENDAR GRID
+     weekday header  --text-caption-up (+ --line-height + --letter-spacing,
+                     uppercase) weight --font-weight-medium, color
+                     --caption-foreground; bottom breathing room --space-2
+     day number      --font-sans --text-body-sm (+ --line-height),
+                     color --foreground-body; radius --radius-full
+     day hover       bg --accent (token note: "hover/tab-active bg")
+     today           inset hairline ring: box-shadow inset 0 0 0
+                     --border-width --today-indicator (dedicated token,
+                     same coral as --primary — a hairline, not a fill, so
+                     today composes with hover/selected)
+     selected        [aria-selected="true"] → bg --primary,
+                     color --primary-foreground; hover --primary-hover
+     range middle    td bg --accent (the hover/tab-active surface doubles as
+                     the "inside the band" tint), day color
+                     --accent-foreground
+     range start/end day bg --primary + color --primary-foreground over a
+                     half-cell --accent band (gradient at 50%)
+     outside month   [data-outside] → color --caption-foreground
+                     (muted-soft: present but de-emphasized)
+     day disabled    opacity --opacity-disabled + cursor not-allowed
+     day focus       0 0 0 --ring-width --ring-focus (roving tabindex puts
+                     :focus-visible on the day button)
+   LABEL & META
+     label           --font-sans --text-body-md (+ --line-height),
+                     color --foreground-strong; field gap --space-2
+   MOTION
+     colors / ring   --duration-fast --ease-standard on field, nav buttons,
+                     day cells; killed under prefers-reduced-motion. The
+                     popover appears without animation: calendar state
+                     (month, selection) changes on every interaction and
+                     animating the surface reads as lag.
+
+   REPORTED TOKEN GAPS (not silently invented — flagged for tokens.css):
+   ‡  All resolved: tokens.css now ships --calendar-cell-size (previously
+      borrowed --control-height-sm), the z-index scale (--z-popover used
+      below), --border-strong (hover border — Input still interim),
+      --font-weight-medium (Button's house precedent) and
+      --today-indicator (same coral value as --primary). This file
+      references all of them.
+   ========================================================================== */
+
+/* ===== Field ===== */
+
+.datepicker-field {
+  display: grid;
+  gap: var(--space-2);
+  width: 100%;
+}
+
+.datepicker-field__label {
+  font-family: var(--font-sans);
+  font-size: var(--text-body-md);
+  font-weight: 400;
+  line-height: var(--text-body-md--line-height);
+  color: var(--foreground-strong);
+}
+
+.datepicker-field__error {
+  font-family: var(--font-sans);
+  font-size: var(--text-caption);
+  line-height: var(--text-caption--line-height);
+  color: var(--destructive);
+}
+
+.datepicker__control {
+  position: relative;
+}
+
+.datepicker__input {
+  width: 100%;
+  height: var(--control-height);
+  padding: var(--input-padding-block) var(--input-padding-inline);
+  padding-right: calc(var(--icon-button-size) + var(--space-2));
+  background: var(--background);
+  color: var(--foreground);
+  border: var(--border-width) solid var(--input);
+  border-radius: var(--radius-md);
+  font-family: var(--font-sans);
+  font-size: var(--text-body-md);
+  line-height: var(--text-body-md--line-height);
+  cursor: pointer;
+  transition:
+    border-color var(--duration-fast) var(--ease-standard),
+    box-shadow var(--duration-fast) var(--ease-standard);
+}
+.datepicker__input::placeholder {
+  color: var(--caption-foreground);
+}
+/* .is-hover / .is-focus-visible mirror the pseudo-classes so static
+   showcases can render the states without interaction (Button precedent). */
+.datepicker__input:hover:not(:disabled),
+.datepicker__input.is-hover {
+  border-color: var(--border-strong);
+}
+.datepicker__input:focus-visible,
+.datepicker__input.is-focus-visible,
+.datepicker__input[aria-expanded="true"] {
+  outline: none;
+  border-color: var(--primary);
+  box-shadow: 0 0 0 var(--ring-width) var(--ring-focus);
+}
+.datepicker__input:disabled {
+  opacity: var(--opacity-disabled);
+  cursor: not-allowed;
+}
+.datepicker__input[aria-invalid="true"] {
+  border-color: var(--destructive);
+}
+
+/* Toggle — sits inside the field's right edge, vertically centered. */
+.datepicker__toggle {
+  position: absolute;
+  top: 50%;
+  right: var(--space-0-5); /* = (--control-height − --icon-button-size) / 2 */
+  translate: 0 -50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: var(--icon-button-size);
+  height: var(--icon-button-size);
+  padding: 0;
+  background: transparent;
+  color: var(--muted-foreground);
+  border: 0;
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  transition:
+    background-color var(--duration-fast) var(--ease-standard),
+    color var(--duration-fast) var(--ease-standard),
+    box-shadow var(--duration-fast) var(--ease-standard);
+}
+.datepicker__toggle:hover:not(:disabled) {
+  background: var(--accent);
+  color: var(--muted-foreground-hover);
+}
+.datepicker__toggle:active:not(:disabled) {
+  background: var(--surface-cream-strong);
+  color: var(--muted-foreground-active);
+}
+.datepicker__toggle:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 var(--ring-width) var(--ring-focus);
+}
+.datepicker__toggle:disabled {
+  opacity: var(--opacity-disabled);
+  cursor: not-allowed;
+}
+.datepicker__toggle svg {
+  width: var(--icon-size-sm);
+  height: var(--icon-size-sm);
+}
+.datepicker__toggle svg path,
+.datepicker__toggle svg rect,
+.datepicker__toggle svg line {
+  stroke-width: var(--stroke-width-icon);
+}
+
+/* ===== Calendar surface ===== */
+
+.datepicker__popover {
+  position: absolute;
+  z-index: var(--z-popover);
+  top: calc(100% + var(--space-1));
+  left: 0;
+  background: var(--popover);
+  color: var(--popover-foreground);
+  border: var(--border-width) solid var(--border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-subtle);
+  padding: var(--space-4);
+}
+.datepicker__popover[hidden] {
+  display: none;
+}
+
+/* ===== Navigation ===== */
+
+.datepicker__nav {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+  margin-bottom: var(--space-3);
+}
+.datepicker__month {
+  font-family: var(--font-sans);
+  font-size: var(--text-title-sm);
+  font-weight: var(--font-weight-medium);
+  line-height: var(--text-title-sm--line-height);
+  color: var(--foreground);
+}
+.datepicker__nav-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: var(--control-height-sm);
+  height: var(--control-height-sm);
+  padding: 0;
+  background: transparent;
+  color: var(--muted-foreground);
+  border: 0;
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  transition:
+    background-color var(--duration-fast) var(--ease-standard),
+    color var(--duration-fast) var(--ease-standard),
+    box-shadow var(--duration-fast) var(--ease-standard);
+}
+.datepicker__nav-btn:hover:not(:disabled) {
+  background: var(--accent);
+  color: var(--muted-foreground-hover);
+}
+.datepicker__nav-btn:active:not(:disabled) {
+  background: var(--surface-cream-strong);
+  color: var(--muted-foreground-active);
+}
+.datepicker__nav-btn:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 var(--ring-width) var(--ring-focus);
+}
+.datepicker__nav-btn:disabled {
+  opacity: var(--opacity-disabled);
+  cursor: not-allowed;
+}
+.datepicker__nav-btn svg {
+  width: var(--icon-size-sm);
+  height: var(--icon-size-sm);
+}
+.datepicker__nav-btn svg path {
+  stroke-width: var(--stroke-width-icon);
+}
+
+/* ===== Calendar grid ===== */
+
+.datepicker__cal {
+  border-collapse: separate;
+  border-spacing: 0; /* range bands must be contiguous */
+  width: calc(7 * var(--calendar-cell-size));
+}
+.datepicker__weekday {
+  padding: 0 0 var(--space-2);
+  font-family: var(--font-sans);
+  font-size: var(--text-caption-up);
+  font-weight: var(--font-weight-medium);
+  line-height: var(--text-caption-up--line-height);
+  letter-spacing: var(--text-caption-up--letter-spacing);
+  text-transform: uppercase;
+  color: var(--caption-foreground);
+  text-align: center;
+}
+.datepicker__cal td {
+  padding: 0;
+  text-align: center;
+}
+
+.datepicker__day {
+  width: var(--calendar-cell-size);
+  height: var(--calendar-cell-size);
+  padding: 0;
+  background: transparent;
+  border: 0;
+  border-radius: var(--radius-full);
+  font-family: var(--font-sans);
+  font-size: var(--text-body-sm);
+  line-height: var(--text-body-sm--line-height);
+  color: var(--foreground-body);
+  cursor: pointer;
+  transition:
+    background-color var(--duration-fast) var(--ease-standard),
+    color var(--duration-fast) var(--ease-standard),
+    box-shadow var(--duration-fast) var(--ease-standard);
+}
+.datepicker__day:hover:not(:disabled):not([aria-selected="true"]),
+.datepicker__day.is-hover:not(:disabled):not([aria-selected="true"]) {
+  background: var(--accent);
+}
+
+/* Today — an inset coral hairline, so it composes with hover and selected. */
+.datepicker__day[data-today] {
+  box-shadow: inset 0 0 0 var(--border-width) var(--today-indicator);
+}
+
+/* Selected (single mode; range endpoints use data-range below). */
+.datepicker__day[aria-selected="true"] {
+  background: var(--primary);
+  color: var(--primary-foreground);
+}
+.datepicker__day[aria-selected="true"]:hover:not(:disabled) {
+  background: var(--primary-hover);
+}
+
+/* Range band — backgrounds live on the <td> so the band is contiguous. */
+.datepicker__cal td[data-range="middle"] {
+  background: var(--accent);
+}
+.datepicker__cal td[data-range="start"] {
+  background: linear-gradient(90deg, transparent 50%, var(--accent) 50%);
+}
+.datepicker__cal td[data-range="end"] {
+  background: linear-gradient(90deg, var(--accent) 50%, transparent 50%);
+}
+.datepicker__cal td[data-range="middle"] .datepicker__day {
+  color: var(--accent-foreground);
+  border-radius: 0; /* the band owns the shape inside the range */
+}
+.datepicker__cal td[data-range="start"] .datepicker__day,
+.datepicker__cal td[data-range="end"] .datepicker__day {
+  background: var(--primary);
+  color: var(--primary-foreground);
+}
+.datepicker__cal td[data-range="start"] .datepicker__day:hover:not(:disabled),
+.datepicker__cal td[data-range="end"] .datepicker__day:hover:not(:disabled) {
+  background: var(--primary-hover);
+}
+
+.datepicker__day[data-outside] {
+  color: var(--caption-foreground);
+}
+.datepicker__day:disabled {
+  opacity: var(--opacity-disabled);
+  cursor: not-allowed;
+}
+.datepicker__day:focus-visible,
+.datepicker__day.is-focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 var(--ring-width) var(--ring-focus);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .datepicker__input,
+  .datepicker__toggle,
+  .datepicker__nav-btn,
+  .datepicker__day {
+    transition: none;
+  }
+}

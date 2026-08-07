@@ -1,0 +1,413 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Combobox — Component Showcase</title>
+<link rel="stylesheet" href="../src/styles/tokens.css">
+<link rel="stylesheet" href="../src/styles/typography.css">
+<link rel="stylesheet" href="../src/styles/separator.css">
+<link rel="stylesheet" href="../src/styles/form-field.css">
+<link rel="stylesheet" href="../src/styles/combobox.css">
+<style>
+  /* Page chrome — tokens only, no component values. */
+  *, *::before, *::after { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: var(--background);
+    color: var(--foreground);
+    font-family: var(--font-sans);
+    -webkit-font-smoothing: antialiased;
+  }
+  .container { max-width: var(--doc-container-max); margin: 0 auto; padding: 0 var(--space-6); }
+  .page-head { padding: var(--space-16) 0 var(--space-8); border-bottom: var(--border-width) solid var(--border); }
+  .page-head .text--overline { color: var(--primary); display: block; margin-bottom: var(--space-3); }
+  .page-head p { margin: var(--space-4) 0 0; max-width: 64ch; }
+  .demo-block { padding: var(--space-8) 0; }
+  .demo-block > .text--h5 { margin-bottom: var(--space-6); }
+  .demo-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(var(--doc-grid-min-card), 1fr)); gap: var(--space-8); align-items: start; }
+  .demo-note { margin-top: var(--space-4); max-width: 72ch; color: var(--muted-foreground); }
+  .demo-caption { margin-bottom: var(--space-2); color: var(--caption-foreground); }
+</style>
+</head>
+<body>
+
+<header class="page-head">
+  <div class="container">
+    <span class="text text--overline">Component</span>
+    <h1 class="text text--h1">Combobox</h1>
+    <p class="text text--body-md">
+      Three modes — single, searchable, clearable — on one anatomy: an Input-family
+      control with a listbox popup. Filtering is pure behavior: the script hides
+      non-matching options with the <code class="text text--code">hidden</code> attribute
+      and never touches a style; the CSS never knows filtering happened. Keyboard:
+      type to filter, ArrowDown/Up to move, Enter to commit, Escape to close
+      (or clear, in clearable mode), Home/End keep their native caret behavior.
+    </p>
+  </div>
+</header>
+
+<main class="container">
+
+  <!-- ===================== Modes ===================== -->
+  <section class="demo-block" aria-labelledby="modes-heading">
+    <h2 class="text text--h5" id="modes-heading">Modes — live keyboard demos</h2>
+    <div class="demo-grid">
+
+      <div class="field">
+        <div class="field__header"><label class="field__label" id="cb-single-label" for="cb-single">Assignee</label></div>
+        <div class="field__control">
+          <div class="combobox" data-combobox data-mode="single">
+            <div class="combobox__control">
+              <input class="combobox__input" id="cb-single" role="combobox" readonly
+                     aria-expanded="false" aria-controls="cb-single-menu"
+                     aria-autocomplete="list" aria-labelledby="cb-single-label"
+                     placeholder="Pick a member">
+              <svg class="combobox__chevron" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+                <path d="m4 6 4 4 4-4" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"/>
+              </svg>
+            </div>
+            <ul class="combobox__menu" role="listbox" id="cb-single-menu" aria-labelledby="cb-single-label" hidden>
+              <li class="combobox__option" role="option" aria-selected="false">Ada Okonkwo
+                <svg class="combobox__check" viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="m3 8.5 3.5 3.5L13 4.5" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"/></svg></li>
+              <li class="combobox__option" role="option" aria-selected="false">Jonas Berger
+                <svg class="combobox__check" viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="m3 8.5 3.5 3.5L13 4.5" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"/></svg></li>
+              <li class="combobox__option" role="option" aria-selected="false" aria-disabled="true">Priya Nair (invited)
+                <svg class="combobox__check" viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="m3 8.5 3.5 3.5L13 4.5" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"/></svg></li>
+            </ul>
+          </div>
+        </div>
+        <p class="field__description">single — readonly input, no caret; behaves like Select.</p>
+      </div>
+
+      <div class="field">
+        <div class="field__header"><label class="field__label" id="cb-search-label" for="cb-search">Billing country</label></div>
+        <div class="field__control">
+          <div class="combobox" data-combobox data-mode="search">
+            <div class="combobox__control">
+              <svg class="combobox__leading" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+                <circle cx="7" cy="7" r="4.5" stroke="currentColor"/>
+                <path d="m10.5 10.5 3 3" stroke="currentColor" stroke-linecap="round"/>
+              </svg>
+              <input class="combobox__input" id="cb-search" role="combobox"
+                     aria-expanded="false" aria-controls="cb-search-menu"
+                     aria-autocomplete="list" aria-labelledby="cb-search-label"
+                     placeholder="Type to filter countries">
+              <svg class="combobox__chevron" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+                <path d="m4 6 4 4 4-4" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"/>
+              </svg>
+            </div>
+            <ul class="combobox__menu" role="listbox" id="cb-search-menu" aria-labelledby="cb-search-label" hidden>
+              <li class="combobox__option" role="option" aria-selected="false">Germany
+                <svg class="combobox__check" viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="m3 8.5 3.5 3.5L13 4.5" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"/></svg></li>
+              <li class="combobox__option" role="option" aria-selected="false">Ghana
+                <svg class="combobox__check" viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="m3 8.5 3.5 3.5L13 4.5" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"/></svg></li>
+              <li class="combobox__option" role="option" aria-selected="false">Greece
+                <svg class="combobox__check" viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="m3 8.5 3.5 3.5L13 4.5" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"/></svg></li>
+              <li class="combobox__option" role="option" aria-selected="false">United Kingdom
+                <svg class="combobox__check" viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="m3 8.5 3.5 3.5L13 4.5" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"/></svg></li>
+              <li class="combobox__option" role="option" aria-selected="false">United States
+                <svg class="combobox__check" viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="m3 8.5 3.5 3.5L13 4.5" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"/></svg></li>
+              <li class="combobox__empty" aria-live="polite" hidden>No matches — check the spelling.</li>
+            </ul>
+          </div>
+        </div>
+        <p class="field__description">searchable — try "gr": the list narrows, styling never changes.</p>
+      </div>
+
+      <div class="field">
+        <div class="field__header"><label class="field__label" id="cb-clear-label" for="cb-clear">Hiring manager</label></div>
+        <div class="field__control">
+          <div class="combobox" data-combobox data-mode="clearable" data-value="Jonas Berger">
+            <div class="combobox__control">
+              <input class="combobox__input" id="cb-clear" role="combobox"
+                     aria-expanded="false" aria-controls="cb-clear-menu"
+                     aria-autocomplete="list" aria-labelledby="cb-clear-label"
+                     placeholder="Search people" value="Jonas Berger">
+              <button class="combobox__clear is-visible" type="button" aria-label="Clear hiring manager">
+                <svg viewBox="0 0 16 16" fill="none" aria-hidden="true">
+                  <path d="m4 4 8 8M12 4l-8 8" stroke="currentColor" stroke-linecap="round"/>
+                </svg>
+              </button>
+              <svg class="combobox__chevron" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+                <path d="m4 6 4 4 4-4" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"/>
+              </svg>
+            </div>
+            <ul class="combobox__menu" role="listbox" id="cb-clear-menu" aria-labelledby="cb-clear-label" hidden>
+              <li class="combobox__option" role="option" aria-selected="false">Ada Okonkwo
+                <svg class="combobox__check" viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="m3 8.5 3.5 3.5L13 4.5" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"/></svg></li>
+              <li class="combobox__option" role="option" aria-selected="true">Jonas Berger
+                <svg class="combobox__check" viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="m3 8.5 3.5 3.5L13 4.5" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"/></svg></li>
+              <li class="combobox__option" role="option" aria-selected="false">Mei Tanaka
+                <svg class="combobox__check" viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="m3 8.5 3.5 3.5L13 4.5" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"/></svg></li>
+            </ul>
+          </div>
+        </div>
+        <p class="field__description">clearable + selected — the × control clears; Escape on a closed menu does too.</p>
+      </div>
+
+    </div>
+  </section>
+
+  <hr class="separator separator--horizontal separator--subtle" role="presentation">
+
+  <!-- ===================== Menu states (static) ===================== -->
+  <section class="demo-block" aria-labelledby="menu-heading">
+    <h2 class="text text--h5" id="menu-heading">Menu states — results, no results, loading</h2>
+    <div class="demo-grid">
+
+      <div>
+        <p class="text text--caption demo-caption">typing → filtered results</p>
+        <div class="combobox" data-static>
+          <div class="combobox__control">
+            <input class="combobox__input" role="combobox" value="gr" aria-expanded="true"
+                   aria-controls="cb-static-results" aria-autocomplete="list"
+                   aria-activedescendant="cb-static-results-1" aria-label="Country, filtered">
+            <svg class="combobox__chevron" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+              <path d="m4 6 4 4 4-4" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+          </div>
+          <ul class="combobox__menu" role="listbox" id="cb-static-results" aria-label="Countries">
+            <li class="combobox__option is-active" role="option" aria-selected="false" id="cb-static-results-1">Greece
+              <svg class="combobox__check" viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="m3 8.5 3.5 3.5L13 4.5" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"/></svg></li>
+            <li class="combobox__option" role="option" aria-selected="false" id="cb-static-results-2">Grenada
+              <svg class="combobox__check" viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="m3 8.5 3.5 3.5L13 4.5" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"/></svg></li>
+          </ul>
+        </div>
+      </div>
+
+      <div>
+        <p class="text text--caption demo-caption">no-results — polite-live, not an option</p>
+        <div class="combobox" data-static>
+          <div class="combobox__control">
+            <input class="combobox__input" role="combobox" value="atlantis" aria-expanded="true"
+                   aria-controls="cb-static-empty" aria-autocomplete="list" aria-label="Country, no results">
+            <svg class="combobox__chevron" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+              <path d="m4 6 4 4 4-4" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+          </div>
+          <ul class="combobox__menu" role="listbox" id="cb-static-empty" aria-label="Countries">
+            <li class="combobox__empty" aria-live="polite">No matches — check the spelling.</li>
+          </ul>
+        </div>
+      </div>
+
+      <div>
+        <p class="text text--caption demo-caption">loading — listbox carries aria-busy</p>
+        <div class="combobox" data-static>
+          <div class="combobox__control">
+            <input class="combobox__input" role="combobox" value="sen" aria-expanded="true"
+                   aria-controls="cb-static-loading" aria-autocomplete="list" aria-label="Skills, loading">
+            <svg class="combobox__chevron" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+              <path d="m4 6 4 4 4-4" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+          </div>
+          <ul class="combobox__menu" role="listbox" id="cb-static-loading" aria-label="Skills" aria-busy="true">
+            <li class="combobox__loading">
+              <span class="combobox__spinner" aria-hidden="true"></span>
+              Searching skills…
+            </li>
+          </ul>
+        </div>
+      </div>
+
+    </div>
+  </section>
+
+  <hr class="separator separator--horizontal separator--subtle" role="presentation">
+
+  <!-- ===================== Sizes & field states ===================== -->
+  <section class="demo-block" aria-labelledby="sizes-heading">
+    <h2 class="text text--h5" id="sizes-heading">Sizes &amp; field states</h2>
+    <div class="demo-grid">
+      <div>
+        <p class="text text--caption demo-caption">sm — --control-height-sm, --text-body-sm</p>
+        <div class="combobox combobox--sm" data-combobox data-mode="search">
+          <div class="combobox__control">
+            <input class="combobox__input" role="combobox" placeholder="Filter tags"
+                   aria-expanded="false" aria-controls="cb-sm-menu" aria-autocomplete="list"
+                   aria-label="Filter tags">
+            <svg class="combobox__chevron" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+              <path d="m4 6 4 4 4-4" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+          </div>
+          <ul class="combobox__menu" role="listbox" id="cb-sm-menu" aria-label="Tags" hidden>
+            <li class="combobox__option" role="option" aria-selected="false">remote
+              <svg class="combobox__check" viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="m3 8.5 3.5 3.5L13 4.5" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"/></svg></li>
+            <li class="combobox__option" role="option" aria-selected="false">relocation
+              <svg class="combobox__check" viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="m3 8.5 3.5 3.5L13 4.5" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"/></svg></li>
+          </ul>
+        </div>
+      </div>
+      <div>
+        <p class="text text--caption demo-caption">lg — --control-height-lg</p>
+        <div class="combobox combobox--lg" data-combobox data-mode="search">
+          <div class="combobox__control">
+            <input class="combobox__input" role="combobox" placeholder="Search the network"
+                   aria-expanded="false" aria-controls="cb-lg-menu" aria-autocomplete="list"
+                   aria-label="Search the network">
+            <svg class="combobox__chevron" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+              <path d="m4 6 4 4 4-4" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+          </div>
+          <ul class="combobox__menu" role="listbox" id="cb-lg-menu" aria-label="Network" hidden>
+            <li class="combobox__option" role="option" aria-selected="false">People
+              <svg class="combobox__check" viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="m3 8.5 3.5 3.5L13 4.5" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"/></svg></li>
+            <li class="combobox__option" role="option" aria-selected="false">Companies
+              <svg class="combobox__check" viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="m3 8.5 3.5 3.5L13 4.5" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"/></svg></li>
+          </ul>
+        </div>
+      </div>
+      <div>
+        <p class="text text--caption demo-caption">disabled — :has(:disabled) dims the whole control</p>
+        <div class="combobox" data-static>
+          <div class="combobox__control">
+            <input class="combobox__input" role="combobox" value="EU (Frankfurt)" disabled
+                   aria-expanded="false" aria-label="Region, disabled">
+            <svg class="combobox__chevron" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+              <path d="m4 6 4 4 4-4" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+          </div>
+        </div>
+      </div>
+      <div class="field field--error">
+        <div class="field__header">
+          <label class="field__label" for="cb-error">Cost center <span class="field__required" aria-hidden="true">*</span></label>
+        </div>
+        <div class="field__control">
+          <div class="combobox combobox--error" data-static>
+            <div class="combobox__control">
+              <input class="combobox__input" id="cb-error" role="combobox" placeholder="Select a cost center"
+                     aria-expanded="false" aria-invalid="true" aria-describedby="cb-error-error">
+              <svg class="combobox__chevron" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+                <path d="m4 6 4 4 4-4" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"/>
+              </svg>
+            </div>
+          </div>
+        </div>
+        <p class="field__error" id="cb-error-error" role="alert">A cost center is required for invoicing.</p>
+      </div>
+    </div>
+    <p class="text text--caption demo-note">
+      The three live demos at the top accept full keyboard input. Home/End keep their
+      native caret behavior in the editable input (APG-conformant); option travel is
+      Arrow-only, so the two never fight.
+    </p>
+  </section>
+
+</main>
+
+<script>
+/* Behavior layer: filtering + keyboard. Visuals live entirely in
+   combobox.css — this script only toggles hidden/aria/is-active.
+   Filtering is deliberately style-free: non-matching options get the
+   [hidden] attribute, nothing else. */
+for (const root of document.querySelectorAll("[data-combobox]")) {
+  const input = root.querySelector(".combobox__input");
+  const menu = root.querySelector(".combobox__menu");
+  const clear = root.querySelector(".combobox__clear");
+  const empty = root.querySelector(".combobox__empty");
+  if (!input || !menu || input.disabled) continue;
+  const mode = root.dataset.mode ?? "search";
+
+  const all = () => [...menu.querySelectorAll(".combobox__option")];
+  const enabled = () => all().filter((o) => o.getAttribute("aria-disabled") !== "true");
+  const visible = () => enabled().filter((o) => !o.hidden);
+  all().forEach((opt, i) => { if (!opt.id) opt.id = `${input.id}-opt-${i}`; });
+
+  const isOpen = () => input.getAttribute("aria-expanded") === "true";
+  const active = () => menu.querySelector(".combobox__option.is-active");
+
+  function open(moveTo) {
+    input.setAttribute("aria-expanded", "true");
+    menu.hidden = false;
+    filter();
+    setActive(moveTo ?? visible()[0] ?? null);
+  }
+  function close() {
+    input.setAttribute("aria-expanded", "false");
+    menu.hidden = true;
+    setActive(null);
+  }
+  function setActive(opt) {
+    for (const o of all()) o.classList.remove("is-active");
+    if (opt) {
+      opt.classList.add("is-active");
+      input.setAttribute("aria-activedescendant", opt.id);
+      opt.scrollIntoView({ block: "nearest" });
+    } else {
+      input.removeAttribute("aria-activedescendant");
+    }
+  }
+  function move(delta) {
+    const list = visible();
+    if (!list.length) return setActive(null);
+    const i = list.indexOf(active());
+    setActive(list[(i + delta + list.length) % list.length]);
+  }
+  /* Filtering: show/hide only — no classes, no styles. */
+  function filter() {
+    const q = mode === "single" ? "" : input.value.trim().toLowerCase();
+    let shown = 0;
+    for (const opt of all()) {
+      const match = !q || opt.textContent.toLowerCase().includes(q);
+      opt.hidden = !match;
+      if (match && opt.getAttribute("aria-disabled") !== "true") shown++;
+    }
+    if (empty) empty.hidden = shown > 0;
+  }
+  function commit(opt) {
+    for (const o of all()) o.setAttribute("aria-selected", String(o === opt));
+    input.value = opt.textContent.trim();
+    clear?.classList.add("is-visible");
+    close();
+    input.focus();
+  }
+  function clearValue() {
+    input.value = "";
+    for (const o of all()) o.setAttribute("aria-selected", "false");
+    clear?.classList.remove("is-visible");
+    filter();
+    input.focus();
+  }
+
+  input.addEventListener("focus", () => { if (!isOpen()) open(); });
+  input.addEventListener("input", () => {
+    if (!isOpen()) open();
+    filter();
+    setActive(visible()[0] ?? null);
+  });
+  input.addEventListener("keydown", (event) => {
+    switch (event.key) {
+      case "ArrowDown": event.preventDefault(); isOpen() ? move(1) : open(); break;
+      case "ArrowUp": event.preventDefault(); isOpen() ? move(-1) : open(visible().at(-1)); break;
+      case "Enter":
+        if (isOpen() && active()) { event.preventDefault(); commit(active()); }
+        break;
+      case "Escape":
+        event.preventDefault();
+        if (isOpen()) close();
+        else if (mode === "clearable" && input.value) clearValue();
+        break;
+      /* Home/End intentionally left to the input's native caret behavior. */
+    }
+  });
+  menu.addEventListener("pointerdown", (event) => {
+    /* keep focus in the input while clicking options */
+    event.preventDefault();
+    const opt = event.target.closest(".combobox__option");
+    if (opt && opt.getAttribute("aria-disabled") !== "true") commit(opt);
+  });
+  menu.addEventListener("pointermove", (event) => {
+    const opt = event.target.closest(".combobox__option");
+    if (opt && !opt.hidden && opt.getAttribute("aria-disabled") !== "true") setActive(opt);
+  });
+  clear?.addEventListener("click", clearValue);
+  document.addEventListener("pointerdown", (event) => {
+    if (isOpen() && !root.contains(event.target)) close();
+  });
+}
+</script>
+
+</body>
+</html>

@@ -1,0 +1,147 @@
+/* ==========================================================================
+   FormField
+   Token mapping — every value below references tokens.css, nothing else.
+
+   Anatomy (markup contract — ids wire the parts together):
+     .field                       root; grid, vertical rhythm
+     .field__header               label row: label left, count right
+     .field__label                <label for="{control-id}">
+     .field__required             "*" marker, aria-hidden — the control's
+                                  own `required` attribute carries the semantics
+     .field__count                optional character count, aria-live="polite"
+     .field__control              control slot — UNSTYLED on purpose; drop in
+                                  any control (.input, select, textarea…)
+     .field__description          helper text, id="{control-id}-desc"
+     .field__error                error text, id="{control-id}-error",
+                                  role="alert"
+
+   Accessibility wiring (showcase demonstrates each):
+     label       htmlFor → control id
+     control     aria-describedby → "-desc" (and "-error" when invalid)
+     error       aria-invalid="true" on the control + role="alert" on the
+                 message; the error id joins aria-describedby
+     disabled    control carries `disabled`; the field detects it via
+                 :has() and dims its own text — no class toggling needed
+
+   SLOT → TOKEN
+   ─────────────────────────────────────────────────────────────────────────
+   label        --font-sans, --text-caption (+ --line-height),
+                --font-weight-medium, color --foreground-strong
+   required     color --destructive (same size as label; marker is text)
+   description  --font-sans, --text-caption (+ --line-height),
+                --font-weight-regular, color --muted-foreground
+   error        --font-sans, --text-caption (+ --line-height),
+                --font-weight-medium, color --destructive
+   count        --font-sans, --text-caption (+ --line-height),
+                --font-weight-regular, color --caption-foreground
+   success      description slot recolors to --success (token exists;
+                no extra tokens invented)
+
+   STATE COORDINATION (the control keeps its own visuals — the field only
+   reacts; :has() reads the child's real state, nothing is duplicated)
+     default          as above
+     focused-child    :has(.field__control :focus-visible) → label color
+                      --foreground (one step stronger); the focus RING stays
+                      the control's own job (--ring-width / --ring-focus)
+     disabled-child   :has(.field__control :disabled) → label, description,
+                      count at opacity --opacity-disabled; pointer cursor
+                      off on the label
+     error            .field--error → .field__error visible, color
+                      --destructive; description stays in place
+     success          .field--success → description color --success
+
+   SPACING
+     vertical rhythm  grid gap --space-2 (label→control→help)
+     header row       justify-content space-between, gap --space-4
+     error↔desc gap   inherits the same --space-2 grid rhythm
+
+   REPORTED TOKEN GAPS (not silently invented — flagged for tokens.css):
+   •  No success text color: --success doubles as the success text color
+      on the canvas. Contrast is acceptable at caption size on
+      --background, but a dedicated token would be cleaner. Note:
+      --success-foreground now exists but means ink ON the bright
+      success fill — wrong semantics here. Missing: e.g. --success-text.
+      (Resolved: font-weights → --font-weight-regular/medium.)
+   ========================================================================== */
+
+.field {
+  display: grid;
+  gap: var(--space-2);
+}
+
+/* ===== Header row: label left, optional count right ===== */
+
+.field__header {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--space-4);
+}
+
+.field__label {
+  font-family: var(--font-sans);
+  font-size: var(--text-caption);
+  font-weight: var(--font-weight-medium);
+  line-height: var(--text-caption--line-height);
+  color: var(--foreground-strong);
+  cursor: pointer;
+}
+
+.field__required {
+  color: var(--destructive);
+}
+
+.field__count {
+  font-family: var(--font-sans);
+  font-size: var(--text-caption);
+  font-weight: var(--font-weight-regular);
+  line-height: var(--text-caption--line-height);
+  color: var(--caption-foreground);
+  font-variant-numeric: tabular-nums;
+}
+
+/* ===== Control slot — intentionally unstyled =====
+   The slotted control owns its own chrome (height, border, focus ring).
+   Nothing here touches it; state coordination happens through :has(). */
+
+/* ===== Helper & error text ===== */
+
+.field__description {
+  margin: 0;
+  font-family: var(--font-sans);
+  font-size: var(--text-caption);
+  font-weight: var(--font-weight-regular);
+  line-height: var(--text-caption--line-height);
+  color: var(--muted-foreground);
+}
+
+.field__error {
+  display: none;
+  margin: 0;
+  font-family: var(--font-sans);
+  font-size: var(--text-caption);
+  font-weight: var(--font-weight-medium);
+  line-height: var(--text-caption--line-height);
+  color: var(--destructive);
+}
+
+/* ===== State coordination ===== */
+
+.field:has(.field__control :focus-visible) .field__label {
+  color: var(--foreground);
+}
+
+.field:has(.field__control :disabled) :is(.field__label, .field__description, .field__count) {
+  opacity: var(--opacity-disabled);
+}
+.field:has(.field__control :disabled) .field__label {
+  cursor: not-allowed;
+}
+
+.field--error .field__error {
+  display: block;
+}
+
+.field--success .field__description {
+  color: var(--success);
+}
