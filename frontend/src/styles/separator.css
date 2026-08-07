@@ -1,0 +1,88 @@
+/* ==========================================================================
+   Separator
+   Token mapping — every value below references tokens.css, nothing else.
+
+   VARIANT / PROPERTY → TOKEN
+   ─────────────────────────────────────────────────────────────────────────
+   COLOR (per variant)
+     subtle     border-color --border-soft   (token note: "quiet dividers")
+     default    border-color --border        (token note: "hairline")
+     strong     border-color --border-strong (token note: "strong line")
+
+   THICKNESS (per variant)
+     subtle / default  --border-width (1px) — token note: "every hairline
+                       border".
+     strong            --border-width-strong (2px) — token note:
+                       "emphasized dividers"; the strong variant now
+                       expresses weight through both color and thickness,
+                       no raw pixels invented.
+
+   SPACING (adjacent-content rhythm, overridable by layout)
+     horizontal  margin-block  --space-4
+     vertical    margin-inline --space-4
+
+   OPACITY
+     None applied. Lightness differences between variants come from the
+     color tokens themselves, not from alpha. (See GAPS.)
+
+   ORIENTATION
+     horizontal  full-width hairline via border-top (height 0)
+     vertical    stretch hairline via border-left (width 0); needs a flex
+                 or grid context (align-self: stretch) or an explicit height
+
+   SEMANTICS (markup concern, class pair is element-agnostic)
+     decorative  <div class="separator ..." role="presentation">
+                 (or aria-hidden="true") — purely visual grouping
+     semantic    <hr class="separator separator--horizontal ...">
+                 (implicit role=separator) — an actual content boundary;
+                 for vertical use role="separator" aria-orientation="vertical"
+
+   REPORTED TOKEN GAPS (not silently invented — flagged for tokens.css):
+   ‡  RESOLVED — tokens.css now ships --border-strong (a true strong-divider
+      token; previously --muted-foreground was borrowed) and
+      --border-width-strong (2px), so the strong variant expresses weight
+      through both color and thickness; both are used below.
+   •  No opacity token fits this role — --opacity-disabled (0.5) is scoped
+      to disabled controls by its token note and is not reused here.
+   ========================================================================== */
+
+.separator {
+  /* <hr> UA reset: kills the default inset border and margins so the
+     token-driven hairline below is the only rendering. */
+  border: 0;
+  margin: 0;
+  flex-shrink: 0;
+}
+
+/* ===== Orientations ===== */
+
+.separator--horizontal {
+  width: 100%;
+  height: 0;
+  border-top: var(--border-width) solid var(--border);
+  margin-block: var(--space-4);
+}
+
+.separator--vertical {
+  align-self: stretch;
+  width: 0;
+  border-left: var(--border-width) solid var(--border);
+  margin-inline: var(--space-4);
+}
+
+/* ===== Variants (strong doubles up: dedicated color AND 2px thickness) ===== */
+
+.separator--subtle {
+  border-color: var(--border-soft);
+}
+
+.separator--default {
+  border-color: var(--border);
+}
+
+/* Strong differs in thickness too: border-width covers whichever side the
+   orientation sets (border-top for horizontal, border-left for vertical). */
+.separator--strong {
+  border-color: var(--border-strong);
+  border-width: var(--border-width-strong);
+}

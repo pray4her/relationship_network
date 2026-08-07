@@ -1,0 +1,202 @@
+/* ==========================================================================
+   Link
+   Token mapping — every value below references tokens.css, nothing else.
+
+   Links are real <a> elements with an href — navigation is never faked
+   with buttons. The class pair is element-agnostic in theory, but the
+   markup contract requires an anchor.
+
+   VARIANT → TOKEN
+   ─────────────────────────────────────────────────────────────────────────
+   default (inline)
+     color --primary                 decoration underline, always on
+     hover  --primary-hover          active --primary-active
+     visited --link-visited
+   subtle (inline, quiet contexts)
+     color --muted-foreground        decoration underline, always on
+     hover  --foreground             active --primary-active
+     visited unchanged — a quiet link has no "seen" emphasis; tinting it
+             toward the primary hue would misread as a different variant
+   standalone (action link outside running text)
+     color --primary                 decoration none at rest,
+                                     underline on hover/focus/active
+     hover  --primary-hover          active --primary-active
+     visited --link-visited
+   destructive
+     color --destructive             decoration underline, always on
+     hover  --destructive-hover      active --destructive-active
+     visited unchanged — --link-visited shares the primary hue and would
+             mute the danger signal
+
+   SHARED STATES
+     focus-visible  box-shadow 0 0 0 --ring-width --ring-focus, outline
+                    none, radius --radius-xs so the ring hugs the text
+     visited        --link-visited on the primary-hue variants (default,
+                    standalone); subtle and destructive keep their variant
+                    color — see VARIANT above
+     disabled       .is-disabled + aria-disabled="true", NO href, NO
+                    tabindex: opacity --opacity-disabled, pointer-events
+                    off, cursor not-allowed. Without an href the anchor
+                    is inert — keyboard and programmatic activation are
+                    impossible, which is what "disabled link" means here.
+
+   PROPERTY → TOKEN
+   ─────────────────────────────────────────────────────────────────────────
+   text color          per variant above (all --*-foreground / state tokens)
+   decoration          underline (inline variants) / none-then-underline
+                       (standalone); thickness --border-width (the 1px
+                       hairline token doubles as the underline weight)
+   underline offset    --link-underline-offset (0.125rem; token note:
+                       "= --space-0-5" — dedicated token, same value)
+   size                sm --text-body-sm / md --text-body-md /
+                       lg --text-body-lg (+ --line-height companions)
+   font                inherits (links live inside running text); standalone
+                       pairs naturally with .text--* typography classes
+   icon size           --icon-size-sm; path stroke --stroke-width-icon
+   icon gap            --space-1 (tighter than the button's --space-2,
+                       links sit inside text)
+   focus treatment     --ring-width / --ring-focus / --radius-xs
+   motion              color & text-decoration-color over --duration-fast
+                       --ease-standard
+
+   TOKEN NOTES: --link-visited (used on the default and standalone
+   variants; subtle and destructive intentionally keep their variant
+   color), --link-underline-offset, and --text-body-lg were reported as
+   gaps by this component and are now shipped in tokens.css.
+   ========================================================================== */
+
+.link {
+  color: var(--primary);
+  text-decoration-line: underline;
+  text-decoration-thickness: var(--border-width);
+  text-underline-offset: var(--link-underline-offset);
+  border-radius: var(--radius-xs);
+  cursor: pointer;
+  transition:
+    color var(--duration-fast) var(--ease-standard),
+    text-decoration-color var(--duration-fast) var(--ease-standard);
+}
+
+/* ===== Variants =====
+   .is-hover / .is-active / .is-focus-visible mirror the pseudo-classes so
+   static showcases and tests can render the states without interaction. */
+
+.link--default {
+  color: var(--primary);
+}
+.link--default:hover,
+.link--default.is-hover {
+  color: var(--primary-hover);
+}
+.link--default:active,
+.link--default.is-active {
+  color: var(--primary-active);
+}
+.link--default:visited {
+  color: var(--link-visited);
+}
+
+.link--subtle {
+  color: var(--muted-foreground);
+}
+.link--subtle:hover,
+.link--subtle.is-hover {
+  color: var(--foreground);
+}
+.link--subtle:active,
+.link--subtle.is-active {
+  color: var(--primary-active);
+}
+
+.link--standalone {
+  color: var(--primary);
+  text-decoration-line: none;
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+}
+.link--standalone:hover,
+.link--standalone.is-hover,
+.link--standalone:focus-visible,
+.link--standalone.is-focus-visible,
+.link--standalone:active,
+.link--standalone.is-active {
+  text-decoration-line: underline;
+}
+.link--standalone:hover,
+.link--standalone.is-hover {
+  color: var(--primary-hover);
+}
+.link--standalone:active,
+.link--standalone.is-active {
+  color: var(--primary-active);
+}
+.link--standalone:visited {
+  color: var(--link-visited);
+}
+
+.link--destructive {
+  color: var(--destructive);
+}
+.link--destructive:hover,
+.link--destructive.is-hover {
+  color: var(--destructive-hover);
+}
+.link--destructive:active,
+.link--destructive.is-active {
+  color: var(--destructive-active);
+}
+
+/* ===== Sizes (font-size + line-height only; family stays inherited) ===== */
+
+.link--sm {
+  font-size: var(--text-body-sm);
+  line-height: var(--text-body-sm--line-height);
+}
+/* md is the base — inherits surrounding text metrics by design. */
+.link--lg {
+  font-size: var(--text-body-lg);
+  line-height: var(--text-body-lg--line-height);
+}
+
+/* ===== Icons (leading / trailing / external — order from markup) ===== */
+
+.link__icon {
+  width: var(--icon-size-sm);
+  height: var(--icon-size-sm);
+  flex: none;
+  align-self: center;
+}
+.link__icon path {
+  stroke-width: var(--stroke-width-icon);
+}
+/* Icon-bearing inline links keep icon and text on one flex line. */
+.link:has(> .link__icon) {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+}
+
+/* ===== Shared states ===== */
+
+.link:focus-visible,
+.link.is-focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 var(--ring-width) var(--ring-focus);
+}
+
+/* Disabled: markup contract is aria-disabled="true" and NO href — the
+   anchor is already inert; these styles only communicate it visually. */
+.link.is-disabled,
+.link[aria-disabled="true"] {
+  opacity: var(--opacity-disabled);
+  cursor: not-allowed;
+  pointer-events: none;
+  text-decoration-line: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .link {
+    transition: none;
+  }
+}

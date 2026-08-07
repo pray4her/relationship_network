@@ -1,0 +1,483 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Icon — Component Showcase</title>
+<link rel="stylesheet" href="../src/styles/tokens.css">
+<link rel="stylesheet" href="../src/styles/typography.css">
+<link rel="stylesheet" href="../src/styles/icon.css">
+<style>
+  /* Page chrome — tokens only, no component values. */
+  *, *::before, *::after { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: var(--background);
+    color: var(--foreground);
+    font-family: var(--font-sans);
+    -webkit-font-smoothing: antialiased;
+  }
+  .container { max-width: var(--doc-container-max); margin: 0 auto; padding: 0 var(--space-6); }
+  .page-head { padding: var(--space-16) 0 var(--space-8); border-bottom: var(--border-width) solid var(--border); }
+  .page-head .text--overline { color: var(--primary); display: block; margin-bottom: var(--space-3); }
+  .page-head p { margin: var(--space-4) 0 0; max-width: 68ch; }
+  .demo-block { padding: var(--space-8) 0; border-bottom: var(--border-width) solid var(--border-soft); }
+  .demo-block > .text--h5 { margin-bottom: var(--space-6); }
+  .demo-note { margin-top: var(--space-4); max-width: 72ch; }
+  .size-row { display: flex; align-items: flex-end; gap: var(--space-8); }
+  .size-cell { display: flex; flex-direction: column; align-items: center; gap: var(--space-3); }
+  .color-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(var(--doc-grid-min-shape), 1fr)); gap: var(--space-6); }
+  .color-cell {
+    display: flex; align-items: center; gap: var(--space-3);
+    border: var(--border-width) solid var(--border);
+    border-radius: var(--radius-md); padding: var(--space-4);
+  }
+  .color-cell--dark { background: var(--surface-dark); border-color: var(--surface-dark); }
+  .color-cell--dark .text--caption { color: var(--on-dark-soft); }
+  .state-row { display: flex; align-items: flex-start; gap: var(--space-6); flex-wrap: wrap; }
+  .state-cell { display: flex; flex-direction: column; align-items: center; gap: var(--space-3); }
+  .toolbar-demo { display: inline-flex; align-items: center; gap: var(--space-1); border: var(--border-width) solid var(--border); border-radius: var(--radius-md); padding: var(--space-2); }
+  .dark-band { background: var(--surface-dark); color: var(--on-dark); border-radius: var(--radius-lg); padding: var(--space-8); }
+  .dark-band .text--caption { color: var(--on-dark-soft); }
+
+  /* State matrix — colors × sizes and colors × interactive states. */
+  .matrix { display: grid; gap: var(--space-1); }
+  .matrix--sizes { grid-template-columns: var(--doc-specimen-meta-width) repeat(4, 1fr); }
+  .matrix--states { grid-template-columns: var(--doc-specimen-meta-width) repeat(5, 1fr); }
+  .matrix-head {
+    padding: var(--space-2) var(--space-3);
+    background: var(--surface-soft);
+    border-radius: var(--radius-sm);
+    text-align: center;
+  }
+  .matrix-rowlabel { display: flex; align-items: center; padding: 0 var(--space-3); }
+  .matrix-cell {
+    display: flex; align-items: center; justify-content: center;
+    min-height: var(--control-height-lg);
+    border-radius: var(--radius-sm);
+  }
+  .matrix-cell--dark { background: var(--surface-dark); }
+</style>
+</head>
+<body>
+
+<header class="page-head">
+  <div class="container">
+    <span class="text text--overline">Component</span>
+    <h1 class="text text--h1">Icon</h1>
+    <p class="text text--body-md">
+      One glyph source — lucide, 24×24 stroke icons with
+      <code class="text text--code">stroke="currentColor"</code>. The component only
+      re-sizes (<code class="text text--code">--icon-size-*</code>), re-colors
+      (semantic color tokens with matching hover/active pairs, plus
+      <code class="text text--code">inverse</code> for dark surfaces via
+      <code class="text text--code">--on-dark</code>) and re-weights
+      (<code class="text text--code">--stroke-width-icon</code>) that source.
+      Interactive icons live inside a native
+      <code class="text text--code">&lt;button class="icon-btn"&gt;</code>: keyboard
+      focus and activation come for free. Every value below resolves from
+      <code class="text text--code">tokens.css</code> — no raw hex, no arbitrary opacity.
+    </p>
+  </div>
+</header>
+
+<main class="container">
+
+  <!-- ===================== Sizes ===================== -->
+  <section class="demo-block" aria-labelledby="sizes-heading">
+    <h2 class="text text--h5" id="sizes-heading">Sizes</h2>
+
+    <div class="size-row">
+      <div class="size-cell">
+        <svg class="icon icon--xs icon--default" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/></svg>
+        <span class="text text--caption">xs · --icon-size-xs</span>
+      </div>
+      <div class="size-cell">
+        <svg class="icon icon--sm icon--default" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/></svg>
+        <span class="text text--caption">sm · --icon-size-sm</span>
+      </div>
+      <div class="size-cell">
+        <svg class="icon icon--md icon--default" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/></svg>
+        <span class="text text--caption">md · --icon-size-md</span>
+      </div>
+      <div class="size-cell">
+        <svg class="icon icon--lg icon--default" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/></svg>
+        <span class="text text--caption">lg · --icon-size-lg</span>
+      </div>
+    </div>
+
+    <p class="text text--caption demo-note">
+      Width always equals height; stroke weight stays
+      <code class="text text--code">--stroke-width-icon</code> at every size, so smaller
+      sizes read lighter automatically.
+    </p>
+  </section>
+
+  <!-- ===================== Colors ===================== -->
+  <section class="demo-block" aria-labelledby="colors-heading">
+    <h2 class="text text--h5" id="colors-heading">Colors</h2>
+
+    <div class="color-grid">
+      <div class="color-cell">
+        <svg class="icon icon--md icon--default" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+        <span class="text text--caption">default · --foreground</span>
+      </div>
+      <div class="color-cell">
+        <svg class="icon icon--md icon--muted" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+        <span class="text text--caption">muted · --muted-foreground</span>
+      </div>
+      <div class="color-cell">
+        <svg class="icon icon--md icon--primary" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+        <span class="text text--caption">primary · --primary</span>
+      </div>
+      <div class="color-cell">
+        <svg class="icon icon--md icon--success" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><path d="m9 12 2 2 4-4"/></svg>
+        <span class="text text--caption">success · --success</span>
+      </div>
+      <div class="color-cell">
+        <svg class="icon icon--md icon--warning" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/><path d="M12 9v4"/><path d="M12 17h.01"/></svg>
+        <span class="text text--caption">warning · --warning</span>
+      </div>
+      <div class="color-cell">
+        <svg class="icon icon--md icon--destructive" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 6h18"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><line x1="10" x2="10" y1="11" y2="17"/><line x1="14" x2="14" y1="11" y2="17"/></svg>
+        <span class="text text--caption">destructive · --destructive</span>
+      </div>
+      <div class="color-cell color-cell--dark">
+        <svg class="icon icon--md icon--inverse" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+        <span class="text text--caption">inverse · --on-dark (dark surfaces only)</span>
+      </div>
+    </div>
+
+    <p class="text text--caption demo-note">
+      Every color has a matching hover/active pair in
+      <code class="text text--code">tokens.css</code> — visible in the interactive
+      section below, not on static glyphs. <code class="text text--code">inverse</code>
+      resolves <code class="text text--code">--on-dark</code> and only reads on dark
+      surfaces; on the light canvas it would be invisible.
+    </p>
+  </section>
+
+  <!-- ===================== Interactive (icon buttons) ===================== -->
+  <section class="demo-block" aria-labelledby="interactive-heading">
+    <h2 class="text text--h5" id="interactive-heading">Interactive — icon buttons</h2>
+
+    <p class="text text--caption" style="margin-bottom: var(--space-3);">
+      base / hover (.is-hover) / active (.is-active) / focus-visible (.is-focus) /
+      disabled — default color
+    </p>
+    <div class="state-row">
+      <div class="state-cell">
+        <button type="button" class="icon-btn" aria-label="Search candidates">
+          <svg class="icon icon--sm icon--default" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
+        </button>
+        <span class="text text--caption">base</span>
+      </div>
+      <div class="state-cell">
+        <button type="button" class="icon-btn is-hover" aria-label="Search candidates">
+          <svg class="icon icon--sm icon--default" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
+        </button>
+        <span class="text text--caption">hover → --foreground-hover</span>
+      </div>
+      <div class="state-cell">
+        <button type="button" class="icon-btn is-active" aria-label="Search candidates">
+          <svg class="icon icon--sm icon--default" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
+        </button>
+        <span class="text text--caption">active → --foreground-active</span>
+      </div>
+      <div class="state-cell">
+        <button type="button" class="icon-btn is-focus" aria-label="Search candidates">
+          <svg class="icon icon--sm icon--default" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
+        </button>
+        <span class="text text--caption">focus-visible → --ring-width · --ring-focus</span>
+      </div>
+      <div class="state-cell">
+        <button type="button" class="icon-btn" aria-label="Search candidates" disabled>
+          <svg class="icon icon--sm icon--default" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
+        </button>
+        <span class="text text--caption">disabled · --opacity-disabled</span>
+      </div>
+    </div>
+
+    <p class="text text--caption" style="margin: var(--space-6) 0 var(--space-3);">
+      the same states across semantic colors — muted, primary, destructive
+    </p>
+    <div class="state-row">
+      <div class="state-cell">
+        <button type="button" class="icon-btn" aria-label="Notifications">
+          <svg class="icon icon--sm icon--muted" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/></svg>
+        </button>
+        <span class="text text--caption">muted · base</span>
+      </div>
+      <div class="state-cell">
+        <button type="button" class="icon-btn is-hover" aria-label="Notifications">
+          <svg class="icon icon--sm icon--muted" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/></svg>
+        </button>
+        <span class="text text--caption">muted · hover</span>
+      </div>
+      <div class="state-cell">
+        <button type="button" class="icon-btn" aria-label="Mark as favorite">
+          <svg class="icon icon--sm icon--primary" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+        </button>
+        <span class="text text--caption">primary · base</span>
+      </div>
+      <div class="state-cell">
+        <button type="button" class="icon-btn is-hover" aria-label="Mark as favorite">
+          <svg class="icon icon--sm icon--primary" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+        </button>
+        <span class="text text--caption">primary · hover</span>
+      </div>
+      <div class="state-cell">
+        <button type="button" class="icon-btn" aria-label="Delete document">
+          <svg class="icon icon--sm icon--destructive" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 6h18"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><line x1="10" x2="10" y1="11" y2="17"/><line x1="14" x2="14" y1="11" y2="17"/></svg>
+        </button>
+        <span class="text text--caption">destructive · base</span>
+      </div>
+      <div class="state-cell">
+        <button type="button" class="icon-btn is-active" aria-label="Delete document">
+          <svg class="icon icon--sm icon--destructive" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 6h18"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><line x1="10" x2="10" y1="11" y2="17"/><line x1="14" x2="14" y1="11" y2="17"/></svg>
+        </button>
+        <span class="text text--caption">destructive · active</span>
+      </div>
+      <div class="state-cell">
+        <button type="button" class="icon-btn" aria-label="Delete document" disabled>
+          <svg class="icon icon--sm icon--destructive" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 6h18"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><line x1="10" x2="10" y1="11" y2="17"/><line x1="14" x2="14" y1="11" y2="17"/></svg>
+        </button>
+        <span class="text text--caption">destructive · disabled</span>
+      </div>
+    </div>
+
+    <p class="text text--caption" style="margin: var(--space-6) 0 var(--space-3);">
+      inverse on a dark surface — base / hover / active / focus-visible / disabled
+    </p>
+    <div class="dark-band">
+      <div class="state-row">
+        <div class="state-cell">
+          <button type="button" class="icon-btn" aria-label="Edit profile">
+            <svg class="icon icon--sm icon--inverse" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/><path d="m15 5 4 4"/></svg>
+          </button>
+          <span class="text text--caption">base · --on-dark</span>
+        </div>
+        <div class="state-cell">
+          <button type="button" class="icon-btn is-hover" aria-label="Edit profile">
+            <svg class="icon icon--sm icon--inverse" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/><path d="m15 5 4 4"/></svg>
+          </button>
+          <span class="text text--caption">hover · --inverse-hover</span>
+        </div>
+        <div class="state-cell">
+          <button type="button" class="icon-btn is-active" aria-label="Edit profile">
+            <svg class="icon icon--sm icon--inverse" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/><path d="m15 5 4 4"/></svg>
+          </button>
+          <span class="text text--caption">active · --inverse-active</span>
+        </div>
+        <div class="state-cell">
+          <button type="button" class="icon-btn is-focus" aria-label="Edit profile">
+            <svg class="icon icon--sm icon--inverse" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/><path d="m15 5 4 4"/></svg>
+          </button>
+          <span class="text text--caption">focus-visible · --ring-focus</span>
+        </div>
+        <div class="state-cell">
+          <button type="button" class="icon-btn" aria-label="Edit profile" disabled>
+            <svg class="icon icon--sm icon--inverse" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/><path d="m15 5 4 4"/></svg>
+          </button>
+          <span class="text text--caption">disabled · --opacity-disabled</span>
+        </div>
+      </div>
+    </div>
+
+    <p class="text text--caption" style="margin: var(--space-6) 0 var(--space-3);">
+      in context — a toolbar of icon buttons; Tab through it to see the live
+      <code class="text text--code">focus-visible</code> ring (--ring-width spread,
+      --ring-focus color)
+    </p>
+    <div class="toolbar-demo" role="toolbar" aria-label="Row actions">
+      <button type="button" class="icon-btn" aria-label="Download report">
+        <svg class="icon icon--sm icon--default" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" x2="12" y1="15" y2="3"/></svg>
+      </button>
+      <button type="button" class="icon-btn" aria-label="Email invite">
+        <svg class="icon icon--sm icon--default" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect width="20" height="16" x="2" y="4" rx="2"/><path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7"/></svg>
+      </button>
+      <button type="button" class="icon-btn" aria-label="Remove member" disabled>
+        <svg class="icon icon--sm icon--destructive" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>
+      </button>
+    </div>
+
+    <p class="text text--caption demo-note">
+      <code class="text text--code">.is-hover</code> / <code class="text text--code">.is-active</code> /
+      <code class="text text--code">.is-focus</code> force the state for this static
+      page; in product markup the real
+      <code class="text text--code">:hover</code> / <code class="text text--code">:active</code> /
+      <code class="text text--code">:focus-visible</code> selectors drive the same
+      tokens. Transitions use
+      <code class="text text--code">--duration-fast</code> +
+      <code class="text text--code">--ease-standard</code> and are removed under
+      <code class="text text--code">prefers-reduced-motion</code>.
+    </p>
+  </section>
+
+  <!-- ===================== State matrix ===================== -->
+  <section class="demo-block" aria-labelledby="matrix-heading">
+    <h2 class="text text--h5" id="matrix-heading">State matrix — every color × size × state</h2>
+
+    <p class="text text--caption" style="margin-bottom: var(--space-3);">
+      semantic colors across all four sizes (inverse row sits on
+      <code class="text text--code">--surface-dark</code>)
+    </p>
+    <div class="matrix matrix--sizes" role="table" aria-label="Icon colors across sizes">
+      <span class="matrix-head" role="columnheader"><span class="text text--caption-up">color \ size</span></span>
+      <span class="matrix-head" role="columnheader"><span class="text text--caption-up">xs</span></span>
+      <span class="matrix-head" role="columnheader"><span class="text text--caption-up">sm</span></span>
+      <span class="matrix-head" role="columnheader"><span class="text text--caption-up">md</span></span>
+      <span class="matrix-head" role="columnheader"><span class="text text--caption-up">lg</span></span>
+
+      <span class="matrix-rowlabel" role="rowheader"><span class="text text--caption">default</span></span>
+      <span class="matrix-cell" role="cell"><svg class="icon icon--xs icon--default" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg></span>
+      <span class="matrix-cell" role="cell"><svg class="icon icon--sm icon--default" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg></span>
+      <span class="matrix-cell" role="cell"><svg class="icon icon--md icon--default" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg></span>
+      <span class="matrix-cell" role="cell"><svg class="icon icon--lg icon--default" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg></span>
+
+      <span class="matrix-rowlabel" role="rowheader"><span class="text text--caption">muted</span></span>
+      <span class="matrix-cell" role="cell"><svg class="icon icon--xs icon--muted" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg></span>
+      <span class="matrix-cell" role="cell"><svg class="icon icon--sm icon--muted" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg></span>
+      <span class="matrix-cell" role="cell"><svg class="icon icon--md icon--muted" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg></span>
+      <span class="matrix-cell" role="cell"><svg class="icon icon--lg icon--muted" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg></span>
+
+      <span class="matrix-rowlabel" role="rowheader"><span class="text text--caption">primary</span></span>
+      <span class="matrix-cell" role="cell"><svg class="icon icon--xs icon--primary" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg></span>
+      <span class="matrix-cell" role="cell"><svg class="icon icon--sm icon--primary" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg></span>
+      <span class="matrix-cell" role="cell"><svg class="icon icon--md icon--primary" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg></span>
+      <span class="matrix-cell" role="cell"><svg class="icon icon--lg icon--primary" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg></span>
+
+      <span class="matrix-rowlabel" role="rowheader"><span class="text text--caption">success</span></span>
+      <span class="matrix-cell" role="cell"><svg class="icon icon--xs icon--success" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><path d="m9 12 2 2 4-4"/></svg></span>
+      <span class="matrix-cell" role="cell"><svg class="icon icon--sm icon--success" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><path d="m9 12 2 2 4-4"/></svg></span>
+      <span class="matrix-cell" role="cell"><svg class="icon icon--md icon--success" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><path d="m9 12 2 2 4-4"/></svg></span>
+      <span class="matrix-cell" role="cell"><svg class="icon icon--lg icon--success" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><path d="m9 12 2 2 4-4"/></svg></span>
+
+      <span class="matrix-rowlabel" role="rowheader"><span class="text text--caption">warning</span></span>
+      <span class="matrix-cell" role="cell"><svg class="icon icon--xs icon--warning" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/><path d="M12 9v4"/><path d="M12 17h.01"/></svg></span>
+      <span class="matrix-cell" role="cell"><svg class="icon icon--sm icon--warning" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/><path d="M12 9v4"/><path d="M12 17h.01"/></svg></span>
+      <span class="matrix-cell" role="cell"><svg class="icon icon--md icon--warning" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/><path d="M12 9v4"/><path d="M12 17h.01"/></svg></span>
+      <span class="matrix-cell" role="cell"><svg class="icon icon--lg icon--warning" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/><path d="M12 9v4"/><path d="M12 17h.01"/></svg></span>
+
+      <span class="matrix-rowlabel" role="rowheader"><span class="text text--caption">destructive</span></span>
+      <span class="matrix-cell" role="cell"><svg class="icon icon--xs icon--destructive" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 6h18"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><line x1="10" x2="10" y1="11" y2="17"/><line x1="14" x2="14" y1="11" y2="17"/></svg></span>
+      <span class="matrix-cell" role="cell"><svg class="icon icon--sm icon--destructive" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 6h18"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><line x1="10" x2="10" y1="11" y2="17"/><line x1="14" x2="14" y1="11" y2="17"/></svg></span>
+      <span class="matrix-cell" role="cell"><svg class="icon icon--md icon--destructive" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 6h18"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><line x1="10" x2="10" y1="11" y2="17"/><line x1="14" x2="14" y1="11" y2="17"/></svg></span>
+      <span class="matrix-cell" role="cell"><svg class="icon icon--lg icon--destructive" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 6h18"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><line x1="10" x2="10" y1="11" y2="17"/><line x1="14" x2="14" y1="11" y2="17"/></svg></span>
+
+      <span class="matrix-rowlabel" role="rowheader"><span class="text text--caption">inverse</span></span>
+      <span class="matrix-cell matrix-cell--dark" role="cell"><svg class="icon icon--xs icon--inverse" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg></span>
+      <span class="matrix-cell matrix-cell--dark" role="cell"><svg class="icon icon--sm icon--inverse" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg></span>
+      <span class="matrix-cell matrix-cell--dark" role="cell"><svg class="icon icon--md icon--inverse" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg></span>
+      <span class="matrix-cell matrix-cell--dark" role="cell"><svg class="icon icon--lg icon--inverse" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg></span>
+    </div>
+
+    <p class="text text--caption" style="margin: var(--space-8) 0 var(--space-3);">
+      semantic colors across all five interactive states at md (inverse row sits on
+      <code class="text text--code">--surface-dark</code>)
+    </p>
+    <div class="matrix matrix--states" role="table" aria-label="Icon colors across interactive states">
+      <span class="matrix-head" role="columnheader"><span class="text text--caption-up">color \ state</span></span>
+      <span class="matrix-head" role="columnheader"><span class="text text--caption-up">base</span></span>
+      <span class="matrix-head" role="columnheader"><span class="text text--caption-up">hover</span></span>
+      <span class="matrix-head" role="columnheader"><span class="text text--caption-up">active</span></span>
+      <span class="matrix-head" role="columnheader"><span class="text text--caption-up">focus-visible</span></span>
+      <span class="matrix-head" role="columnheader"><span class="text text--caption-up">disabled</span></span>
+
+      <span class="matrix-rowlabel" role="rowheader"><span class="text text--caption">default</span></span>
+      <span class="matrix-cell" role="cell"><button type="button" class="icon-btn" aria-label="Default icon, base"><svg class="icon icon--md icon--default" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg></button></span>
+      <span class="matrix-cell" role="cell"><button type="button" class="icon-btn is-hover" aria-label="Default icon, hover"><svg class="icon icon--md icon--default" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg></button></span>
+      <span class="matrix-cell" role="cell"><button type="button" class="icon-btn is-active" aria-label="Default icon, active"><svg class="icon icon--md icon--default" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg></button></span>
+      <span class="matrix-cell" role="cell"><button type="button" class="icon-btn is-focus" aria-label="Default icon, focus-visible"><svg class="icon icon--md icon--default" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg></button></span>
+      <span class="matrix-cell" role="cell"><button type="button" class="icon-btn" aria-label="Default icon, disabled" disabled><svg class="icon icon--md icon--default" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg></button></span>
+
+      <span class="matrix-rowlabel" role="rowheader"><span class="text text--caption">muted</span></span>
+      <span class="matrix-cell" role="cell"><button type="button" class="icon-btn" aria-label="Muted icon, base"><svg class="icon icon--md icon--muted" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg></button></span>
+      <span class="matrix-cell" role="cell"><button type="button" class="icon-btn is-hover" aria-label="Muted icon, hover"><svg class="icon icon--md icon--muted" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg></button></span>
+      <span class="matrix-cell" role="cell"><button type="button" class="icon-btn is-active" aria-label="Muted icon, active"><svg class="icon icon--md icon--muted" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg></button></span>
+      <span class="matrix-cell" role="cell"><button type="button" class="icon-btn is-focus" aria-label="Muted icon, focus-visible"><svg class="icon icon--md icon--muted" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg></button></span>
+      <span class="matrix-cell" role="cell"><button type="button" class="icon-btn" aria-label="Muted icon, disabled" disabled><svg class="icon icon--md icon--muted" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg></button></span>
+
+      <span class="matrix-rowlabel" role="rowheader"><span class="text text--caption">primary</span></span>
+      <span class="matrix-cell" role="cell"><button type="button" class="icon-btn" aria-label="Primary icon, base"><svg class="icon icon--md icon--primary" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg></button></span>
+      <span class="matrix-cell" role="cell"><button type="button" class="icon-btn is-hover" aria-label="Primary icon, hover"><svg class="icon icon--md icon--primary" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg></button></span>
+      <span class="matrix-cell" role="cell"><button type="button" class="icon-btn is-active" aria-label="Primary icon, active"><svg class="icon icon--md icon--primary" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg></button></span>
+      <span class="matrix-cell" role="cell"><button type="button" class="icon-btn is-focus" aria-label="Primary icon, focus-visible"><svg class="icon icon--md icon--primary" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg></button></span>
+      <span class="matrix-cell" role="cell"><button type="button" class="icon-btn" aria-label="Primary icon, disabled" disabled><svg class="icon icon--md icon--primary" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg></button></span>
+
+      <span class="matrix-rowlabel" role="rowheader"><span class="text text--caption">success</span></span>
+      <span class="matrix-cell" role="cell"><button type="button" class="icon-btn" aria-label="Success icon, base"><svg class="icon icon--md icon--success" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><path d="m9 12 2 2 4-4"/></svg></button></span>
+      <span class="matrix-cell" role="cell"><button type="button" class="icon-btn is-hover" aria-label="Success icon, hover"><svg class="icon icon--md icon--success" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><path d="m9 12 2 2 4-4"/></svg></button></span>
+      <span class="matrix-cell" role="cell"><button type="button" class="icon-btn is-active" aria-label="Success icon, active"><svg class="icon icon--md icon--success" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><path d="m9 12 2 2 4-4"/></svg></button></span>
+      <span class="matrix-cell" role="cell"><button type="button" class="icon-btn is-focus" aria-label="Success icon, focus-visible"><svg class="icon icon--md icon--success" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><path d="m9 12 2 2 4-4"/></svg></button></span>
+      <span class="matrix-cell" role="cell"><button type="button" class="icon-btn" aria-label="Success icon, disabled" disabled><svg class="icon icon--md icon--success" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><path d="m9 12 2 2 4-4"/></svg></button></span>
+
+      <span class="matrix-rowlabel" role="rowheader"><span class="text text--caption">warning</span></span>
+      <span class="matrix-cell" role="cell"><button type="button" class="icon-btn" aria-label="Warning icon, base"><svg class="icon icon--md icon--warning" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/><path d="M12 9v4"/><path d="M12 17h.01"/></svg></button></span>
+      <span class="matrix-cell" role="cell"><button type="button" class="icon-btn is-hover" aria-label="Warning icon, hover"><svg class="icon icon--md icon--warning" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/><path d="M12 9v4"/><path d="M12 17h.01"/></svg></button></span>
+      <span class="matrix-cell" role="cell"><button type="button" class="icon-btn is-active" aria-label="Warning icon, active"><svg class="icon icon--md icon--warning" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/><path d="M12 9v4"/><path d="M12 17h.01"/></svg></button></span>
+      <span class="matrix-cell" role="cell"><button type="button" class="icon-btn is-focus" aria-label="Warning icon, focus-visible"><svg class="icon icon--md icon--warning" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/><path d="M12 9v4"/><path d="M12 17h.01"/></svg></button></span>
+      <span class="matrix-cell" role="cell"><button type="button" class="icon-btn" aria-label="Warning icon, disabled" disabled><svg class="icon icon--md icon--warning" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/><path d="M12 9v4"/><path d="M12 17h.01"/></svg></button></span>
+
+      <span class="matrix-rowlabel" role="rowheader"><span class="text text--caption">destructive</span></span>
+      <span class="matrix-cell" role="cell"><button type="button" class="icon-btn" aria-label="Destructive icon, base"><svg class="icon icon--md icon--destructive" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 6h18"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><line x1="10" x2="10" y1="11" y2="17"/><line x1="14" x2="14" y1="11" y2="17"/></svg></button></span>
+      <span class="matrix-cell" role="cell"><button type="button" class="icon-btn is-hover" aria-label="Destructive icon, hover"><svg class="icon icon--md icon--destructive" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 6h18"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><line x1="10" x2="10" y1="11" y2="17"/><line x1="14" x2="14" y1="11" y2="17"/></svg></button></span>
+      <span class="matrix-cell" role="cell"><button type="button" class="icon-btn is-active" aria-label="Destructive icon, active"><svg class="icon icon--md icon--destructive" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 6h18"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><line x1="10" x2="10" y1="11" y2="17"/><line x1="14" x2="14" y1="11" y2="17"/></svg></button></span>
+      <span class="matrix-cell" role="cell"><button type="button" class="icon-btn is-focus" aria-label="Destructive icon, focus-visible"><svg class="icon icon--md icon--destructive" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 6h18"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><line x1="10" x2="10" y1="11" y2="17"/><line x1="14" x2="14" y1="11" y2="17"/></svg></button></span>
+      <span class="matrix-cell" role="cell"><button type="button" class="icon-btn" aria-label="Destructive icon, disabled" disabled><svg class="icon icon--md icon--destructive" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 6h18"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><line x1="10" x2="10" y1="11" y2="17"/><line x1="14" x2="14" y1="11" y2="17"/></svg></button></span>
+
+      <span class="matrix-rowlabel" role="rowheader"><span class="text text--caption">inverse</span></span>
+      <span class="matrix-cell matrix-cell--dark" role="cell"><button type="button" class="icon-btn" aria-label="Inverse icon, base"><svg class="icon icon--md icon--inverse" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg></button></span>
+      <span class="matrix-cell matrix-cell--dark" role="cell"><button type="button" class="icon-btn is-hover" aria-label="Inverse icon, hover"><svg class="icon icon--md icon--inverse" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg></button></span>
+      <span class="matrix-cell matrix-cell--dark" role="cell"><button type="button" class="icon-btn is-active" aria-label="Inverse icon, active"><svg class="icon icon--md icon--inverse" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg></button></span>
+      <span class="matrix-cell matrix-cell--dark" role="cell"><button type="button" class="icon-btn is-focus" aria-label="Inverse icon, focus-visible"><svg class="icon icon--md icon--inverse" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg></button></span>
+      <span class="matrix-cell matrix-cell--dark" role="cell"><button type="button" class="icon-btn" aria-label="Inverse icon, disabled" disabled><svg class="icon icon--md icon--inverse" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg></button></span>
+    </div>
+
+    <p class="text text--caption demo-note">
+      Hover tokens: <code class="text text--code">--foreground-hover</code>,
+      <code class="text text--code">--muted-foreground-hover</code>,
+      <code class="text text--code">--primary-hover</code>,
+      <code class="text text--code">--success-hover</code>,
+      <code class="text text--code">--warning-hover</code>,
+      <code class="text text--code">--destructive-hover</code>,
+      <code class="text text--code">--inverse-hover</code>. Active tokens swap the
+      <code class="text text--code">-hover</code> suffix for
+      <code class="text text--code">-active</code>. Focus ring:
+      <code class="text text--code">--ring-width</code> spread,
+      <code class="text text--code">--ring-focus</code> color. Disabled:
+      <code class="text text--code">--opacity-disabled</code> over unchanged colors.
+    </p>
+  </section>
+
+  <!-- ===================== Accessibility ===================== -->
+  <section class="demo-block" aria-labelledby="a11y-heading" style="border-bottom: 0;">
+    <h2 class="text text--h5" id="a11y-heading">Accessibility — decorative vs meaningful</h2>
+
+    <div class="dark-band">
+      <p class="text text--body-md" style="margin: 0 0 var(--space-4);">
+        Decorative icons pair text and carry
+        <code class="text text--code">aria-hidden="true"</code> — every icon on this
+        page above is one. The two below stand alone:
+      </p>
+      <div class="state-row">
+        <div class="state-cell">
+          <svg class="icon icon--lg icon--success" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" role="img" aria-label="Verified company profile"><circle cx="12" cy="12" r="10"/><path d="m9 12 2 2 4-4"/></svg>
+          <span class="text text--caption">role="img" + aria-label</span>
+        </div>
+        <div class="state-cell">
+          <svg class="icon icon--lg icon--warning" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" role="img" aria-label="Subscription expiring soon"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/><path d="M12 9v4"/><path d="M12 17h.01"/></svg>
+          <span class="text text--caption">announced by its label, not its shape</span>
+        </div>
+      </div>
+      <p class="text text--caption" style="margin: var(--space-4) 0 0;">
+        Interactive icons put the label on the native button, not the svg —
+        screen readers announce "Delete document, button", never "trash glyph".
+      </p>
+    </div>
+  </section>
+
+</main>
+
+</body>
+</html>

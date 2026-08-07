@@ -1,0 +1,197 @@
+/* ==========================================================================
+   Typography
+   Token mapping — every value below references tokens.css, nothing else.
+
+   Usage: class pairs `.text` + `.text--<style>` are element-agnostic, so
+   visual style and document semantics stay independent (the CSS equivalent
+   of an `as` prop): put `.text--h2` on a <p>, or `.text--body-md` on an
+   <h2>, and each keeps its own role.
+
+   STYLE → TOKEN
+   ─────────────────────────────────────────────────────────────────────────
+   display    family --font-display    size --text-display-xl (+ --line-height,
+              --letter-spacing)        weight --font-weight-regular    color --foreground
+              ≤768px  size --text-display-xl-compact (+ --letter-spacing)†
+   h1         family --font-display    size --text-display-lg (+ --line-height,
+              --letter-spacing)        weight --font-weight-regular    color --foreground
+              ≤768px  size --text-display-lg-compact†
+   h2         family --font-display    size --text-display-md (+ --line-height,
+              --letter-spacing)        weight --font-weight-regular    color --foreground
+   h3         family --font-display    size --text-display-sm (+ --line-height,
+              --letter-spacing)        weight --font-weight-regular    color --foreground
+   h4         family --font-sans       size --text-title-lg (+ --line-height)
+                                       weight --font-weight-medium    color --foreground
+   h5         family --font-sans       size --text-title-md (+ --line-height)
+                                       weight --font-weight-medium    color --foreground
+   h6         family --font-sans       size --text-title-sm (+ --line-height)
+                                       weight --font-weight-medium    color --foreground
+   body-lg    family --font-sans       size --text-body-lg (+ --line-height)
+                                       weight --font-weight-regular
+                                       color --foreground-strong
+              (token note: "lead paragraphs")
+   body-md    family --font-sans       size --text-body-md (+ --line-height)
+                                       weight --font-weight-regular    color --foreground-body
+   body-sm    family --font-sans       size --text-body-sm (+ --line-height)
+                                       weight --font-weight-regular    color --foreground-body
+   label      family --font-sans       size --text-caption (+ --line-height)
+                                       weight --font-weight-medium    color --foreground-strong
+   caption    family --font-sans       size --text-caption (+ --line-height)
+                                       weight --font-weight-medium    color --caption-foreground
+   overline   family --font-sans       size --text-caption-up (+ --line-height,
+              --letter-spacing)        weight --font-weight-medium    color --muted-foreground
+              transform uppercase (intent encoded in the token name "...-up")
+   code       family --font-mono       size --text-code (+ --line-height)
+                                       weight --font-weight-regular    color --foreground-strong
+
+   Letter-spacing: only display sizes and caption-up ship --letter-spacing
+   tokens; every other style inherits `normal` (no raw value set).
+
+   TOKEN NOTES: the 400/500 weights and the body-lg size were reported as
+   gaps by this component and are now shipped in tokens.css as
+   --font-weight-regular / --font-weight-medium and --text-body-lg
+   (+ --line-height).
+   †  breakpoints: tokens.css has no --breakpoint-* tokens, and plain CSS
+      @media cannot consume var(). The 768px query follows the documented
+      precedent in design-system.html ("768px stays literal").
+   ========================================================================== */
+
+.text {
+  margin: 0;
+}
+
+/* ===== Display & headings ===== */
+
+.text--display {
+  font-family: var(--font-display);
+  font-size: var(--text-display-xl);
+  font-weight: var(--font-weight-regular);
+  line-height: var(--text-display-xl--line-height);
+  letter-spacing: var(--text-display-xl--letter-spacing);
+  color: var(--foreground);
+}
+
+.text--h1 {
+  font-family: var(--font-display);
+  font-size: var(--text-display-lg);
+  font-weight: var(--font-weight-regular);
+  line-height: var(--text-display-lg--line-height);
+  letter-spacing: var(--text-display-lg--letter-spacing);
+  color: var(--foreground);
+}
+
+.text--h2 {
+  font-family: var(--font-display);
+  font-size: var(--text-display-md);
+  font-weight: var(--font-weight-regular);
+  line-height: var(--text-display-md--line-height);
+  letter-spacing: var(--text-display-md--letter-spacing);
+  color: var(--foreground);
+}
+
+.text--h3 {
+  font-family: var(--font-display);
+  font-size: var(--text-display-sm);
+  font-weight: var(--font-weight-regular);
+  line-height: var(--text-display-sm--line-height);
+  letter-spacing: var(--text-display-sm--letter-spacing);
+  color: var(--foreground);
+}
+
+.text--h4 {
+  font-family: var(--font-sans);
+  font-size: var(--text-title-lg);
+  font-weight: var(--font-weight-medium);
+  line-height: var(--text-title-lg--line-height);
+  color: var(--foreground);
+}
+
+.text--h5 {
+  font-family: var(--font-sans);
+  font-size: var(--text-title-md);
+  font-weight: var(--font-weight-medium);
+  line-height: var(--text-title-md--line-height);
+  color: var(--foreground);
+}
+
+.text--h6 {
+  font-family: var(--font-sans);
+  font-size: var(--text-title-sm);
+  font-weight: var(--font-weight-medium);
+  line-height: var(--text-title-sm--line-height);
+  color: var(--foreground);
+}
+
+/* ===== Body ===== */
+
+.text--body-lg {
+  font-family: var(--font-sans);
+  font-size: var(--text-body-lg);
+  font-weight: var(--font-weight-regular);
+  line-height: var(--text-body-lg--line-height);
+  color: var(--foreground-strong);
+}
+
+.text--body-md {
+  font-family: var(--font-sans);
+  font-size: var(--text-body-md);
+  font-weight: var(--font-weight-regular);
+  line-height: var(--text-body-md--line-height);
+  color: var(--foreground-body);
+}
+
+.text--body-sm {
+  font-family: var(--font-sans);
+  font-size: var(--text-body-sm);
+  font-weight: var(--font-weight-regular);
+  line-height: var(--text-body-sm--line-height);
+  color: var(--foreground-body);
+}
+
+/* ===== Supporting ===== */
+
+.text--label {
+  font-family: var(--font-sans);
+  font-size: var(--text-caption);
+  font-weight: var(--font-weight-medium);
+  line-height: var(--text-caption--line-height);
+  color: var(--foreground-strong);
+}
+
+.text--caption {
+  font-family: var(--font-sans);
+  font-size: var(--text-caption);
+  font-weight: var(--font-weight-medium);
+  line-height: var(--text-caption--line-height);
+  color: var(--caption-foreground);
+}
+
+.text--overline {
+  font-family: var(--font-sans);
+  font-size: var(--text-caption-up);
+  font-weight: var(--font-weight-medium);
+  line-height: var(--text-caption-up--line-height);
+  letter-spacing: var(--text-caption-up--letter-spacing);
+  text-transform: uppercase;
+  color: var(--muted-foreground);
+}
+
+.text--code {
+  font-family: var(--font-mono);
+  font-size: var(--text-code);
+  font-weight: var(--font-weight-regular);
+  line-height: var(--text-code--line-height);
+  color: var(--foreground-strong);
+}
+
+/* ===== Responsive =====
+   768px stays literal: @media cannot consume var() in plain CSS
+   (precedent: design-system.html). Compact sizes are tokens. */
+@media (max-width: 768px) {
+  .text--display {
+    font-size: var(--text-display-xl-compact);
+    letter-spacing: var(--text-display-xl-compact--letter-spacing);
+  }
+  .text--h1 {
+    font-size: var(--text-display-lg-compact);
+  }
+}

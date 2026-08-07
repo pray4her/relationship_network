@@ -1,0 +1,203 @@
+/* ==========================================================================
+   Icon
+   Token mapping — every value below references tokens.css, nothing else.
+
+   Icon source: lucide (the project's existing icon set) — stroke-based
+   24×24 glyphs, stroke="currentColor", round caps/joins. The component
+   only re-sizes, re-colors, and re-weights that single source; no second
+   icon style and no per-glyph SVG styling.
+
+   SIZE → TOKEN (width = height)
+   ─────────────────────────────────────────────────────────────────────────
+   xs   --icon-size-xs    (12px — token added with this component)
+   sm   --icon-size-sm    (16px — "icon buttons")
+   md   --icon-size-md    (18px — "feature-card icons")
+   lg   --icon-size-lg    (24px — token added with this component)
+
+   COLOR → TOKEN (base / interactive hover / interactive active)
+   ─────────────────────────────────────────────────────────────────────────
+   default      --foreground        --foreground-hover*        --foreground-active*
+   muted        --muted-foreground  --muted-foreground-hover*  --muted-foreground-active*
+   primary      --primary           --primary-hover            --primary-active
+   success      --success           --success-hover*           --success-active*
+   warning      --warning           --warning-hover*           --warning-active*
+   destructive  --destructive       --destructive-hover        --destructive-active
+   inverse      --on-dark           --inverse-hover*           --inverse-active*
+                (dark surfaces only — on the light canvas it is invisible)
+   (* token added with this component — tokens.css "Icon state colors")
+
+   SHARED CHROME
+   ─────────────────────────────────────────────────────────────────────────
+   stroke-width  --stroke-width-icon (set on the svg, inherits to glyph paths)
+   transition    color + opacity, --duration-fast --ease-standard
+   reduced motion  transitions removed (prefers-reduced-motion)
+
+   INTERACTIVE (wrap the svg in <button class="icon-btn">)
+   ─────────────────────────────────────────────────────────────────────────
+   chrome         padding --space-1   border --border-width solid transparent
+                  radius --radius-sm   background transparent
+   hover/active   icon color shifts to the *-hover / *-active token above
+                  (.is-hover / .is-active / .is-focus force the state for static
+                  showcase — precedent: .is-active in design-system.html)
+   focus-visible  box-shadow 0 0 0 --ring-width --ring-focus
+   disabled       opacity --opacity-disabled, pointer-events off
+
+   ACCESSIBILITY (markup contract, no CSS)
+   ─────────────────────────────────────────────────────────────────────────
+   decorative  aria-hidden="true" on the svg
+   meaningful  role="img" + aria-label on the svg
+   interactive aria-label on the .icon-btn (native <button>: keyboard
+               focus + Enter/Space come for free)
+   ========================================================================== */
+
+.icon {
+  display: inline-block;
+  flex: none;
+  stroke-width: var(--stroke-width-icon);
+  transition:
+    color var(--duration-fast) var(--ease-standard),
+    opacity var(--duration-fast) var(--ease-standard);
+}
+
+/* ===== Sizes ===== */
+
+.icon--xs {
+  width: var(--icon-size-xs);
+  height: var(--icon-size-xs);
+}
+.icon--sm {
+  width: var(--icon-size-sm);
+  height: var(--icon-size-sm);
+}
+.icon--md {
+  width: var(--icon-size-md);
+  height: var(--icon-size-md);
+}
+.icon--lg {
+  width: var(--icon-size-lg);
+  height: var(--icon-size-lg);
+}
+
+/* ===== Colors ===== */
+
+.icon--default {
+  color: var(--foreground);
+}
+.icon--muted {
+  color: var(--muted-foreground);
+}
+.icon--primary {
+  color: var(--primary);
+}
+.icon--success {
+  color: var(--success);
+}
+.icon--warning {
+  color: var(--warning);
+}
+.icon--destructive {
+  color: var(--destructive);
+}
+.icon--inverse {
+  color: var(--on-dark);
+}
+
+/* ===== Interactive wrapper ===== */
+
+.icon-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--space-1);
+  border: var(--border-width) solid transparent;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  cursor: pointer;
+  transition:
+    color var(--duration-fast) var(--ease-standard),
+    background-color var(--duration-fast) var(--ease-standard),
+    box-shadow var(--duration-fast) var(--ease-standard);
+}
+
+/* hover */
+.icon-btn:hover .icon--default,
+.icon-btn.is-hover .icon--default {
+  color: var(--foreground-hover);
+}
+.icon-btn:hover .icon--muted,
+.icon-btn.is-hover .icon--muted {
+  color: var(--muted-foreground-hover);
+}
+.icon-btn:hover .icon--primary,
+.icon-btn.is-hover .icon--primary {
+  color: var(--primary-hover);
+}
+.icon-btn:hover .icon--success,
+.icon-btn.is-hover .icon--success {
+  color: var(--success-hover);
+}
+.icon-btn:hover .icon--warning,
+.icon-btn.is-hover .icon--warning {
+  color: var(--warning-hover);
+}
+.icon-btn:hover .icon--destructive,
+.icon-btn.is-hover .icon--destructive {
+  color: var(--destructive-hover);
+}
+.icon-btn:hover .icon--inverse,
+.icon-btn.is-hover .icon--inverse {
+  color: var(--inverse-hover);
+}
+
+/* active */
+.icon-btn:active .icon--default,
+.icon-btn.is-active .icon--default {
+  color: var(--foreground-active);
+}
+.icon-btn:active .icon--muted,
+.icon-btn.is-active .icon--muted {
+  color: var(--muted-foreground-active);
+}
+.icon-btn:active .icon--primary,
+.icon-btn.is-active .icon--primary {
+  color: var(--primary-active);
+}
+.icon-btn:active .icon--success,
+.icon-btn.is-active .icon--success {
+  color: var(--success-active);
+}
+.icon-btn:active .icon--warning,
+.icon-btn.is-active .icon--warning {
+  color: var(--warning-active);
+}
+.icon-btn:active .icon--destructive,
+.icon-btn.is-active .icon--destructive {
+  color: var(--destructive-active);
+}
+.icon-btn:active .icon--inverse,
+.icon-btn.is-active .icon--inverse {
+  color: var(--inverse-active);
+}
+
+/* focus-visible (.is-focus forces it for static showcase) */
+.icon-btn:focus-visible,
+.icon-btn.is-focus {
+  outline: none;
+  box-shadow: 0 0 0 var(--ring-width) var(--ring-focus);
+}
+
+/* disabled — same colors, reduced opacity; pointer-events off so
+   hover/active never fire (precedent: button.css) */
+.icon-btn:disabled,
+.icon-btn.is-disabled {
+  opacity: var(--opacity-disabled);
+  cursor: not-allowed;
+  pointer-events: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .icon,
+  .icon-btn {
+    transition: none;
+  }
+}

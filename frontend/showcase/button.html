@@ -1,0 +1,239 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Button — Component Showcase</title>
+<link rel="stylesheet" href="../src/styles/tokens.css">
+<link rel="stylesheet" href="../src/styles/typography.css">
+<link rel="stylesheet" href="../src/styles/separator.css">
+<link rel="stylesheet" href="../src/styles/button.css">
+<style>
+  /* Page chrome — tokens only, no component values. */
+  *, *::before, *::after { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: var(--background);
+    color: var(--foreground);
+    font-family: var(--font-sans);
+    -webkit-font-smoothing: antialiased;
+  }
+  .container { max-width: var(--doc-container-max); margin: 0 auto; padding: 0 var(--space-6); }
+  .page-head { padding: var(--space-16) 0 var(--space-8); border-bottom: var(--border-width) solid var(--border); }
+  .page-head .text--overline { color: var(--primary); display: block; margin-bottom: var(--space-3); }
+  .page-head p { margin: var(--space-4) 0 0; max-width: 64ch; }
+  .demo-block { padding: var(--space-8) 0; }
+  .demo-block > .text--h5 { margin-bottom: var(--space-6); }
+  .demo-row { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-4); }
+  .demo-row + .demo-row { margin-top: var(--space-4); }
+  .demo-label { width: var(--doc-demo-label-width); flex: none; color: var(--caption-foreground); }
+  .demo-note { margin-top: var(--space-4); max-width: 72ch; color: var(--muted-foreground); }
+  .state-col { display: grid; gap: var(--space-3); justify-items: start; }
+  .state-grid { display: grid; grid-template-columns: var(--doc-demo-label-width) repeat(6, auto); gap: var(--space-4); align-items: center; }
+  .full-width-wrap { max-width: var(--doc-field-max-width); }
+</style>
+</head>
+<body>
+
+<header class="page-head">
+  <div class="container">
+    <span class="text text--overline">Component</span>
+    <h1 class="text text--h1">Button</h1>
+    <p class="text text--body-md">
+      Four variants, three sizes, six states — every value a
+      <code class="text text--code">tokens.css</code> reference. Static state classes
+      (<code class="text text--code">.is-hover</code>, <code class="text text--code">.is-active</code>,
+      <code class="text text--code">.is-focus-visible</code>) mirror the real pseudo-classes
+      so this page can render them without interaction. Loading buttons keep their
+      dimensions, carry <code class="text text--code">aria-busy="true"</code>, and are
+      <code class="text text--code">disabled</code> so they cannot fire.
+    </p>
+  </div>
+</header>
+
+<main class="container">
+
+  <!-- ===================== Variants × states ===================== -->
+  <section class="demo-block" aria-labelledby="matrix-heading">
+    <h2 class="text text--h5" id="matrix-heading">Variants × states</h2>
+    <div class="state-grid">
+      <span></span>
+      <span class="text text--caption">default</span>
+      <span class="text text--caption">hover</span>
+      <span class="text text--caption">active</span>
+      <span class="text text--caption">focus-visible</span>
+      <span class="text text--caption">disabled</span>
+      <span class="text text--caption">loading</span>
+
+      <span class="text text--caption demo-label">primary</span>
+      <button class="btn btn--primary" type="button">Invite member</button>
+      <button class="btn btn--primary is-hover" type="button">Invite member</button>
+      <button class="btn btn--primary is-active" type="button">Invite member</button>
+      <button class="btn btn--primary is-focus-visible" type="button">Invite member</button>
+      <button class="btn btn--primary" type="button" disabled>Invite member</button>
+      <button class="btn btn--primary is-loading" type="button" disabled aria-busy="true">
+        Invite member
+        <span class="btn__spinner" aria-hidden="true"></span>
+      </button>
+
+      <span class="text text--caption demo-label">secondary</span>
+      <button class="btn btn--secondary" type="button">Save draft</button>
+      <button class="btn btn--secondary is-hover" type="button">Save draft</button>
+      <button class="btn btn--secondary is-active" type="button">Save draft</button>
+      <button class="btn btn--secondary is-focus-visible" type="button">Save draft</button>
+      <button class="btn btn--secondary" type="button" disabled>Save draft</button>
+      <button class="btn btn--secondary is-loading" type="button" disabled aria-busy="true">
+        Save draft
+        <span class="btn__spinner" aria-hidden="true"></span>
+      </button>
+
+      <span class="text text--caption demo-label">ghost</span>
+      <button class="btn btn--ghost" type="button">Skip for now</button>
+      <button class="btn btn--ghost is-hover" type="button">Skip for now</button>
+      <button class="btn btn--ghost is-active" type="button">Skip for now</button>
+      <button class="btn btn--ghost is-focus-visible" type="button">Skip for now</button>
+      <button class="btn btn--ghost" type="button" disabled>Skip for now</button>
+      <button class="btn btn--ghost is-loading" type="button" disabled aria-busy="true">
+        Skip for now
+        <span class="btn__spinner" aria-hidden="true"></span>
+      </button>
+
+      <span class="text text--caption demo-label">destructive</span>
+      <button class="btn btn--destructive" type="button">Remove member</button>
+      <button class="btn btn--destructive is-hover" type="button">Remove member</button>
+      <button class="btn btn--destructive is-active" type="button">Remove member</button>
+      <button class="btn btn--destructive is-focus-visible" type="button">Remove member</button>
+      <button class="btn btn--destructive" type="button" disabled>Remove member</button>
+      <button class="btn btn--destructive is-loading" type="button" disabled aria-busy="true">
+        Remove member
+        <span class="btn__spinner" aria-hidden="true"></span>
+      </button>
+    </div>
+    <p class="text text--caption demo-note">
+      Loading keeps the label laid out but invisible — width and height never change —
+      while the spinner (currentColor → the variant's own foreground token) overlays
+      the center. Compare each loading cell with its default cell.
+    </p>
+  </section>
+
+  <hr class="separator separator--horizontal separator--subtle" role="presentation">
+
+  <!-- ===================== Sizes ===================== -->
+  <section class="demo-block" aria-labelledby="sizes-heading">
+    <h2 class="text text--h5" id="sizes-heading">Sizes</h2>
+    <div class="demo-row">
+      <span class="demo-label text text--caption">sm — 32px token</span>
+      <button class="btn btn--primary btn--sm" type="button">Invite member</button>
+      <button class="btn btn--secondary btn--sm" type="button">Save draft</button>
+      <button class="btn btn--ghost btn--sm" type="button">Skip</button>
+    </div>
+    <div class="demo-row">
+      <span class="demo-label text text--caption">md — 40px token</span>
+      <button class="btn btn--primary" type="button">Invite member</button>
+      <button class="btn btn--secondary" type="button">Save draft</button>
+      <button class="btn btn--ghost" type="button">Skip</button>
+    </div>
+    <div class="demo-row">
+      <span class="demo-label text text--caption">lg — 48px token</span>
+      <button class="btn btn--primary btn--lg" type="button">Invite member</button>
+      <button class="btn btn--secondary btn--lg" type="button">Save draft</button>
+      <button class="btn btn--ghost btn--lg" type="button">Skip</button>
+    </div>
+  </section>
+
+  <hr class="separator separator--horizontal separator--subtle" role="presentation">
+
+  <!-- ===================== Content configurations ===================== -->
+  <section class="demo-block" aria-labelledby="icons-heading">
+    <h2 class="text text--h5" id="icons-heading">Content configurations</h2>
+    <div class="demo-row">
+      <span class="demo-label text text--caption">text only</span>
+      <button class="btn btn--primary" type="button">Create job posting</button>
+    </div>
+    <div class="demo-row">
+      <span class="demo-label text text--caption">leading icon</span>
+      <button class="btn btn--primary" type="button">
+        <svg class="btn__icon" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+          <path d="M8 3v10M3 8h10" stroke="currentColor" stroke-linecap="round"/>
+        </svg>
+        Create job posting
+      </button>
+    </div>
+    <div class="demo-row">
+      <span class="demo-label text text--caption">trailing icon</span>
+      <button class="btn btn--secondary" type="button">
+        View applicants
+        <svg class="btn__icon" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+          <path d="M3 8h10M9 4l4 4-4 4" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+      </button>
+    </div>
+    <div class="demo-row">
+      <span class="demo-label text text--caption">leading + trailing</span>
+      <button class="btn btn--ghost" type="button">
+        <svg class="btn__icon" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+          <path d="M2 8a6 6 0 1 1 6 6" stroke="currentColor" stroke-linecap="round"/>
+        </svg>
+        Sync directory
+        <svg class="btn__icon" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+          <path d="M3 8h10M9 4l4 4-4 4" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+      </button>
+    </div>
+    <p class="text text--caption demo-note">
+      Icons size to <code class="text text--code">--icon-size-sm</code> with
+      <code class="text text--code">--stroke-width-icon</code> paths and the
+      <code class="text text--code">--space-2</code> gap; order comes from markup, and
+      decorative icons carry <code class="text text--code">aria-hidden="true"</code>.
+    </p>
+  </section>
+
+  <hr class="separator separator--horizontal separator--subtle" role="presentation">
+
+  <!-- ===================== Loading across sizes ===================== -->
+  <section class="demo-block" aria-labelledby="loading-heading">
+    <h2 class="text text--h5" id="loading-heading">Loading preserves dimensions</h2>
+    <div class="demo-row">
+      <span class="demo-label text text--caption">rest → loading</span>
+      <button class="btn btn--primary btn--sm" type="button">Upload document</button>
+      <button class="btn btn--primary btn--sm is-loading" type="button" disabled aria-busy="true">
+        Upload document
+        <span class="btn__spinner" aria-hidden="true"></span>
+      </button>
+      <button class="btn btn--destructive" type="button">Delete workspace</button>
+      <button class="btn btn--destructive is-loading" type="button" disabled aria-busy="true">
+        Delete workspace
+        <span class="btn__spinner" aria-hidden="true"></span>
+      </button>
+    </div>
+    <p class="text text--caption demo-note">
+      Each loading button sits beside its resting twin: identical footprint. The
+      <code class="text text--code">disabled</code> attribute blocks click, keyboard, and
+      programmatic activation; <code class="text text--code">aria-busy="true"</code> tells
+      assistive tech the control is processing.
+    </p>
+  </section>
+
+  <hr class="separator separator--horizontal separator--subtle" role="presentation">
+
+  <!-- ===================== Full width ===================== -->
+  <section class="demo-block" aria-labelledby="full-heading">
+    <h2 class="text text--h5" id="full-heading">Full width</h2>
+    <div class="full-width-wrap state-col">
+      <button class="btn btn--primary btn--full" type="button">Accept invitation</button>
+      <button class="btn btn--secondary btn--full is-loading" type="button" disabled aria-busy="true">
+        Verifying code
+        <span class="btn__spinner" aria-hidden="true"></span>
+      </button>
+    </div>
+    <p class="text text--caption demo-note">
+      <code class="text text--code">.btn--full</code> only sets
+      <code class="text text--code">width: 100%</code> — a layout property, no token needed.
+      Height and padding tokens are untouched; the loading spinner still centers.
+    </p>
+  </section>
+
+</main>
+
+</body>
+</html>

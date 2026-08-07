@@ -1,0 +1,374 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Typography — Component Showcase</title>
+<link rel="stylesheet" href="../src/styles/tokens.css">
+<link rel="stylesheet" href="../src/styles/typography.css">
+<style>
+  /* Page chrome — tokens only, no component values. */
+  *, *::before, *::after { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: var(--background);
+    color: var(--foreground);
+    font-family: var(--font-sans);
+    -webkit-font-smoothing: antialiased;
+  }
+  .container { max-width: var(--doc-container-max); margin: 0 auto; padding: 0 var(--space-6); }
+  .page-head { padding: var(--space-16) 0 var(--space-8); border-bottom: var(--border-width) solid var(--border); }
+  .page-head .text--overline { color: var(--primary); display: block; margin-bottom: var(--space-3); }
+  .page-head p { margin: var(--space-4) 0 0; max-width: 64ch; }
+  .specimen {
+    display: grid;
+    grid-template-columns: var(--doc-specimen-meta-width) 1fr;
+    gap: var(--space-8);
+    padding: var(--space-8) 0;
+    border-bottom: var(--border-width) solid var(--border-soft);
+    align-items: start;
+  }
+  .specimen-meta .name { color: var(--primary-active); }
+  .specimen-meta dl { margin: var(--space-3) 0 0; }
+  .specimen-meta dl div { display: flex; justify-content: space-between; gap: var(--space-4); padding: var(--space-0-75) 0; }
+  .specimen-meta dt { color: var(--caption-foreground); }
+  .specimen-meta dd { margin: 0; color: var(--foreground-strong); }
+  .specimen-sample > * + * { margin-top: var(--space-3); }
+  .section { padding: var(--space-12) 0; }
+  .section > .text--h3 { margin-bottom: var(--space-6); }
+  .as-grid { display: grid; gap: var(--space-6); }
+  .as-cell { border: var(--border-width) solid var(--border); border-radius: var(--radius-lg); padding: var(--space-6); }
+  .as-cell .text--overline { display: block; margin-bottom: var(--space-3); }
+  @media (max-width: 768px) {
+    .specimen { grid-template-columns: 1fr; gap: var(--space-4); }
+  }
+</style>
+</head>
+<body>
+
+<header class="page-head">
+  <div class="container">
+    <span class="text text--overline">Component</span>
+    <h1 class="text text--h1">Typography</h1>
+    <p class="text text--body-md">
+      Every style below is composed from <code class="text text--code">tokens.css</code> only —
+      font family, size, line-height, letter-spacing, and color are all token references.
+      Class pairs are element-agnostic: the visual style never dictates the HTML tag.
+    </p>
+  </div>
+</header>
+
+<main class="container">
+
+  <!-- display -->
+  <div class="specimen">
+    <div class="specimen-meta">
+      <span class="text text--label name">.text--display</span>
+      <dl class="text text--caption">
+        <div><dt>family</dt><dd>--font-display</dd></div>
+        <div><dt>size</dt><dd>--text-display-xl</dd></div>
+        <div><dt>line-height</dt><dd>1.05 (token)</dd></div>
+        <div><dt>letter-spacing</dt><dd>token</dd></div>
+        <div><dt>color</dt><dd>--foreground</dd></div>
+        <div><dt>≤768px</dt><dd>--text-display-xl-compact</dd></div>
+      </dl>
+    </div>
+    <div class="specimen-sample">
+      <p class="text text--display">Match the right people to the right teams, everywhere.</p>
+    </div>
+  </div>
+
+  <!-- h1 -->
+  <div class="specimen">
+    <div class="specimen-meta">
+      <span class="text text--label name">.text--h1</span>
+      <dl class="text text--caption">
+        <div><dt>family</dt><dd>--font-display</dd></div>
+        <div><dt>size</dt><dd>--text-display-lg</dd></div>
+        <div><dt>line-height</dt><dd>1.1 (token)</dd></div>
+        <div><dt>letter-spacing</dt><dd>token</dd></div>
+        <div><dt>color</dt><dd>--foreground</dd></div>
+        <div><dt>≤768px</dt><dd>--text-display-lg-compact</dd></div>
+      </dl>
+    </div>
+    <div class="specimen-sample">
+      <h1 class="text text--h1">A talent network built on trust, not keyword roulette</h1>
+    </div>
+  </div>
+
+  <!-- h2 -->
+  <div class="specimen">
+    <div class="specimen-meta">
+      <span class="text text--label name">.text--h2</span>
+      <dl class="text text--caption">
+        <div><dt>family</dt><dd>--font-display</dd></div>
+        <div><dt>size</dt><dd>--text-display-md</dd></div>
+        <div><dt>line-height</dt><dd>1.15 (token)</dd></div>
+        <div><dt>letter-spacing</dt><dd>token</dd></div>
+        <div><dt>color</dt><dd>--foreground</dd></div>
+      </dl>
+    </div>
+    <div class="specimen-sample">
+      <h2 class="text text--h2">Company profiles your whole team can maintain together</h2>
+    </div>
+  </div>
+
+  <!-- h3 -->
+  <div class="specimen">
+    <div class="specimen-meta">
+      <span class="text text--label name">.text--h3</span>
+      <dl class="text text--caption">
+        <div><dt>family</dt><dd>--font-display</dd></div>
+        <div><dt>size</dt><dd>--text-display-sm</dd></div>
+        <div><dt>line-height</dt><dd>1.2 (token)</dd></div>
+        <div><dt>letter-spacing</dt><dd>token</dd></div>
+        <div><dt>color</dt><dd>--foreground</dd></div>
+      </dl>
+    </div>
+    <div class="specimen-sample">
+      <h3 class="text text--h3">Invites, roles, and two-step verification out of the box</h3>
+    </div>
+  </div>
+
+  <!-- h4 -->
+  <div class="specimen">
+    <div class="specimen-meta">
+      <span class="text text--label name">.text--h4</span>
+      <dl class="text text--caption">
+        <div><dt>family</dt><dd>--font-sans</dd></div>
+        <div><dt>size</dt><dd>--text-title-lg</dd></div>
+        <div><dt>line-height</dt><dd>1.3 (token)</dd></div>
+        <div><dt>color</dt><dd>--foreground</dd></div>
+      </dl>
+    </div>
+    <div class="specimen-sample">
+      <h4 class="text text--h4">Usage metering with idempotent ledger entries</h4>
+    </div>
+  </div>
+
+  <!-- h5 -->
+  <div class="specimen">
+    <div class="specimen-meta">
+      <span class="text text--label name">.text--h5</span>
+      <dl class="text text--caption">
+        <div><dt>family</dt><dd>--font-sans</dd></div>
+        <div><dt>size</dt><dd>--text-title-md</dd></div>
+        <div><dt>line-height</dt><dd>1.4 (token)</dd></div>
+        <div><dt>color</dt><dd>--foreground</dd></div>
+      </dl>
+    </div>
+    <div class="specimen-sample">
+      <h5 class="text text--h5">Row-level security keeps every tenant isolated</h5>
+    </div>
+  </div>
+
+  <!-- h6 -->
+  <div class="specimen">
+    <div class="specimen-meta">
+      <span class="text text--label name">.text--h6</span>
+      <dl class="text text--caption">
+        <div><dt>family</dt><dd>--font-sans</dd></div>
+        <div><dt>size</dt><dd>--text-title-sm</dd></div>
+        <div><dt>line-height</dt><dd>1.4 (token)</dd></div>
+        <div><dt>color</dt><dd>--foreground</dd></div>
+      </dl>
+    </div>
+    <div class="specimen-sample">
+      <h6 class="text text--h6">Audit events are append-only by database permission</h6>
+    </div>
+  </div>
+
+  <!-- body-lg -->
+  <div class="specimen">
+    <div class="specimen-meta">
+      <span class="text text--label name">.text--body-lg</span>
+      <dl class="text text--caption">
+        <div><dt>family</dt><dd>--font-sans</dd></div>
+        <div><dt>size</dt><dd>--text-body-lg</dd></div>
+        <div><dt>line-height</dt><dd>body token</dd></div>
+        <div><dt>color</dt><dd>--foreground-strong</dd></div>
+        <div><dt>role</dt><dd>lead paragraphs</dd></div>
+      </dl>
+    </div>
+    <div class="specimen-sample">
+      <p class="text text--body-lg">
+        Relationship Network is a multi-tenant platform where companies maintain rich,
+        living profiles — and where the right specialist is a precise query away, not a
+        week of cold outreach. Every lead paragraph on the marketing surface uses this style.
+      </p>
+    </div>
+  </div>
+
+  <!-- body-md -->
+  <div class="specimen">
+    <div class="specimen-meta">
+      <span class="text text--label name">.text--body-md</span>
+      <dl class="text text--caption">
+        <div><dt>family</dt><dd>--font-sans</dd></div>
+        <div><dt>size</dt><dd>--text-body-md</dd></div>
+        <div><dt>line-height</dt><dd>1.55 (token)</dd></div>
+        <div><dt>color</dt><dd>--foreground-body</dd></div>
+      </dl>
+    </div>
+    <div class="specimen-sample">
+      <p class="text text--body-md">
+        Running text. Members collaborate on company documents, job postings carry their
+        own materials, and every billable action lands in the usage ledger under an
+        idempotency key — retry-safe by construction. When a subscription lapses the
+        tenant turns read-only, and the write gate says so plainly instead of failing
+        silently halfway through a form.
+      </p>
+      <p class="text text--body-md">
+        A second paragraph to show the rhythm: line-height stays at the token value, so
+        long-form pages keep an even vertical cadence without per-page tweaking.
+      </p>
+    </div>
+  </div>
+
+  <!-- body-sm -->
+  <div class="specimen">
+    <div class="specimen-meta">
+      <span class="text text--label name">.text--body-sm</span>
+      <dl class="text text--caption">
+        <div><dt>family</dt><dd>--font-sans</dd></div>
+        <div><dt>size</dt><dd>--text-body-sm</dd></div>
+        <div><dt>line-height</dt><dd>1.55 (token)</dd></div>
+        <div><dt>color</dt><dd>--foreground-body</dd></div>
+      </dl>
+    </div>
+    <div class="specimen-sample">
+      <p class="text text--body-sm">
+        Dense contexts — table cells, settings descriptions, secondary panel copy. Small
+        enough to sit beside controls, still on the body line-height token so mixed-density
+        layouts don't drift apart.
+      </p>
+    </div>
+  </div>
+
+  <!-- label -->
+  <div class="specimen">
+    <div class="specimen-meta">
+      <span class="text text--label name">.text--label</span>
+      <dl class="text text--caption">
+        <div><dt>family</dt><dd>--font-sans</dd></div>
+        <div><dt>size</dt><dd>--text-caption</dd></div>
+        <div><dt>line-height</dt><dd>1.4 (token)</dd></div>
+        <div><dt>color</dt><dd>--foreground-strong</dd></div>
+      </dl>
+    </div>
+    <div class="specimen-sample">
+      <label class="text text--label" for="demo-email">Work email</label>
+      <p class="text text--body-sm">
+        Pairs with form controls via a real <code class="text text--code">&lt;label&gt;</code> —
+        here associated with <code class="text text--code">for="demo-email"</code>.
+      </p>
+    </div>
+  </div>
+
+  <!-- caption -->
+  <div class="specimen">
+    <div class="specimen-meta">
+      <span class="text text--label name">.text--caption</span>
+      <dl class="text text--caption">
+        <div><dt>family</dt><dd>--font-sans</dd></div>
+        <div><dt>size</dt><dd>--text-caption</dd></div>
+        <div><dt>line-height</dt><dd>1.4 (token)</dd></div>
+        <div><dt>color</dt><dd>--caption-foreground</dd></div>
+      </dl>
+    </div>
+    <div class="specimen-sample">
+      <p class="text text--caption">
+        Uploaded 12 Mar 2026 · Visible to workspace members only · 2.4 MB
+      </p>
+      <p class="text text--caption">
+        Fine print: captions carry metadata, timestamps, and helper text — never primary content.
+      </p>
+    </div>
+  </div>
+
+  <!-- overline -->
+  <div class="specimen">
+    <div class="specimen-meta">
+      <span class="text text--label name">.text--overline</span>
+      <dl class="text text--caption">
+        <div><dt>family</dt><dd>--font-sans</dd></div>
+        <div><dt>size</dt><dd>--text-caption-up</dd></div>
+        <div><dt>letter-spacing</dt><dd>token</dd></div>
+        <div><dt>transform</dt><dd>uppercase</dd></div>
+        <div><dt>color</dt><dd>--muted-foreground</dd></div>
+      </dl>
+    </div>
+    <div class="specimen-sample">
+      <span class="text text--overline">Platform health</span>
+      <p class="text text--body-sm" style="margin-top: var(--space-2);">
+        Sits above a heading as a section kicker. Source text stays sentence case;
+        the uppercase rendering comes from the style, not the markup.
+      </p>
+    </div>
+  </div>
+
+  <!-- code -->
+  <div class="specimen">
+    <div class="specimen-meta">
+      <span class="text text--label name">.text--code</span>
+      <dl class="text text--caption">
+        <div><dt>family</dt><dd>--font-mono</dd></div>
+        <div><dt>size</dt><dd>--text-code</dd></div>
+        <div><dt>line-height</dt><dd>1.6 (token)</dd></div>
+        <div><dt>color</dt><dd>--foreground-strong</dd></div>
+      </dl>
+    </div>
+    <div class="specimen-sample">
+      <p class="text text--body-md">
+        Run <code class="text text--code">docker compose up --build -d</code>, then check
+        <code class="text text--code">/health/ready</code>. Tenant isolation is enforced by
+        the <code class="text text--code">app.current_tenant</code> GUC on every connection.
+      </p>
+    </div>
+  </div>
+
+  <!-- Style/semantics independence ("as" prop) -->
+  <section class="section" aria-labelledby="as-heading">
+    <h2 class="text text--h3" id="as-heading">Style ≠ semantics</h2>
+    <div class="as-grid">
+      <div class="as-cell">
+        <span class="text text--overline">visual h4 · semantic p</span>
+        <p class="text text--h4">
+          Looks like a fourth-level heading, reads to assistive tech as a plain paragraph —
+          for card titles that must not enter the document outline.
+        </p>
+      </div>
+      <div class="as-cell">
+        <span class="text text--overline">visual body-md · semantic h2</span>
+        <h2 class="text text--body-md">
+          A real second-level heading in the outline, styled as body text — for long,
+          descriptive section headings.
+        </h2>
+      </div>
+      <div class="as-cell">
+        <span class="text text--overline">visual caption · semantic legend</span>
+        <fieldset style="border: 0; margin: 0; padding: 0;">
+          <legend class="text text--caption">Notification preferences (legend, caption style)</legend>
+        </fieldset>
+      </div>
+    </div>
+  </section>
+
+  <!-- Responsive note -->
+  <section class="section" aria-labelledby="resp-heading">
+    <h2 class="text text--h3" id="resp-heading">Responsive</h2>
+    <p class="text text--body-md">
+      Below 768px, <code class="text text--code">.text--display</code> and
+      <code class="text text--code">.text--h1</code> switch to the compact display tokens
+      (<code class="text text--code">--text-display-xl-compact</code> /
+      <code class="text text--code">--text-display-lg-compact</code>). The breakpoint is a
+      literal value — plain CSS media queries cannot consume <code class="text text--code">var()</code> —
+      following the documented precedent in <code class="text text--code">design-system.html</code>.
+      Resize the viewport to see it.
+    </p>
+  </section>
+
+</main>
+
+</body>
+</html>

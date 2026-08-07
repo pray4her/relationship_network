@@ -1,0 +1,163 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Separator — Component Showcase</title>
+<link rel="stylesheet" href="../src/styles/tokens.css">
+<link rel="stylesheet" href="../src/styles/typography.css">
+<link rel="stylesheet" href="../src/styles/separator.css">
+<style>
+  /* Page chrome — tokens only, no component values. */
+  *, *::before, *::after { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: var(--background);
+    color: var(--foreground);
+    font-family: var(--font-sans);
+    -webkit-font-smoothing: antialiased;
+  }
+  .container { max-width: var(--doc-container-max); margin: 0 auto; padding: 0 var(--space-6); }
+  .page-head { padding: var(--space-16) 0 var(--space-8); border-bottom: var(--border-width) solid var(--border); }
+  .page-head .text--overline { color: var(--primary); display: block; margin-bottom: var(--space-3); }
+  .page-head p { margin: var(--space-4) 0 0; max-width: 64ch; }
+  .demo-block { padding: var(--space-8) 0; border-bottom: var(--border-width) solid var(--border-soft); }
+  .demo-block > .text--h5 { margin-bottom: var(--space-6); }
+  .demo-note { margin-top: var(--space-4); max-width: 72ch; }
+  .stack { max-width: 72ch; }
+  .stack p { margin: 0; }
+  /* vertical demos need a row context; height comes from the content */
+  .h-row { display: flex; align-items: center; }
+  .meta-row { display: flex; align-items: center; color: var(--muted-foreground); }
+  .toolbar { display: flex; align-items: center; border: var(--border-width) solid var(--border); border-radius: var(--radius-md); padding: var(--space-2) var(--space-3); }
+  .toolbar button {
+    border: 0; background: transparent; cursor: pointer; padding: var(--space-1) var(--space-2);
+    font-family: var(--font-sans); font-size: var(--text-body-sm); color: var(--foreground);
+    border-radius: var(--radius-sm);
+  }
+  .toolbar button:focus-visible { outline: none; box-shadow: 0 0 0 var(--ring-width) var(--ring-focus); }
+  /* On dark band, separators keep token colors — shown for honesty, not a variant */
+  .dark-band { background: var(--surface-dark); color: var(--on-dark); border-radius: var(--radius-lg); padding: var(--space-8); }
+</style>
+</head>
+<body>
+
+<header class="page-head">
+  <div class="container">
+    <span class="text text--overline">Component</span>
+    <h1 class="text text--h1">Separator</h1>
+    <p class="text text--body-md">
+      Three color variants — <code class="text text--code">subtle</code>,
+      <code class="text text--code">default</code>, <code class="text text--code">strong</code> —
+      in two orientations. Thickness is always the <code class="text text--code">--border-width</code>
+      hairline; variants differ by color token only. Decorative separators hide from
+      assistive tech; real content boundaries keep <code class="text text--code">role="separator"</code>.
+    </p>
+  </div>
+</header>
+
+<main class="container">
+
+  <!-- ===================== Horizontal ===================== -->
+  <section class="demo-block" aria-labelledby="h-heading">
+    <h2 class="text text--h5" id="h-heading">Horizontal</h2>
+
+    <div class="stack">
+      <p class="text text--caption">subtle → --border-soft (quiet dividers)</p>
+      <p class="text text--body-md">Members can edit company documents until the subscription lapses.</p>
+      <hr class="separator separator--horizontal separator--subtle">
+      <p class="text text--body-md">After that the tenant turns read-only and the write gate explains why.</p>
+    </div>
+
+    <div class="stack" style="margin-top: var(--space-8);">
+      <p class="text text--caption">default → --border (hairline)</p>
+      <p class="text text--body-md">Every billable action lands in the usage ledger under an idempotency key.</p>
+      <hr class="separator separator--horizontal separator--default">
+      <p class="text text--body-md">A retry with the same key and different parameters returns 409.</p>
+    </div>
+
+    <div class="stack" style="margin-top: var(--space-8);">
+      <p class="text text--caption">strong → --border-strong, --border-width-strong (2px)</p>
+      <p class="text text--body-md">Platform administrators authenticate with TOTP two-step verification.</p>
+      <hr class="separator separator--horizontal separator--strong">
+      <p class="text text--body-md">Their authority comes from an environment variable, never from tenant roles.</p>
+    </div>
+
+    <p class="text text--caption demo-note">
+      Rendered as semantic <code class="text text--code">&lt;hr&gt;</code> elements: these divide
+      genuinely distinct content, so they keep the implicit
+      <code class="text text--code">role="separator"</code>.
+    </p>
+  </section>
+
+  <!-- ===================== Vertical ===================== -->
+  <section class="demo-block" aria-labelledby="v-heading">
+    <h2 class="text text--h5" id="v-heading">Vertical</h2>
+
+    <p class="text text--caption" style="margin-bottom: var(--space-3);">subtle → --border-soft</p>
+    <div class="meta-row text text--body-sm">
+      <span>Updated 12 Mar 2026</span>
+      <span class="separator separator--vertical separator--subtle" role="presentation"></span>
+      <span>2.4 MB</span>
+      <span class="separator separator--vertical separator--subtle" role="presentation"></span>
+      <span>Members only</span>
+    </div>
+
+    <p class="text text--caption" style="margin: var(--space-6) 0 var(--space-3);">default → --border</p>
+    <div class="meta-row text text--body-sm">
+      <span>Claude Opus</span>
+      <span class="separator separator--vertical separator--default" role="presentation"></span>
+      <span>Deep reasoning</span>
+      <span class="separator separator--vertical separator--default" role="presentation"></span>
+      <span>Available</span>
+    </div>
+
+    <p class="text text--caption" style="margin: var(--space-6) 0 var(--space-3);">strong → --border-strong, 2px</p>
+    <div class="toolbar" role="toolbar" aria-label="Document actions">
+      <button type="button">Edit</button>
+      <button type="button">Share</button>
+      <span class="separator separator--vertical separator--strong" role="separator" aria-orientation="vertical"></span>
+      <button type="button">Delete</button>
+    </div>
+
+    <p class="text text--caption demo-note">
+      Meta rows use decorative separators (<code class="text text--code">role="presentation"</code>) —
+      the text reads fine without them. The toolbar divider marks a real boundary between
+      safe and destructive actions, so it keeps
+      <code class="text text--code">role="separator" aria-orientation="vertical"</code>.
+    </p>
+  </section>
+
+  <!-- ===================== Decorative vs semantic ===================== -->
+  <section class="demo-block" aria-labelledby="sem-heading" style="border-bottom: 0;">
+    <h2 class="text text--h5" id="sem-heading">Decorative vs semantic</h2>
+
+    <div class="stack">
+      <p class="text text--body-md">
+        <strong>Decorative:</strong> the divider below only groups visually — a screen reader
+        skips it entirely.
+      </p>
+      <div class="separator separator--horizontal separator--subtle" role="presentation"></div>
+      <p class="text text--body-md">
+        <strong>Semantic:</strong> the divider below separates two independent announcements —
+        it is a real content boundary, announced as a separator.
+      </p>
+      <hr class="separator separator--horizontal separator--default">
+      <p class="text text--body-md">
+        Scheduled maintenance on Sunday, 03:00–04:00 UTC. Invites sent during the window
+        are queued and delivered after.
+      </p>
+    </div>
+
+    <p class="text text--caption demo-note">
+      Rule of thumb: if removing the divider changes what the content <em>means</em>,
+      it is semantic — use <code class="text text--code">&lt;hr&gt;</code> (horizontal) or
+      <code class="text text--code">role="separator" aria-orientation="vertical"</code> (vertical).
+      Otherwise mark it <code class="text text--code">role="presentation"</code>.
+    </p>
+  </section>
+
+</main>
+
+</body>
+</html>
