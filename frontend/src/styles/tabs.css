@@ -1,0 +1,263 @@
+/* ==========================================================================
+   Tabs
+   Token mapping — every value below references tokens.css, nothing else.
+
+   Category/section switching with full WAI-ARIA tabs semantics. Two
+   variants: underline (a quiet rail with a coral indicator — app pages)
+   and contained (the design spec's "Category tabs" pill recipe). Semantic
+   markup contract: a [role="tablist"] wrapping <button role="tab"> with
+   roving tabindex; each tab points at a [role="tabpanel"] via
+   aria-controls. Selection is styled from aria-selected="true" — never a
+   parallel class. Disabled tabs are native <button disabled>; the keyboard
+   layer skips them.
+
+   Anatomy (markup contract):
+     .tabs                wrapper <div>; variant modifier --underline
+                         (default) / --contained; size --sm / --lg
+     .tabs__list          [role="tablist"]; horizontal, scrollable
+     .tabs__tab           <button role="tab">: optional .tabs__icon svg +
+                          label + optional composed .badge
+     .tabs__icon          inline SVG, currentColor, stroke-based (lucide)
+     .tabs__panel         [role="tabpanel"]; hidden when not selected
+     .is-hover / .is-active / .is-focus-visible   static showcase mirrors
+                          of the pseudo-classes (Button precedent)
+
+   PROPERTY → TOKEN
+   ─────────────────────────────────────────────────────────────────────────
+   SHARED TAB CHROME
+     height          md --control-height (40px); sm --control-height-sm;
+                     lg --control-height-lg (the shared control ladder)
+     typography      md --text-nav-link (+ --line-height) — the token's
+                     stated role; sm --text-caption (+ --line-height);
+                     lg --text-title-sm (+ --line-height); all --font-sans
+                     at --font-weight-medium (the .tab recipe from the
+                     design spec)
+     inline padding  md --tab-padding-inline (the token's stated role:
+                     "Category tabs"); sm --space-3; lg --space-6 (spacing
+                     scale borrowings, one rung in/out — Button precedent)
+     content gap     --space-2 between icon / label / badge
+     radius          contained --radius-md (the spec's .tab geometry);
+                     underline none
+     focus-visible   0 0 0 --ring-width --ring-focus (shared ring recipe);
+                     stacks with the underline indicator when selected
+     disabled        opacity --opacity-disabled + cursor not-allowed
+                     (native disabled blocks pointer + keyboard)
+     motion          color / background-color / box-shadow,
+                     --duration-fast --ease-standard
+   TABLIST / OVERFLOW
+     layout          display flex; contained gap --space-1, underline gap
+                     --space-2 (the spec's .tabs gap)
+     overflow        overflow-x auto; tabs flex none — the list scrolls,
+                     never wraps or squashes
+     ring room       padding-block --ring-width with margin-block
+                     calc(-1 × --ring-width): exactly the space the focus
+                     ring needs inside the scroller, zero layout shift;
+                     underline tabs pull back down with margin-bottom
+                     calc(-1 × --ring-width) so the indicator meets the rail
+   UNDERLINE VARIANT
+     rail            tablist border-bottom --border-width solid
+                     --border-soft (the quiet divider)
+     default         color --muted-foreground, transparent bg
+     hover           color --muted-foreground-hover
+     pressed         color --muted-foreground-active
+     selected        [aria-selected="true"] → color --foreground +
+                     indicator: inset box-shadow 0 calc(-1 ×
+                     --border-width-strong) 0 --primary (the emphasized
+                     line thickness, the brand color)
+   CONTAINED VARIANT (the spec's "Category tabs" recipe, promoted)
+     default         transparent bg, color --muted-foreground
+     hover           bg --accent (token note: "hover/tab-active bg"),
+                     color --accent-foreground
+     pressed         bg --surface-cream-strong
+     selected        [aria-selected="true"] → bg --surface-cream-strong
+                     (token note: "active tabs, emphasized bands"), color
+                     --foreground. The spec's static .tab-active used
+                     --card; selection is promoted to --surface-cream-strong
+                     so hover (--accent, same tone as --card) and selected
+                     stay visually distinct
+   BADGE
+     composed        a real .badge (badge.css), unmodified; the tab only
+                     keeps it from shrinking (flex none)
+   ICON
+     sizing          --icon-size-sm (sm/md tabs); --icon-size-md (lg tabs);
+                     stroke-width --stroke-width-icon; currentColor inherits
+                     every tab state color
+   PANEL
+     spacing         padding-block-start --space-4
+     focus-visible   panels are tabindex="0" for keyboard users; the shared
+                     ring recipe at --radius-md
+   REDUCED MOTION    all transitions removed.
+
+   TOKEN NOTES: no new tokens were needed — every role mapped to an
+   existing token. Documented borrowings: sm/lg inline padding from the
+   spacing scale (--space-3 / --space-6), and --ring-width doubling as the
+   scroller's ring breathing room.
+   ========================================================================== */
+
+.tabs {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.tabs__list {
+  display: flex;
+  overflow-x: auto;
+  gap: var(--space-2);
+  padding-block: var(--ring-width);
+  margin-block: calc(-1 * var(--ring-width));
+}
+
+.tabs__tab {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
+  flex: none;
+  height: var(--control-height);
+  padding-inline: var(--tab-padding-inline);
+  border: 0;
+  background: transparent;
+  cursor: pointer;
+  font-family: var(--font-sans);
+  font-size: var(--text-nav-link);
+  font-weight: var(--font-weight-medium);
+  line-height: var(--text-nav-link--line-height);
+  color: var(--muted-foreground);
+  white-space: nowrap;
+  transition:
+    color var(--duration-fast) var(--ease-standard),
+    background-color var(--duration-fast) var(--ease-standard),
+    box-shadow var(--duration-fast) var(--ease-standard);
+}
+
+.tabs__tab:disabled,
+.tabs__tab.is-disabled {
+  opacity: var(--opacity-disabled);
+  cursor: not-allowed;
+}
+
+/* ===== Underline variant ===== */
+
+.tabs--underline .tabs__list {
+  border-bottom: var(--border-width) solid var(--border-soft);
+}
+
+.tabs--underline .tabs__tab {
+  margin-bottom: calc(-1 * var(--ring-width));
+  box-shadow: inset 0 calc(-1 * var(--border-width-strong)) 0 transparent;
+}
+
+.tabs--underline .tabs__tab:hover,
+.tabs--underline .tabs__tab.is-hover {
+  color: var(--muted-foreground-hover);
+}
+
+.tabs--underline .tabs__tab:active,
+.tabs--underline .tabs__tab.is-active {
+  color: var(--muted-foreground-active);
+}
+
+.tabs--underline .tabs__tab[aria-selected="true"] {
+  color: var(--foreground);
+  box-shadow: inset 0 calc(-1 * var(--border-width-strong)) 0 var(--primary);
+}
+
+.tabs--underline .tabs__tab[aria-selected="true"]:focus-visible,
+.tabs--underline .tabs__tab[aria-selected="true"].is-focus-visible {
+  box-shadow:
+    inset 0 calc(-1 * var(--border-width-strong)) 0 var(--primary),
+    0 0 0 var(--ring-width) var(--ring-focus);
+}
+
+/* ===== Contained variant ===== */
+
+.tabs--contained .tabs__list {
+  gap: var(--space-1);
+}
+
+.tabs--contained .tabs__tab {
+  border-radius: var(--radius-md);
+}
+
+.tabs--contained .tabs__tab:hover,
+.tabs--contained .tabs__tab.is-hover {
+  background: var(--accent);
+  color: var(--accent-foreground);
+}
+
+.tabs--contained .tabs__tab:active,
+.tabs--contained .tabs__tab.is-active {
+  background: var(--surface-cream-strong);
+}
+
+.tabs--contained .tabs__tab[aria-selected="true"] {
+  background: var(--surface-cream-strong);
+  color: var(--foreground);
+}
+
+.tabs--contained .tabs__tab[aria-selected="true"]:focus-visible,
+.tabs--contained .tabs__tab[aria-selected="true"].is-focus-visible {
+  box-shadow: 0 0 0 var(--ring-width) var(--ring-focus);
+}
+
+/* The shared ring recipe lives after the variant base rules so its
+   box-shadow wins the cascade; selected + focus stacks both shadows via
+   the higher-specificity rules above. */
+.tabs__tab:focus-visible,
+.tabs__tab.is-focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 var(--ring-width) var(--ring-focus);
+}
+
+/* ===== Sizes ===== */
+
+.tabs--sm .tabs__tab {
+  height: var(--control-height-sm);
+  padding-inline: var(--space-3);
+  font-size: var(--text-caption);
+  line-height: var(--text-caption--line-height);
+}
+
+.tabs--lg .tabs__tab {
+  height: var(--control-height-lg);
+  padding-inline: var(--space-6);
+  font-size: var(--text-title-sm);
+  line-height: var(--text-title-sm--line-height);
+}
+
+/* ===== Icon & badge composition ===== */
+
+.tabs__icon {
+  width: var(--icon-size-sm);
+  height: var(--icon-size-sm);
+  flex: none;
+  stroke-width: var(--stroke-width-icon);
+}
+
+.tabs--lg .tabs__icon {
+  width: var(--icon-size-md);
+  height: var(--icon-size-md);
+}
+
+.tabs__tab > .badge {
+  flex: none;
+}
+
+/* ===== Panel ===== */
+
+.tabs__panel {
+  padding-block-start: var(--space-4);
+  border-radius: var(--radius-md);
+}
+
+.tabs__panel:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 var(--ring-width) var(--ring-focus);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .tabs__tab {
+    transition: none;
+  }
+}

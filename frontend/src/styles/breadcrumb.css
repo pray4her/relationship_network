@@ -1,0 +1,287 @@
+/* ==========================================================================
+   Breadcrumb
+   Token mapping — every value below references tokens.css, nothing else.
+
+   A navigation trail: ancestor links → current page. Semantic markup
+   contract: <nav aria-label> wrapping an <ol>; each crumb is an <li>;
+   ancestors are real <a> links; the current destination is a non-link
+   <span aria-current="page"> (never a self-href). Separators and the
+   optional home glyph are decorative (aria-hidden). Collapsed long paths
+   replace the middle with an ellipsis <button aria-expanded
+   aria-haspopup="menu"> that reveals a menu of the hidden crumbs.
+
+   Anatomy (markup contract):
+     .breadcrumb                 the <nav>
+     .breadcrumb__list           the <ol>
+     .breadcrumb__item           each <li> crumb
+     .breadcrumb__link           ancestor <a>
+     .breadcrumb__page           current <span aria-current="page">
+     .breadcrumb__separator      chevron glyph (aria-hidden) — lives as its
+                                 own <li>, not inside a crumb
+     .breadcrumb__home           optional leading home SVG inside a link
+     .breadcrumb__ellipsis       collapsed-middle <button>
+     .breadcrumb__menu           <ul role="menu"> of hidden ancestors
+     .breadcrumb__menu-item      <a role="menuitem"> inside the menu
+
+   STATE → TOKEN (every state explicit; no silent inheritance)
+   ─────────────────────────────────────────────────────────────────────────
+   link default        color --muted-foreground
+                       (token note: "sub-heads, breadcrumbs")
+   link hover          color --muted-foreground-hover
+                       (semantic muted interactive pair — Navbar quiet /
+                       Tabs underline precedent)
+   link focus-visible  box-shadow 0 0 0 --ring-width --ring-focus;
+                       outline none; radius --radius-xs
+                       (shared focus recipe — Link / Navbar / Sidebar)
+   current page        painted from [aria-current="page"] only — never a
+                       parallel "active" class:
+                         color  --foreground
+                         bg     --selected-bg
+                         edge   inset 0 calc(-1 × --border-width-strong) 0
+                                --selected-border
+                       (semantic current/selection pair — Navbar /
+                       Sidebar current-page recipe, rotated to an
+                       inline crumb)
+   separator           color --muted-foreground (semantic muted — same
+                       family as crumb links; not caption-soft)
+   ellipsis default    color --muted-foreground; transparent bg
+   ellipsis hover      bg --accent; color --accent-foreground
+   ellipsis focus-visible  shared --ring-width / --ring-focus ring
+   ellipsis expanded   [aria-expanded="true"] → bg --selected-bg;
+                       color --foreground
+                       (same selection surface as current page)
+   menu item hover     bg --accent
+   menu item focus     shared --ring-focus ring
+
+   PROPERTY → TOKEN
+   ─────────────────────────────────────────────────────────────────────────
+   typography          --font-sans; --text-nav-link (+ --line-height);
+                       weight --font-weight-medium (navigation trail)
+   list layout         inline-flex, flex-wrap, align-items center;
+                       gap --space-2 (crumb ↔ separator ↔ crumb)
+   separator icon      --icon-size-xs; stroke --stroke-width-icon
+   home / ellipsis icon  --icon-size-sm; stroke --stroke-width-icon;
+                       home inherits link color via currentColor
+   link icon gap       --space-1
+   current padding     --space-0-5 --space-2; radius --radius-sm
+                       (gives --selected-bg a visible chip without a
+                       component-local size)
+   ellipsis chrome     padding --space-1; radius --radius-sm;
+                       border --border-width solid transparent
+   menu surface        --popover; border --border-width solid --border;
+                       radius --radius-md; shadow --shadow-subtle;
+                       layer --z-dropdown; max-height --menu-max-height;
+                       padding --space-1; offset from trigger --space-1
+   menu item           padding --space-2 --space-3; radius --radius-sm;
+                       color --foreground
+   motion              color / background-color / box-shadow over
+                       --duration-fast --ease-standard
+   reduced motion      transitions removed
+
+   TOKEN NOTES — none open. Current page uses the semantic selection
+   pair (--selected-bg / --selected-border); separators and default
+   crumbs share --muted-foreground; focus is only --ring-focus.
+   ========================================================================== */
+
+.breadcrumb {
+  min-width: 0;
+}
+
+.breadcrumb__list {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  font-family: var(--font-sans);
+  font-size: var(--text-nav-link);
+  font-weight: var(--font-weight-medium);
+  line-height: var(--text-nav-link--line-height);
+}
+
+/* ===== Crumb items ===== */
+
+.breadcrumb__item {
+  display: inline-flex;
+  align-items: center;
+  min-width: 0;
+}
+
+.breadcrumb__item--ellipsis {
+  position: relative;
+}
+
+.breadcrumb__link {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  min-width: 0;
+  color: var(--muted-foreground);
+  text-decoration: none;
+  border-radius: var(--radius-xs);
+  cursor: pointer;
+  transition:
+    color var(--duration-fast) var(--ease-standard),
+    box-shadow var(--duration-fast) var(--ease-standard);
+}
+
+.breadcrumb__link:hover,
+.breadcrumb__link.is-hover {
+  color: var(--muted-foreground-hover);
+}
+
+.breadcrumb__link:focus-visible,
+.breadcrumb__link.is-focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 var(--ring-width) var(--ring-focus);
+}
+
+/* Current page — semantic selection tokens, driven by aria-current. */
+.breadcrumb__page,
+.breadcrumb__page[aria-current="page"] {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  min-width: 0;
+  padding: var(--space-0-5) var(--space-2);
+  border-radius: var(--radius-sm);
+  color: var(--foreground);
+  background: var(--selected-bg);
+  box-shadow: inset 0 calc(-1 * var(--border-width-strong)) 0 var(--selected-border);
+}
+
+/* Truncate long crumb labels without inventing a max-width token —
+   the parent flex context supplies the measure; overflow is layout. */
+.breadcrumb__link,
+.breadcrumb__page {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* ===== Decorative icons ===== */
+
+.breadcrumb__separator {
+  display: inline-flex;
+  align-items: center;
+  flex: none;
+  color: var(--muted-foreground);
+  list-style: none;
+}
+
+.breadcrumb__separator svg,
+.breadcrumb__home,
+.breadcrumb__ellipsis-icon {
+  width: var(--icon-size-sm);
+  height: var(--icon-size-sm);
+  flex: none;
+  stroke-width: var(--stroke-width-icon);
+}
+
+.breadcrumb__separator svg {
+  width: var(--icon-size-xs);
+  height: var(--icon-size-xs);
+}
+
+.breadcrumb__home,
+.breadcrumb__ellipsis-icon {
+  display: block;
+}
+
+.breadcrumb__home path,
+.breadcrumb__separator path,
+.breadcrumb__ellipsis-icon circle {
+  stroke-width: inherit;
+}
+
+/* ===== Collapsed middle (ellipsis trigger + menu) ===== */
+
+.breadcrumb__ellipsis {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--space-1);
+  border: var(--border-width) solid transparent;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--muted-foreground);
+  cursor: pointer;
+  transition:
+    color var(--duration-fast) var(--ease-standard),
+    background-color var(--duration-fast) var(--ease-standard),
+    box-shadow var(--duration-fast) var(--ease-standard);
+}
+
+.breadcrumb__ellipsis:hover,
+.breadcrumb__ellipsis.is-hover {
+  background: var(--accent);
+  color: var(--accent-foreground);
+}
+
+.breadcrumb__ellipsis:focus-visible,
+.breadcrumb__ellipsis.is-focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 var(--ring-width) var(--ring-focus);
+}
+
+.breadcrumb__ellipsis[aria-expanded="true"],
+.breadcrumb__ellipsis.is-expanded {
+  background: var(--selected-bg);
+  color: var(--foreground);
+}
+
+.breadcrumb__menu {
+  position: absolute;
+  top: calc(100% + var(--space-1));
+  left: 0;
+  z-index: var(--z-dropdown);
+  margin: 0;
+  padding: var(--space-1);
+  list-style: none;
+  max-height: var(--menu-max-height);
+  overflow: auto;
+  background: var(--popover);
+  color: var(--popover-foreground);
+  border: var(--border-width) solid var(--border);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-subtle);
+}
+
+.breadcrumb__menu[hidden] {
+  display: none;
+}
+
+.breadcrumb__menu-item {
+  display: block;
+  padding: var(--space-2) var(--space-3);
+  border-radius: var(--radius-sm);
+  color: var(--foreground);
+  text-decoration: none;
+  white-space: nowrap;
+  transition:
+    background-color var(--duration-fast) var(--ease-standard),
+    box-shadow var(--duration-fast) var(--ease-standard);
+}
+
+.breadcrumb__menu-item:hover,
+.breadcrumb__menu-item.is-hover,
+.breadcrumb__menu-item:focus-visible,
+.breadcrumb__menu-item.is-focus-visible {
+  background: var(--accent);
+}
+
+.breadcrumb__menu-item:focus-visible,
+.breadcrumb__menu-item.is-focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 var(--ring-width) var(--ring-focus);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .breadcrumb__link,
+  .breadcrumb__ellipsis,
+  .breadcrumb__menu-item {
+    transition: none;
+  }
+}

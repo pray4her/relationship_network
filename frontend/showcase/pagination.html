@@ -1,0 +1,437 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Pagination — Component Showcase</title>
+<link rel="stylesheet" href="../src/styles/tokens.css">
+<link rel="stylesheet" href="../src/styles/typography.css">
+<link rel="stylesheet" href="../src/styles/separator.css">
+<link rel="stylesheet" href="../src/styles/pagination.css">
+<style>
+  /* Page chrome — tokens only, no component values. */
+  *, *::before, *::after { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: var(--background);
+    color: var(--foreground);
+    font-family: var(--font-sans);
+    -webkit-font-smoothing: antialiased;
+  }
+  .container { max-width: var(--doc-container-max); margin: 0 auto; padding: 0 var(--space-6); }
+  .page-head { padding: var(--space-16) 0 var(--space-8); border-bottom: var(--border-width) solid var(--border); }
+  .page-head .text--overline { color: var(--primary); display: block; margin-bottom: var(--space-3); }
+  .page-head p { margin: var(--space-4) 0 0; max-width: 64ch; }
+  .preview {
+    padding: var(--space-8) 0 var(--space-16);
+    display: grid;
+    gap: var(--space-8);
+  }
+  .preview-band {
+    display: grid;
+    gap: var(--space-6);
+    padding: var(--space-8);
+    background: var(--surface-soft);
+    border: var(--border-width) solid var(--border-soft);
+    border-radius: var(--radius-lg);
+  }
+  .preview-band > .text--h5 { margin: 0; }
+  .preview-lede {
+    margin: 0;
+    max-width: 72ch;
+    color: var(--muted-foreground);
+  }
+  .state-matrix {
+    display: grid;
+    grid-template-columns: var(--doc-demo-label-width) repeat(5, minmax(0, auto));
+    gap: var(--space-4);
+    align-items: center;
+  }
+  .nav-matrix {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(var(--doc-grid-min-shape), 1fr));
+    gap: var(--space-4);
+  }
+  .nav-cell {
+    display: grid;
+    gap: var(--space-2);
+    justify-items: start;
+  }
+  .col-head, .row-head, .nav-cell .text--caption {
+    color: var(--caption-foreground);
+  }
+  .state-cell {
+    display: inline-flex;
+    align-items: center;
+    min-height: var(--control-height);
+  }
+  .path-stack { display: grid; gap: var(--space-6); }
+  .path-row {
+    display: grid;
+    grid-template-columns: var(--doc-demo-label-width) 1fr;
+    gap: var(--space-4);
+    align-items: center;
+  }
+  .path-row .row-head { color: var(--caption-foreground); }
+  .token-legend {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(var(--doc-grid-min-card), 1fr));
+    gap: var(--space-3) var(--space-6);
+    margin: 0;
+  }
+  .token-legend dt { color: var(--caption-foreground); }
+  .token-legend dd { margin: var(--space-0-5) 0 0; color: var(--foreground-strong); }
+  .mobile-frame {
+    max-width: calc(var(--space-24) * 3);
+    padding: var(--space-4);
+    background: var(--background);
+    border: var(--border-width) solid var(--border);
+    border-radius: var(--radius-md);
+  }
+</style>
+</head>
+<body>
+
+<header class="page-head">
+  <div class="container">
+    <span class="text text--overline">Component</span>
+    <h1 class="text text--h1">Pagination</h1>
+    <p class="text text--body-md">
+      One preview: every page-item state, every navigation control, and every
+      path length — all token-driven. Current page paints from
+      <code class="text text--code">--selected-bg</code> /
+      <code class="text text--code">--selected-border</code>; focus is only
+      <code class="text text--code">--ring-focus</code>.
+    </p>
+  </div>
+</header>
+
+<main class="container">
+  <section class="preview" aria-labelledby="preview-heading">
+    <h2 class="text text--h5" id="preview-heading">Hierarchy preview</h2>
+
+    <!-- ========== Page item states ========== -->
+    <div class="preview-band" aria-labelledby="page-states-heading">
+      <h3 class="text text--h5" id="page-states-heading">Page item states</h3>
+      <p class="text text--body-sm preview-lede">
+        Forced with <code class="text text--code">.is-*</code> / attributes so every
+        state is visible without interaction. Compare default pages against the
+        semantic current selection.
+      </p>
+
+      <div class="state-matrix">
+        <span></span>
+        <span class="text text--caption col-head">default</span>
+        <span class="text text--caption col-head">hover</span>
+        <span class="text text--caption col-head">active / current</span>
+        <span class="text text--caption col-head">focus-visible</span>
+        <span class="text text--caption col-head">disabled</span>
+
+        <span class="text text--caption row-head">page</span>
+        <span class="state-cell">
+          <button class="pagination__page" type="button" aria-label="Page 4">4</button>
+        </span>
+        <span class="state-cell">
+          <button class="pagination__page is-hover" type="button" aria-label="Page 4">4</button>
+        </span>
+        <span class="state-cell">
+          <button class="pagination__page" type="button" aria-label="Page 4" aria-current="page">4</button>
+        </span>
+        <span class="state-cell">
+          <button class="pagination__page is-focus-visible" type="button" aria-label="Page 4">4</button>
+        </span>
+        <span class="state-cell">
+          <button class="pagination__page" type="button" aria-label="Page 4" disabled>4</button>
+        </span>
+
+        <span class="text text--caption row-head">current + focus</span>
+        <span class="state-cell">
+          <span class="text text--caption">—</span>
+        </span>
+        <span class="state-cell">
+          <span class="text text--caption">—</span>
+        </span>
+        <span class="state-cell">
+          <button class="pagination__page" type="button" aria-label="Page 4" aria-current="page">4</button>
+        </span>
+        <span class="state-cell">
+          <button class="pagination__page is-focus-visible" type="button" aria-label="Page 4" aria-current="page">4</button>
+        </span>
+        <span class="state-cell">
+          <span class="text text--caption">n/a</span>
+        </span>
+
+        <span class="text text--caption row-head">ellipsis</span>
+        <span class="state-cell">
+          <span class="pagination__ellipsis" aria-hidden="true">…</span>
+        </span>
+        <span class="state-cell"><span class="text text--caption">—</span></span>
+        <span class="state-cell"><span class="text text--caption">—</span></span>
+        <span class="state-cell"><span class="text text--caption">—</span></span>
+        <span class="state-cell"><span class="text text--caption">decorative</span></span>
+      </div>
+
+      <dl class="token-legend text text--caption">
+        <div>
+          <dt>default</dt>
+          <dd><code class="text text--code">--foreground</code> on transparent</dd>
+        </div>
+        <div>
+          <dt>hover</dt>
+          <dd><code class="text text--code">--accent</code> / <code class="text text--code">--accent-foreground</code></dd>
+        </div>
+        <div>
+          <dt>active / current</dt>
+          <dd><code class="text text--code">--selected-bg</code> + <code class="text text--code">--selected-border</code> + <code class="text text--code">--foreground</code></dd>
+        </div>
+        <div>
+          <dt>focus-visible</dt>
+          <dd><code class="text text--code">--ring-focus</code> + <code class="text text--code">--ring-width</code></dd>
+        </div>
+        <div>
+          <dt>disabled</dt>
+          <dd><code class="text text--code">--opacity-disabled</code></dd>
+        </div>
+        <div>
+          <dt>ellipsis</dt>
+          <dd><code class="text text--code">--muted-foreground</code></dd>
+        </div>
+      </dl>
+    </div>
+
+    <!-- ========== Navigation controls ========== -->
+    <div class="preview-band" aria-labelledby="nav-states-heading">
+      <h3 class="text text--h5" id="nav-states-heading">Navigation controls</h3>
+      <p class="text text--body-sm preview-lede">
+        Previous / next enabled and disabled, plus first / last where the page
+        count warrants them. Each control carries an accessible
+        <code class="text text--code">aria-label</code>.
+      </p>
+
+      <div class="nav-matrix">
+        <div class="nav-cell">
+          <span class="text text--caption">previous enabled</span>
+          <button class="pagination__control" type="button" aria-label="Go to previous page">
+            <svg class="pagination__icon" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+              <path d="m15 18-6-6 6-6" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+          </button>
+        </div>
+        <div class="nav-cell">
+          <span class="text text--caption">previous disabled</span>
+          <button class="pagination__control" type="button" aria-label="Go to previous page" disabled>
+            <svg class="pagination__icon" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+              <path d="m15 18-6-6 6-6" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+          </button>
+        </div>
+        <div class="nav-cell">
+          <span class="text text--caption">next enabled</span>
+          <button class="pagination__control" type="button" aria-label="Go to next page">
+            <svg class="pagination__icon" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+              <path d="m9 18 6-6-6-6" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+          </button>
+        </div>
+        <div class="nav-cell">
+          <span class="text text--caption">next disabled</span>
+          <button class="pagination__control" type="button" aria-label="Go to next page" disabled>
+            <svg class="pagination__icon" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+              <path d="m9 18 6-6-6-6" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+          </button>
+        </div>
+        <div class="nav-cell">
+          <span class="text text--caption">first</span>
+          <button class="pagination__control" type="button" aria-label="Go to first page">
+            <svg class="pagination__icon" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+              <path d="m11 17-5-5 5-5" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"/>
+              <path d="m18 17-5-5 5-5" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+          </button>
+        </div>
+        <div class="nav-cell">
+          <span class="text text--caption">last</span>
+          <button class="pagination__control" type="button" aria-label="Go to last page">
+            <svg class="pagination__icon" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+              <path d="m6 17 5-5-5-5" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"/>
+              <path d="m13 17 5-5-5-5" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+          </button>
+        </div>
+        <div class="nav-cell">
+          <span class="text text--caption">control hover</span>
+          <button class="pagination__control is-hover" type="button" aria-label="Go to next page">
+            <svg class="pagination__icon" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+              <path d="m9 18 6-6-6-6" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+          </button>
+        </div>
+        <div class="nav-cell">
+          <span class="text text--caption">control focus-visible</span>
+          <button class="pagination__control is-focus-visible" type="button" aria-label="Go to next page">
+            <svg class="pagination__icon" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+              <path d="m9 18 6-6-6-6" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ========== Layouts ========== -->
+    <div class="preview-band" aria-labelledby="layouts-heading">
+      <h3 class="text text--h5" id="layouts-heading">Layouts</h3>
+      <p class="text text--body-sm preview-lede">
+        Small count, large count with ellipsis + first/last, and the compact
+        mobile strip — check that muted status text and the selected current
+        page keep a clear hierarchy.
+      </p>
+
+      <div class="path-stack">
+        <!-- Small -->
+        <div class="path-row">
+          <span class="text text--caption row-head">small count</span>
+          <nav class="pagination" aria-label="Small page count">
+            <ul class="pagination__list">
+              <li class="pagination__item">
+                <button class="pagination__control" type="button" aria-label="Go to previous page" disabled>
+                  <svg class="pagination__icon" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                    <path d="m15 18-6-6 6-6" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"/>
+                  </svg>
+                </button>
+              </li>
+              <li class="pagination__item">
+                <button class="pagination__page" type="button" aria-label="Page 1" aria-current="page">1</button>
+              </li>
+              <li class="pagination__item">
+                <button class="pagination__page" type="button" aria-label="Page 2">2</button>
+              </li>
+              <li class="pagination__item">
+                <button class="pagination__page" type="button" aria-label="Page 3">3</button>
+              </li>
+              <li class="pagination__item">
+                <button class="pagination__page" type="button" aria-label="Page 4">4</button>
+              </li>
+              <li class="pagination__item">
+                <button class="pagination__page" type="button" aria-label="Page 5">5</button>
+              </li>
+              <li class="pagination__item">
+                <button class="pagination__control" type="button" aria-label="Go to next page">
+                  <svg class="pagination__icon" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                    <path d="m9 18 6-6-6-6" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"/>
+                  </svg>
+                </button>
+              </li>
+            </ul>
+          </nav>
+        </div>
+
+        <!-- Large -->
+        <div class="path-row">
+          <span class="text text--caption row-head">large count</span>
+          <nav class="pagination" aria-label="Large page count">
+            <ul class="pagination__list">
+              <li class="pagination__item">
+                <button class="pagination__control" type="button" aria-label="Go to first page">
+                  <svg class="pagination__icon" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                    <path d="m11 17-5-5 5-5" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"/>
+                    <path d="m18 17-5-5 5-5" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"/>
+                  </svg>
+                </button>
+              </li>
+              <li class="pagination__item">
+                <button class="pagination__control" type="button" aria-label="Go to previous page">
+                  <svg class="pagination__icon" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                    <path d="m15 18-6-6 6-6" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"/>
+                  </svg>
+                </button>
+              </li>
+              <li class="pagination__item">
+                <button class="pagination__page" type="button" aria-label="Page 1">1</button>
+              </li>
+              <li class="pagination__item">
+                <span class="pagination__ellipsis" aria-hidden="true">…</span>
+              </li>
+              <li class="pagination__item">
+                <button class="pagination__page" type="button" aria-label="Page 11">11</button>
+              </li>
+              <li class="pagination__item">
+                <button class="pagination__page" type="button" aria-label="Page 12" aria-current="page">12</button>
+              </li>
+              <li class="pagination__item">
+                <button class="pagination__page" type="button" aria-label="Page 13">13</button>
+              </li>
+              <li class="pagination__item">
+                <span class="pagination__ellipsis" aria-hidden="true">…</span>
+              </li>
+              <li class="pagination__item">
+                <button class="pagination__page" type="button" aria-label="Page 48">48</button>
+              </li>
+              <li class="pagination__item">
+                <button class="pagination__control" type="button" aria-label="Go to next page">
+                  <svg class="pagination__icon" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                    <path d="m9 18 6-6-6-6" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"/>
+                  </svg>
+                </button>
+              </li>
+              <li class="pagination__item">
+                <button class="pagination__control" type="button" aria-label="Go to last page">
+                  <svg class="pagination__icon" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                    <path d="m6 17 5-5-5-5" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"/>
+                    <path d="m13 17 5-5-5-5" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"/>
+                  </svg>
+                </button>
+              </li>
+            </ul>
+          </nav>
+        </div>
+
+        <!-- Compact / mobile -->
+        <div class="path-row">
+          <span class="text text--caption row-head">compact / mobile</span>
+          <div class="mobile-frame">
+            <nav class="pagination pagination--compact" aria-label="Compact mobile pagination">
+              <ul class="pagination__list">
+                <li class="pagination__item">
+                  <button class="pagination__control" type="button" aria-label="Go to previous page">
+                    <svg class="pagination__icon" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                      <path d="m15 18-6-6 6-6" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"/>
+                    </svg>
+                  </button>
+                </li>
+                <li class="pagination__item pagination__item--desktop">
+                  <button class="pagination__page" type="button" aria-label="Page 1">1</button>
+                </li>
+                <li class="pagination__item pagination__item--desktop">
+                  <span class="pagination__ellipsis" aria-hidden="true">…</span>
+                </li>
+                <li class="pagination__item pagination__item--desktop">
+                  <button class="pagination__page" type="button" aria-label="Page 12" aria-current="page">12</button>
+                </li>
+                <li class="pagination__item pagination__item--desktop">
+                  <span class="pagination__ellipsis" aria-hidden="true">…</span>
+                </li>
+                <li class="pagination__item pagination__item--desktop">
+                  <button class="pagination__page" type="button" aria-label="Page 48">48</button>
+                </li>
+                <li class="pagination__item pagination__item--mobile">
+                  <span class="pagination__status">Page 12 of 48</span>
+                </li>
+                <li class="pagination__item">
+                  <button class="pagination__control" type="button" aria-label="Go to next page">
+                    <svg class="pagination__icon" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                      <path d="m9 18 6-6-6-6" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"/>
+                    </svg>
+                  </button>
+                </li>
+              </ul>
+            </nav>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+</main>
+
+</body>
+</html>

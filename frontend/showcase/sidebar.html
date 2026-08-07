@@ -1,0 +1,629 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Sidebar — Component Showcase</title>
+<link rel="stylesheet" href="../src/styles/tokens.css">
+<link rel="stylesheet" href="../src/styles/typography.css">
+<link rel="stylesheet" href="../src/styles/separator.css">
+<link rel="stylesheet" href="../src/styles/icon.css">
+<link rel="stylesheet" href="../src/styles/badge.css">
+<link rel="stylesheet" href="../src/styles/avatar.css">
+<link rel="stylesheet" href="../src/styles/sidebar.css">
+<style>
+  /* Page chrome — tokens only, no component values. */
+  *, *::before, *::after { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: var(--background);
+    color: var(--foreground);
+    font-family: var(--font-sans);
+    -webkit-font-smoothing: antialiased;
+  }
+  .container { max-width: var(--doc-container-max); margin: 0 auto; padding: 0 var(--space-6); }
+  .page-head { padding: var(--space-16) 0 var(--space-8); border-bottom: var(--border-width) solid var(--border); }
+  .page-head .text--overline { color: var(--primary); display: block; margin-bottom: var(--space-3); }
+  .page-head p { margin: var(--space-4) 0 0; max-width: 72ch; }
+  .demo-block { padding: var(--space-8) 0; }
+  .demo-block > .text--h5 { margin-bottom: var(--space-6); }
+  .demo-note { margin-top: var(--space-4); max-width: 84ch; color: var(--muted-foreground); }
+  .demo-caption { margin-bottom: var(--space-3); color: var(--caption-foreground); }
+  .demo-frame {
+    border: var(--border-width) solid var(--border-soft);
+    border-radius: var(--radius-lg);
+    overflow: hidden;
+    display: flex;
+  }
+  .demo-frame--rail { height: calc(var(--space-24) * 6); }
+  .demo-frame--pad { padding: var(--space-3); display: block; }
+  .demo-compare { display: grid; grid-template-columns: repeat(auto-fit, minmax(var(--doc-grid-min-card), 1fr)); gap: var(--space-6); align-items: start; }
+  /* Overlay stage: relative clipping box so the fixed overlay + scrim render
+     inside the frame for the static showcase (position override only). */
+  .demo-stage {
+    position: relative;
+    overflow: hidden;
+    height: calc(var(--space-24) * 5);
+    border: var(--border-width) solid var(--border-soft);
+    border-radius: var(--radius-lg);
+  }
+  .demo-stage .sidebar__scrim,
+  .demo-stage .sidebar--overlay { position: absolute; }
+  .demo-stage__bar {
+    display: flex;
+    align-items: center;
+    gap: var(--space-3);
+    padding: var(--space-3) var(--space-4);
+    border-bottom: var(--border-width) solid var(--border-soft);
+  }
+  .demo-stage__body { padding: var(--space-6); }
+  .demo-stage__body p { margin: 0 0 var(--space-3); max-width: 56ch; color: var(--muted-foreground); }
+</style>
+</head>
+<body>
+
+<main id="top">
+
+<header class="page-head">
+  <div class="container">
+    <span class="text text--overline">Component</span>
+    <h1 class="text text--h1">Sidebar</h1>
+    <p class="text text--body-md">
+      The app navigation rail in all three modes — expanded, collapsed icon rail,
+      and the mobile overlay — built from tokens only. The current destination is
+      painted from <code class="text text--code">aria-current="page"</code> with the
+      semantic selection pair (<code class="text text--code">--selected-bg</code> +
+      a <code class="text text--code">--selected-border</code> inline-start edge at
+      <code class="text text--code">--border-width-strong</code>); focus keeps the
+      shared <code class="text text--code">--ring-focus</code> ring. Widths come from
+      <code class="text text--code">--sidebar-width</code> /
+      <code class="text text--code">--sidebar-width-collapsed</code> and the overlay
+      backdrop from <code class="text text--code">--scrim</code> — three tokens this
+      component reported as gaps and tokens.css now ships. Collapsed, every label is
+      hidden visually but survives on the link's <code class="text text--code">aria-label</code>.
+    </p>
+  </div>
+</header>
+
+<div class="container">
+
+  <!-- ===================== Expanded — full anatomy (live) ===================== -->
+  <section class="demo-block" aria-labelledby="anatomy-heading">
+    <h2 class="text text--h5" id="anatomy-heading">Expanded — full anatomy (live)</h2>
+    <p class="text text--caption demo-caption">The collapse toggle and the Jobs parent are functional — try them.</p>
+    <div class="demo-frame demo-frame--rail">
+      <aside class="sidebar" aria-label="Sidebar example">
+        <div class="sidebar__header">
+          <a class="sidebar__brand" href="#top" aria-label="Relationship Network home">
+            <svg class="sidebar__brand-mark" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+              <g stroke="currentColor" stroke-linecap="round">
+                <line x1="12" y1="1.5" x2="12" y2="6.2"/><line x1="12" y1="17.8" x2="12" y2="22.5"/>
+                <line x1="1.5" y1="12" x2="6.2" y2="12"/><line x1="17.8" y1="12" x2="22.5" y2="12"/>
+                <line x1="4.6" y1="4.6" x2="7.9" y2="7.9"/><line x1="16.1" y1="16.1" x2="19.4" y2="19.4"/>
+                <line x1="19.4" y1="4.6" x2="16.1" y2="7.9"/><line x1="7.9" y1="16.1" x2="4.6" y2="19.4"/>
+              </g>
+            </svg>
+            <span class="sidebar__brand-name">Relationship Network</span>
+          </a>
+          <button class="icon-btn sidebar__toggle" type="button" aria-expanded="true" aria-controls="anatomy-nav" aria-label="Collapse sidebar">
+            <svg class="icon icon--md icon--muted" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+              <rect x="3" y="4" width="18" height="16" rx="2" stroke="currentColor"/>
+              <path d="M9 4v16" stroke="currentColor"/>
+              <path d="m16 15-3-3 3-3" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+          </button>
+        </div>
+        <nav class="sidebar__nav" id="anatomy-nav" aria-label="Primary">
+          <section class="sidebar__group">
+            <p class="sidebar__group-label">Workspace</p>
+            <ul class="sidebar__list">
+              <li>
+                <a class="sidebar__link" href="#top" aria-current="page" aria-label="Dashboard">
+                  <svg class="icon icon--md" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                    <rect x="3" y="3" width="7" height="9" rx="1" stroke="currentColor"/>
+                    <rect x="14" y="3" width="7" height="5" rx="1" stroke="currentColor"/>
+                    <rect x="14" y="12" width="7" height="9" rx="1" stroke="currentColor"/>
+                    <rect x="3" y="16" width="7" height="5" rx="1" stroke="currentColor"/>
+                  </svg>
+                  <span class="sidebar__label">Dashboard</span>
+                </a>
+              </li>
+              <li>
+                <a class="sidebar__link" href="#top" aria-label="Companies, 12">
+                  <svg class="icon icon--md" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                    <path d="M6 22V4a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v18Z" stroke="currentColor" stroke-linejoin="round"/>
+                    <path d="M2 22h20" stroke="currentColor" stroke-linecap="round"/>
+                    <path d="M10 6h1m2 0h1m-4 4h1m2 0h1m-4 4h1m2 0h1m-4 4h1m2 0h1" stroke="currentColor" stroke-linecap="round"/>
+                  </svg>
+                  <span class="sidebar__label">Companies</span>
+                  <span class="badge">12</span>
+                </a>
+              </li>
+              <li>
+                <button class="sidebar__link" type="button" aria-expanded="true" aria-controls="anatomy-jobs" aria-label="Jobs">
+                  <svg class="icon icon--md" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                    <rect x="2" y="7" width="20" height="14" rx="2" stroke="currentColor"/>
+                    <path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16" stroke="currentColor"/>
+                  </svg>
+                  <span class="sidebar__label">Jobs</span>
+                  <svg class="icon icon--sm sidebar__chevron" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                    <path d="m6 9 6 6 6-6" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"/>
+                  </svg>
+                </button>
+                <ul class="sidebar__sublist" id="anatomy-jobs">
+                  <li><a class="sidebar__link" href="#top" aria-label="Active jobs"><span class="sidebar__label">Active jobs</span></a></li>
+                  <li><a class="sidebar__link" href="#top" aria-label="Archived"><span class="sidebar__label">Archived</span></a></li>
+                </ul>
+              </li>
+              <li>
+                <a class="sidebar__link" href="#top" aria-label="Members, 4">
+                  <svg class="icon icon--md" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                    <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"/>
+                    <circle cx="9" cy="7" r="4" stroke="currentColor"/>
+                    <path d="M22 21v-2a4 4 0 0 0-3-3.87" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"/>
+                    <path d="M16 3.13a4 4 0 0 1 0 7.75" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"/>
+                  </svg>
+                  <span class="sidebar__label">Members</span>
+                  <span class="badge">4</span>
+                </a>
+              </li>
+            </ul>
+          </section>
+          <section class="sidebar__group">
+            <p class="sidebar__group-label">Account</p>
+            <ul class="sidebar__list">
+              <li>
+                <a class="sidebar__link" href="#top" aria-label="Usage, beta">
+                  <svg class="icon icon--md" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                    <path d="m12 14 4-4" stroke="currentColor" stroke-linecap="round"/>
+                    <path d="M3.34 19a10 10 0 1 1 17.32 0" stroke="currentColor" stroke-linecap="round"/>
+                  </svg>
+                  <span class="sidebar__label">Usage</span>
+                  <span class="badge badge--primary badge--sm">Beta</span>
+                </a>
+              </li>
+              <li>
+                <a class="sidebar__link" href="#top" aria-disabled="true" aria-label="Billing">
+                  <svg class="icon icon--md" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                    <rect x="2" y="5" width="20" height="14" rx="2" stroke="currentColor"/>
+                    <path d="M2 10h20" stroke="currentColor"/>
+                  </svg>
+                  <span class="sidebar__label">Billing</span>
+                </a>
+              </li>
+            </ul>
+          </section>
+        </nav>
+        <div class="sidebar__footer">
+          <a class="sidebar__account" href="#top" aria-label="Ada Lovelace, account settings">
+            <span class="avatar avatar--sm avatar--initials" aria-hidden="true"><span class="avatar__initials">AL</span></span>
+            <span class="sidebar__account-text">
+              <span class="sidebar__account-name">Ada Lovelace</span>
+              <span class="sidebar__account-meta">Owner · Acme Corp</span>
+            </span>
+          </a>
+        </div>
+      </aside>
+    </div>
+    <p class="text text--caption demo-note">
+      Brand row (mark at <code class="text text--code">--brand-mark-size</code> /
+      <code class="text text--code">--stroke-width-brand</code>, name in
+      <code class="text text--code">--font-display</code> at
+      <code class="text text--code">--text-title-md</code>), grouped nav at
+      <code class="text text--code">--space-6</code> with caption-uppercase labels,
+      items in the <code class="text text--code">--text-nav-link</code> recipe with
+      composed <code class="text text--code">--icon-size-md</code> glyphs and real
+      Badge children, nested items under an aria-expanded parent, and the account
+      footer composing Avatar sm unmodified.
+    </p>
+  </section>
+
+  <hr class="separator separator--horizontal separator--subtle" role="presentation">
+
+  <!-- ===================== Collapsed ===================== -->
+  <section class="demo-block" aria-labelledby="collapsed-heading">
+    <h2 class="text text--h5" id="collapsed-heading">Collapsed — the icon rail</h2>
+    <div class="demo-frame demo-frame--rail">
+      <aside class="sidebar sidebar--collapsed" aria-label="Collapsed sidebar example">
+        <div class="sidebar__header">
+          <a class="sidebar__brand" href="#collapsed-heading" aria-label="Relationship Network home">
+            <svg class="sidebar__brand-mark" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+              <g stroke="currentColor" stroke-linecap="round">
+                <line x1="12" y1="1.5" x2="12" y2="6.2"/><line x1="12" y1="17.8" x2="12" y2="22.5"/>
+                <line x1="1.5" y1="12" x2="6.2" y2="12"/><line x1="17.8" y1="12" x2="22.5" y2="12"/>
+                <line x1="4.6" y1="4.6" x2="7.9" y2="7.9"/><line x1="16.1" y1="16.1" x2="19.4" y2="19.4"/>
+                <line x1="19.4" y1="4.6" x2="16.1" y2="7.9"/><line x1="7.9" y1="16.1" x2="4.6" y2="19.4"/>
+              </g>
+            </svg>
+            <span class="sidebar__brand-name">Relationship Network</span>
+          </a>
+          <button class="icon-btn sidebar__toggle" type="button" aria-expanded="false" aria-controls="collapsed-nav" aria-label="Expand sidebar">
+            <svg class="icon icon--md icon--muted" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+              <rect x="3" y="4" width="18" height="16" rx="2" stroke="currentColor"/>
+              <path d="M9 4v16" stroke="currentColor"/>
+              <path d="m16 15-3-3 3-3" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+          </button>
+        </div>
+        <nav class="sidebar__nav" id="collapsed-nav" aria-label="Primary">
+          <section class="sidebar__group">
+            <p class="sidebar__group-label">Workspace</p>
+            <ul class="sidebar__list">
+              <li>
+                <a class="sidebar__link" href="#collapsed-heading" aria-current="page" aria-label="Dashboard">
+                  <svg class="icon icon--md" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                    <rect x="3" y="3" width="7" height="9" rx="1" stroke="currentColor"/>
+                    <rect x="14" y="3" width="7" height="5" rx="1" stroke="currentColor"/>
+                    <rect x="14" y="12" width="7" height="9" rx="1" stroke="currentColor"/>
+                    <rect x="3" y="16" width="7" height="5" rx="1" stroke="currentColor"/>
+                  </svg>
+                  <span class="sidebar__label">Dashboard</span>
+                </a>
+              </li>
+              <li>
+                <a class="sidebar__link" href="#collapsed-heading" aria-label="Companies, 12">
+                  <svg class="icon icon--md" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                    <path d="M6 22V4a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v18Z" stroke="currentColor" stroke-linejoin="round"/>
+                    <path d="M2 22h20" stroke="currentColor" stroke-linecap="round"/>
+                    <path d="M10 6h1m2 0h1m-4 4h1m2 0h1m-4 4h1m2 0h1m-4 4h1m2 0h1" stroke="currentColor" stroke-linecap="round"/>
+                  </svg>
+                  <span class="sidebar__label">Companies</span>
+                  <span class="badge">12</span>
+                </a>
+              </li>
+              <li>
+                <button class="sidebar__link" type="button" aria-expanded="true" aria-controls="collapsed-jobs" aria-label="Jobs">
+                  <svg class="icon icon--md" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                    <rect x="2" y="7" width="20" height="14" rx="2" stroke="currentColor"/>
+                    <path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16" stroke="currentColor"/>
+                  </svg>
+                  <span class="sidebar__label">Jobs</span>
+                  <svg class="icon icon--sm sidebar__chevron" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                    <path d="m6 9 6 6 6-6" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"/>
+                  </svg>
+                </button>
+                <ul class="sidebar__sublist" id="collapsed-jobs">
+                  <li><a class="sidebar__link" href="#collapsed-heading" aria-label="Active jobs"><span class="sidebar__label">Active jobs</span></a></li>
+                  <li><a class="sidebar__link" href="#collapsed-heading" aria-label="Archived"><span class="sidebar__label">Archived</span></a></li>
+                </ul>
+              </li>
+              <li>
+                <a class="sidebar__link" href="#collapsed-heading" aria-label="Members, 4">
+                  <svg class="icon icon--md" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                    <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"/>
+                    <circle cx="9" cy="7" r="4" stroke="currentColor"/>
+                    <path d="M22 21v-2a4 4 0 0 0-3-3.87" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"/>
+                    <path d="M16 3.13a4 4 0 0 1 0 7.75" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"/>
+                  </svg>
+                  <span class="sidebar__label">Members</span>
+                  <span class="badge">4</span>
+                </a>
+              </li>
+            </ul>
+          </section>
+          <section class="sidebar__group">
+            <p class="sidebar__group-label">Account</p>
+            <ul class="sidebar__list">
+              <li>
+                <a class="sidebar__link" href="#collapsed-heading" aria-label="Usage, beta">
+                  <svg class="icon icon--md" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                    <path d="m12 14 4-4" stroke="currentColor" stroke-linecap="round"/>
+                    <path d="M3.34 19a10 10 0 1 1 17.32 0" stroke="currentColor" stroke-linecap="round"/>
+                  </svg>
+                  <span class="sidebar__label">Usage</span>
+                  <span class="badge badge--primary badge--sm">Beta</span>
+                </a>
+              </li>
+              <li>
+                <a class="sidebar__link" href="#collapsed-heading" aria-disabled="true" aria-label="Billing">
+                  <svg class="icon icon--md" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                    <rect x="2" y="5" width="20" height="14" rx="2" stroke="currentColor"/>
+                    <path d="M2 10h20" stroke="currentColor"/>
+                  </svg>
+                  <span class="sidebar__label">Billing</span>
+                </a>
+              </li>
+            </ul>
+          </section>
+        </nav>
+        <div class="sidebar__footer">
+          <a class="sidebar__account" href="#collapsed-heading" aria-label="Ada Lovelace, account settings">
+            <span class="avatar avatar--sm avatar--initials" aria-hidden="true"><span class="avatar__initials">AL</span></span>
+            <span class="sidebar__account-text">
+              <span class="sidebar__account-name">Ada Lovelace</span>
+              <span class="sidebar__account-meta">Owner · Acme Corp</span>
+            </span>
+          </a>
+        </div>
+      </aside>
+    </div>
+    <p class="text text--caption demo-note">
+      Same markup, one class: the rail narrows to
+      <code class="text text--code">--sidebar-width-collapsed</code>; labels, group
+      labels, badges, chevrons, sublists, and account text are display:none while
+      every link keeps its accessible name on <code class="text text--code">aria-label</code>.
+      The header column-flows so the expand control stays reachable; groups separate
+      with a <code class="text text--code">--border-soft</code> hairline; the current
+      item keeps the <code class="text text--code">--selected-bg</code> fill and
+      <code class="text text--code">--selected-border</code> edge.
+    </p>
+  </section>
+
+  <hr class="separator separator--horizontal separator--subtle" role="presentation">
+
+  <!-- ===================== Mobile overlay ===================== -->
+  <section class="demo-block" aria-labelledby="overlay-heading">
+    <h2 class="text text--h5" id="overlay-heading">Mobile overlay (live)</h2>
+    <p class="text text--caption demo-caption">Open by default for the showcase — the scrim and the Escape key close it; the menu trigger re-opens it.</p>
+    <div class="demo-stage">
+      <div class="demo-stage__bar">
+        <button class="icon-btn" id="overlay-trigger" type="button" aria-expanded="true" aria-controls="overlay-panel" aria-label="Open navigation">
+          <svg class="icon icon--md icon--default" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+            <path d="M4 7h16M4 12h16M4 17h16" stroke="currentColor" stroke-linecap="round"/>
+          </svg>
+        </button>
+        <span class="text text--caption">Page header</span>
+      </div>
+      <div class="demo-stage__body">
+        <p class="text text--body-md">Page content sits under the scrim. The panel slides in at --duration-slow, the scrim fades at --duration-normal.</p>
+        <p class="text text--body-md">On viewports ≤ 768px the in-flow rail yields to this overlay mode entirely.</p>
+      </div>
+      <button class="sidebar__scrim" id="overlay-scrim" type="button" aria-label="Close navigation" tabindex="-1"></button>
+      <aside class="sidebar sidebar--overlay sidebar--open" id="overlay-panel" aria-label="Overlay sidebar example">
+        <div class="sidebar__header">
+          <a class="sidebar__brand" href="#overlay-heading" aria-label="Relationship Network home">
+            <svg class="sidebar__brand-mark" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+              <g stroke="currentColor" stroke-linecap="round">
+                <line x1="12" y1="1.5" x2="12" y2="6.2"/><line x1="12" y1="17.8" x2="12" y2="22.5"/>
+                <line x1="1.5" y1="12" x2="6.2" y2="12"/><line x1="17.8" y1="12" x2="22.5" y2="12"/>
+                <line x1="4.6" y1="4.6" x2="7.9" y2="7.9"/><line x1="16.1" y1="16.1" x2="19.4" y2="19.4"/>
+                <line x1="19.4" y1="4.6" x2="16.1" y2="7.9"/><line x1="7.9" y1="16.1" x2="4.6" y2="19.4"/>
+              </g>
+            </svg>
+            <span class="sidebar__brand-name">Relationship Network</span>
+          </a>
+        </div>
+        <nav class="sidebar__nav" aria-label="Primary">
+          <section class="sidebar__group">
+            <p class="sidebar__group-label">Workspace</p>
+            <ul class="sidebar__list">
+              <li>
+                <a class="sidebar__link" href="#overlay-heading" aria-current="page" aria-label="Dashboard">
+                  <svg class="icon icon--md" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                    <rect x="3" y="3" width="7" height="9" rx="1" stroke="currentColor"/>
+                    <rect x="14" y="3" width="7" height="5" rx="1" stroke="currentColor"/>
+                    <rect x="14" y="12" width="7" height="9" rx="1" stroke="currentColor"/>
+                    <rect x="3" y="16" width="7" height="5" rx="1" stroke="currentColor"/>
+                  </svg>
+                  <span class="sidebar__label">Dashboard</span>
+                </a>
+              </li>
+              <li>
+                <a class="sidebar__link" href="#overlay-heading" aria-label="Companies, 12">
+                  <svg class="icon icon--md" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                    <path d="M6 22V4a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v18Z" stroke="currentColor" stroke-linejoin="round"/>
+                    <path d="M2 22h20" stroke="currentColor" stroke-linecap="round"/>
+                    <path d="M10 6h1m2 0h1m-4 4h1m2 0h1m-4 4h1m2 0h1m-4 4h1m2 0h1" stroke="currentColor" stroke-linecap="round"/>
+                  </svg>
+                  <span class="sidebar__label">Companies</span>
+                  <span class="badge">12</span>
+                </a>
+              </li>
+              <li>
+                <a class="sidebar__link" href="#overlay-heading" aria-label="Members, 4">
+                  <svg class="icon icon--md" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                    <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"/>
+                    <circle cx="9" cy="7" r="4" stroke="currentColor"/>
+                    <path d="M22 21v-2a4 4 0 0 0-3-3.87" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"/>
+                    <path d="M16 3.13a4 4 0 0 1 0 7.75" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"/>
+                  </svg>
+                  <span class="sidebar__label">Members</span>
+                  <span class="badge">4</span>
+                </a>
+              </li>
+            </ul>
+          </section>
+        </nav>
+        <div class="sidebar__footer">
+          <a class="sidebar__account" href="#overlay-heading" aria-label="Ada Lovelace, account settings">
+            <span class="avatar avatar--sm avatar--initials" aria-hidden="true"><span class="avatar__initials">AL</span></span>
+            <span class="sidebar__account-text">
+              <span class="sidebar__account-name">Ada Lovelace</span>
+              <span class="sidebar__account-meta">Owner · Acme Corp</span>
+            </span>
+          </a>
+        </div>
+      </aside>
+    </div>
+    <p class="text text--caption demo-note">
+      The panel is fixed at <code class="text text--code">--z-popover</code> with
+      <code class="text text--code">--shadow-lift</code>; the scrim (a real
+      <code class="text text--code">&lt;button aria-label&gt;</code>) sits one rung
+      under at <code class="text text--code">--z-dropdown</code>, painted with
+      <code class="text text--code">--scrim</code>. Visibility is driven by
+      <code class="text text--code">.sidebar--open</code> + the trigger's
+      <code class="text text--code">aria-expanded</code>; the closed panel is
+      <code class="text text--code">visibility:hidden</code> so it stays out of the
+      tab order. Inside this frame, page chrome pins both layers to
+      <code class="text text--code">position:absolute</code> — a position override
+      only, no visual values.
+    </p>
+  </section>
+
+  <hr class="separator separator--horizontal separator--subtle" role="presentation">
+
+  <!-- ===================== Item states ===================== -->
+  <section class="demo-block" aria-labelledby="states-heading">
+    <h2 class="text text--h5" id="states-heading">Navigation item states</h2>
+    <p class="text text--caption demo-caption">Forced with .is-* classes for the static showcase; live items use the pseudo-classes and aria-current.</p>
+    <div class="demo-frame demo-frame--pad">
+      <ul class="sidebar__list">
+        <li>
+          <a class="sidebar__link" href="#states-heading" aria-label="Default">
+            <svg class="icon icon--md" viewBox="0 0 24 24" fill="none" aria-hidden="true"><rect x="3" y="3" width="7" height="9" rx="1" stroke="currentColor"/><rect x="14" y="3" width="7" height="5" rx="1" stroke="currentColor"/><rect x="14" y="12" width="7" height="9" rx="1" stroke="currentColor"/><rect x="3" y="16" width="7" height="5" rx="1" stroke="currentColor"/></svg>
+            <span class="sidebar__label">Default — muted ink on canvas</span>
+          </a>
+        </li>
+        <li>
+          <a class="sidebar__link is-hover" href="#states-heading" aria-label="Hover">
+            <svg class="icon icon--md" viewBox="0 0 24 24" fill="none" aria-hidden="true"><rect x="3" y="3" width="7" height="9" rx="1" stroke="currentColor"/><rect x="14" y="3" width="7" height="5" rx="1" stroke="currentColor"/><rect x="14" y="12" width="7" height="9" rx="1" stroke="currentColor"/><rect x="3" y="16" width="7" height="5" rx="1" stroke="currentColor"/></svg>
+            <span class="sidebar__label">Hover — --accent fill</span>
+          </a>
+        </li>
+        <li>
+          <a class="sidebar__link is-active" href="#states-heading" aria-label="Pressed">
+            <svg class="icon icon--md" viewBox="0 0 24 24" fill="none" aria-hidden="true"><rect x="3" y="3" width="7" height="9" rx="1" stroke="currentColor"/><rect x="14" y="3" width="7" height="5" rx="1" stroke="currentColor"/><rect x="14" y="12" width="7" height="9" rx="1" stroke="currentColor"/><rect x="3" y="16" width="7" height="5" rx="1" stroke="currentColor"/></svg>
+            <span class="sidebar__label">Pressed — --surface-cream-strong</span>
+          </a>
+        </li>
+        <li>
+          <a class="sidebar__link" href="#states-heading" aria-current="page" aria-label="Current">
+            <svg class="icon icon--md" viewBox="0 0 24 24" fill="none" aria-hidden="true"><rect x="3" y="3" width="7" height="9" rx="1" stroke="currentColor"/><rect x="14" y="3" width="7" height="5" rx="1" stroke="currentColor"/><rect x="14" y="12" width="7" height="9" rx="1" stroke="currentColor"/><rect x="3" y="16" width="7" height="5" rx="1" stroke="currentColor"/></svg>
+            <span class="sidebar__label">Current — selected pair, inline-start edge</span>
+          </a>
+        </li>
+        <li>
+          <a class="sidebar__link is-focus-visible" href="#states-heading" aria-label="Focus visible">
+            <svg class="icon icon--md" viewBox="0 0 24 24" fill="none" aria-hidden="true"><rect x="3" y="3" width="7" height="9" rx="1" stroke="currentColor"/><rect x="14" y="3" width="7" height="5" rx="1" stroke="currentColor"/><rect x="14" y="12" width="7" height="9" rx="1" stroke="currentColor"/><rect x="3" y="16" width="7" height="5" rx="1" stroke="currentColor"/></svg>
+            <span class="sidebar__label">Focus-visible — --ring-focus ring</span>
+          </a>
+        </li>
+        <li>
+          <a class="sidebar__link is-focus-visible" href="#states-heading" aria-current="page" aria-label="Current with focus">
+            <svg class="icon icon--md" viewBox="0 0 24 24" fill="none" aria-hidden="true"><rect x="3" y="3" width="7" height="9" rx="1" stroke="currentColor"/><rect x="14" y="3" width="7" height="5" rx="1" stroke="currentColor"/><rect x="14" y="12" width="7" height="9" rx="1" stroke="currentColor"/><rect x="3" y="16" width="7" height="5" rx="1" stroke="currentColor"/></svg>
+            <span class="sidebar__label">Current + focus — edge under the ring</span>
+          </a>
+        </li>
+        <li>
+          <a class="sidebar__link" href="#states-heading" aria-disabled="true" aria-label="Disabled">
+            <svg class="icon icon--md" viewBox="0 0 24 24" fill="none" aria-hidden="true"><rect x="3" y="3" width="7" height="9" rx="1" stroke="currentColor"/><rect x="14" y="3" width="7" height="5" rx="1" stroke="currentColor"/><rect x="14" y="12" width="7" height="9" rx="1" stroke="currentColor"/><rect x="3" y="16" width="7" height="5" rx="1" stroke="currentColor"/></svg>
+            <span class="sidebar__label">Disabled — --opacity-disabled</span>
+          </a>
+        </li>
+        <li>
+          <a class="sidebar__link" href="#states-heading" aria-label="With badge, 12">
+            <svg class="icon icon--md" viewBox="0 0 24 24" fill="none" aria-hidden="true"><rect x="3" y="3" width="7" height="9" rx="1" stroke="currentColor"/><rect x="14" y="3" width="7" height="5" rx="1" stroke="currentColor"/><rect x="14" y="12" width="7" height="9" rx="1" stroke="currentColor"/><rect x="3" y="16" width="7" height="5" rx="1" stroke="currentColor"/></svg>
+            <span class="sidebar__label">With badge — composed .badge</span>
+            <span class="badge">12</span>
+          </a>
+        </li>
+      </ul>
+    </div>
+    <p class="text text--caption demo-note">
+      Default runs <code class="text text--code">--muted-foreground</code> (the rail
+      reads quieter than the top nav); hover fills
+      <code class="text text--code">--accent</code>; pressed holds
+      <code class="text text--code">--surface-cream-strong</code>; current is the
+      semantic selection pair rotated to the inline-start edge, driven by
+      <code class="text text--code">aria-current="page"</code>, never a parallel
+      class. The icon inherits every state color through currentColor.
+    </p>
+  </section>
+
+  <hr class="separator separator--horizontal separator--subtle" role="presentation">
+
+  <!-- ===================== Nested navigation ===================== -->
+  <section class="demo-block" aria-labelledby="nested-heading">
+    <h2 class="text text--h5" id="nested-heading">Nested navigation</h2>
+    <div class="demo-compare">
+      <div role="group" aria-label="Parent expanded">
+        <p class="text text--caption demo-caption">parent expanded — aria-expanded="true"; a child carries the current page</p>
+        <div class="demo-frame demo-frame--pad">
+          <ul class="sidebar__list">
+            <li>
+              <button class="sidebar__link" type="button" aria-expanded="true" aria-controls="nested-open" aria-label="Jobs">
+                <svg class="icon icon--md" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                  <rect x="2" y="7" width="20" height="14" rx="2" stroke="currentColor"/>
+                  <path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16" stroke="currentColor"/>
+                </svg>
+                <span class="sidebar__label">Jobs</span>
+                <svg class="icon icon--sm sidebar__chevron" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                  <path d="m6 9 6 6 6-6" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"/>
+                </svg>
+              </button>
+              <ul class="sidebar__sublist" id="nested-open">
+                <li><a class="sidebar__link" href="#nested-heading" aria-current="page" aria-label="Active jobs"><span class="sidebar__label">Active jobs</span></a></li>
+                <li><a class="sidebar__link" href="#nested-heading" aria-label="Archived"><span class="sidebar__label">Archived</span></a></li>
+                <li><a class="sidebar__link" href="#nested-heading" aria-disabled="true" aria-label="Drafts"><span class="sidebar__label">Drafts</span></a></li>
+              </ul>
+            </li>
+          </ul>
+        </div>
+      </div>
+      <div role="group" aria-label="Parent collapsed">
+        <p class="text text--caption demo-caption">parent collapsed — aria-expanded="false"; the sublist is hidden, driven by the attribute</p>
+        <div class="demo-frame demo-frame--pad">
+          <ul class="sidebar__list">
+            <li>
+              <button class="sidebar__link" type="button" aria-expanded="false" aria-controls="nested-closed" aria-label="Jobs">
+                <svg class="icon icon--md" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                  <rect x="2" y="7" width="20" height="14" rx="2" stroke="currentColor"/>
+                  <path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16" stroke="currentColor"/>
+                </svg>
+                <span class="sidebar__label">Jobs</span>
+                <svg class="icon icon--sm sidebar__chevron" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                  <path d="m6 9 6 6 6-6" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"/>
+                </svg>
+              </button>
+              <ul class="sidebar__sublist" id="nested-closed">
+                <li><a class="sidebar__link" href="#nested-heading" aria-label="Active jobs"><span class="sidebar__label">Active jobs</span></a></li>
+                <li><a class="sidebar__link" href="#nested-heading" aria-label="Archived"><span class="sidebar__label">Archived</span></a></li>
+              </ul>
+            </li>
+          </ul>
+        </div>
+      </div>
+    </div>
+    <p class="text text--caption demo-note">
+      Parent items are <code class="text text--code">&lt;button aria-expanded
+      aria-controls&gt;</code>; sublist visibility and the chevron's rotation are
+      styled from that attribute — no parallel class. Child labels indent by
+      <code class="text text--code">calc(--space-3 + --icon-size-md + --space-3)</code>
+      so they align under the parent label. In the collapsed rail, sublists and
+      chevrons are hidden and the parent keeps its
+      <code class="text text--code">aria-label</code>.
+    </p>
+  </section>
+
+</div>
+
+</main>
+
+<script>
+  /* Live behaviors: collapse toggle, nested parents, overlay open/close.
+     Visuals stay in CSS — JS only flips classes and ARIA attributes. */
+  document.addEventListener("click", (event) => {
+    const toggle = event.target.closest(".sidebar__toggle");
+    if (toggle) {
+      const rail = toggle.closest(".sidebar");
+      const collapsed = rail.classList.toggle("sidebar--collapsed");
+      toggle.setAttribute("aria-expanded", String(!collapsed));
+      toggle.setAttribute("aria-label", collapsed ? "Expand sidebar" : "Collapse sidebar");
+      return;
+    }
+    const parent = event.target.closest(".sidebar__link[aria-expanded]");
+    if (parent) {
+      const open = parent.getAttribute("aria-expanded") !== "true";
+      parent.setAttribute("aria-expanded", String(open));
+    }
+  });
+
+  const overlayPanel = document.getElementById("overlay-panel");
+  const overlayTrigger = document.getElementById("overlay-trigger");
+  const overlayScrim = document.getElementById("overlay-scrim");
+  const setOverlay = (open) => {
+    overlayPanel.classList.toggle("sidebar--open", open);
+    overlayTrigger.setAttribute("aria-expanded", String(open));
+    overlayTrigger.setAttribute("aria-label", open ? "Close navigation" : "Open navigation");
+  };
+  overlayTrigger.addEventListener("click", () =>
+    setOverlay(!overlayPanel.classList.contains("sidebar--open")),
+  );
+  overlayScrim.addEventListener("click", () => setOverlay(false));
+  document.addEventListener("keydown", (event) => {
+    if (event.key === "Escape") setOverlay(false);
+  });
+</script>
+
+</body>
+</html>

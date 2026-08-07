@@ -1,0 +1,479 @@
+/* ==========================================================================
+   Stepper
+   Token mapping — every value below references tokens.css, nothing else.
+
+   A multi-step progress trail (wizard / onboarding / checkout). Semantic
+   markup contract: <nav aria-label> wrapping an <ol>; each step is an
+   <li>. Progress is NOT color-only — every step exposes its state in
+   text (visually-hidden .stepper__sr-state, plus a check / alert glyph
+   when completed / error) and the current step carries
+   aria-current="step". Interactive steppers use a real <button
+   class="stepper__trigger">; read-only steppers keep the same chrome
+   on a <div class="stepper__trigger"> (no tabindex, no focus ring).
+
+   Anatomy (markup contract):
+     .stepper                    the <nav>; --horizontal / --vertical
+     .stepper__list              the <ol>
+     .stepper__step              each <li>; state modifiers below
+     .stepper__trigger           button (interactive) or div (static)
+     .stepper__indicator         number / check / alert circle
+     .stepper__icon              check or alert SVG inside the indicator
+     .stepper__connector         line to the next step (aria-hidden)
+     .stepper__content           title + optional description column
+     .stepper__title             step name
+     .stepper__description       optional supporting line
+     .stepper__sr-state          visually-hidden state word
+                                 ("Completed", "Current", …)
+
+   STATE → TOKEN (indicator surface + title; description stays muted)
+   ─────────────────────────────────────────────────────────────────────────
+   upcoming          indicator bg --background; border --border-width
+                     solid --border; color --muted-foreground
+                     title --muted-foreground
+                     connector --border
+   current           [aria-current="step"] / .stepper__step--current:
+                     indicator bg --selected-bg; border
+                     --border-width-strong solid --selected-border;
+                     color --foreground
+                     title --foreground
+                     connector --border (outgoing still ahead)
+                     (semantic selection pair — Navbar / Pagination
+                     current recipe)
+   completed         .stepper__step--completed:
+                     indicator bg --success; border transparent;
+                     color --success-foreground; shows check glyph
+                     title --foreground
+                     connector --success (the completed trail)
+   error             .stepper__step--error (wins over aria-current when
+                     both are present — a failed current step stays on
+                     the destructive surface):
+                     indicator bg --destructive; border transparent;
+                     color --destructive-foreground; shows alert glyph
+                     title --destructive
+                     connector --border
+   disabled          .stepper__step--disabled / [aria-disabled="true"]:
+                     opacity --opacity-disabled; pointer-events none;
+                     upcoming surfaces underneath (same colors, reduced
+                     opacity — token note)
+
+   INTERACTIVE (button.trigger only)
+     hover           upcoming: indicator border --border-strong,
+                     title --foreground;
+                     completed: indicator bg --success-hover;
+                     error: indicator bg --destructive-hover
+     active (pressed) upcoming: indicator bg --surface-cream-pressed,
+                     border --border-strong, title --foreground;
+                     current: indicator bg --surface-cream-pressed
+                     (pressed cream — keeps --selected-border);
+                     completed: indicator bg --success-active;
+                     error: indicator bg --destructive-active
+     focus-visible   box-shadow 0 0 0 --ring-width --ring-focus on the
+                     indicator (shared focus recipe); outline none.
+                     Current stacks --selected-border under the ring.
+
+   ORIENTATION
+   ─────────────────────────────────────────────────────────────────────────
+   horizontal        list row; each step flex column (indicator row on
+                     top, content below); connector is a horizontal
+                     hairline after the indicator, flex 1
+   vertical          list column; each step a row (marker column +
+                     content); connector is a vertical hairline under
+                     the indicator, flex 1
+
+   PROPERTY → TOKEN
+   ─────────────────────────────────────────────────────────────────────────
+   indicator size    --control-height-sm square (32 — shared control
+                     scale; no stepper-local size token)
+   indicator radius  --radius-full (circular step index)
+   indicator type    --font-sans; --text-button (+ --line-height);
+                     weight --font-weight-medium (number label)
+   icon              --icon-size-sm; stroke --stroke-width-icon
+   connector weight  --border-width-strong (emphasized trail)
+   title             --font-sans; --text-title-sm (+ --line-height);
+                     weight --font-weight-medium
+   description       --font-sans; --text-caption (+ --line-height);
+                     color --caption-foreground
+   gap indicator↔content   horizontal --space-3; vertical --space-3
+   gap title↔description   --space-1
+   list gap          horizontal: none (connectors own the rhythm);
+                     vertical: none (connector fills between markers)
+   step padding      vertical content --space-1 0 --space-6 0 so the
+                     last step does not drag a long empty connector
+                     (last-child connector hidden)
+   motion            background-color / border-color / color /
+                     box-shadow over --duration-fast --ease-standard
+   reduced motion    transitions removed
+
+   TOKEN NOTES — none open. Current uses the selection pair; completed
+   / error use semantic status fills; connectors reuse --border /
+   --success; focus is only --ring-focus. No stepper-local visual
+   values.
+   ========================================================================== */
+
+.stepper {
+  min-width: 0;
+}
+
+.stepper__list {
+  display: flex;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+/* ===== Step shell ===== */
+
+.stepper__step {
+  display: flex;
+  min-width: 0;
+  position: relative;
+}
+
+.stepper__trigger {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-3);
+  margin: 0;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  text-align: start;
+  cursor: default;
+}
+
+button.stepper__trigger {
+  cursor: pointer;
+}
+
+button.stepper__trigger:focus {
+  outline: none;
+}
+
+.stepper__marker {
+  display: flex;
+  align-items: center;
+  flex: none;
+}
+
+.stepper__indicator {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
+  width: var(--control-height-sm);
+  height: var(--control-height-sm);
+  flex: none;
+  border: var(--border-width) solid var(--border);
+  border-radius: var(--radius-full);
+  background: var(--background);
+  color: var(--muted-foreground);
+  font-family: var(--font-sans);
+  font-size: var(--text-button);
+  font-weight: var(--font-weight-medium);
+  line-height: var(--text-button--line-height);
+  transition:
+    background-color var(--duration-fast) var(--ease-standard),
+    border-color var(--duration-fast) var(--ease-standard),
+    color var(--duration-fast) var(--ease-standard),
+    box-shadow var(--duration-fast) var(--ease-standard);
+}
+
+.stepper__icon {
+  width: var(--icon-size-sm);
+  height: var(--icon-size-sm);
+  flex: none;
+  stroke-width: var(--stroke-width-icon);
+}
+
+.stepper__icon path {
+  stroke-width: inherit;
+}
+
+.stepper__connector {
+  flex: 1 1 auto;
+  background: var(--border);
+  min-width: var(--space-4);
+  min-height: var(--space-4);
+}
+
+.stepper__content {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  min-width: 0;
+}
+
+.stepper__title {
+  margin: 0;
+  font-family: var(--font-sans);
+  font-size: var(--text-title-sm);
+  font-weight: var(--font-weight-medium);
+  line-height: var(--text-title-sm--line-height);
+  color: var(--muted-foreground);
+  transition: color var(--duration-fast) var(--ease-standard);
+}
+
+.stepper__description {
+  margin: 0;
+  font-family: var(--font-sans);
+  font-size: var(--text-caption);
+  font-weight: var(--font-weight-medium);
+  line-height: var(--text-caption--line-height);
+  color: var(--caption-foreground);
+}
+
+/* Visually hidden state word — progress is not color-only. */
+.stepper__sr-state {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+  border: 0;
+}
+
+/* ===== States ===== */
+
+.stepper__step--current .stepper__indicator,
+.stepper__step[aria-current="step"] .stepper__indicator {
+  background: var(--selected-bg);
+  border-width: var(--border-width-strong);
+  border-color: var(--selected-border);
+  color: var(--foreground);
+}
+
+.stepper__step--current .stepper__title,
+.stepper__step[aria-current="step"] .stepper__title {
+  color: var(--foreground);
+}
+
+.stepper__step--completed .stepper__indicator {
+  background: var(--success);
+  border-color: transparent;
+  color: var(--success-foreground);
+}
+
+.stepper__step--completed .stepper__title {
+  color: var(--foreground);
+}
+
+.stepper__step--completed .stepper__connector {
+  background: var(--success);
+}
+
+.stepper__step--error .stepper__indicator,
+.stepper__step--error[aria-current="step"] .stepper__indicator {
+  background: var(--destructive);
+  border-color: transparent;
+  color: var(--destructive-foreground);
+}
+
+.stepper__step--error .stepper__title,
+.stepper__step--error[aria-current="step"] .stepper__title {
+  color: var(--destructive);
+}
+
+.stepper__step--disabled,
+.stepper__step[aria-disabled="true"] {
+  opacity: var(--opacity-disabled);
+  pointer-events: none;
+}
+
+/* Interactive hover / active / focus — button triggers only. */
+button.stepper__trigger:hover .stepper__indicator,
+button.stepper__trigger.is-hover .stepper__indicator {
+  border-color: var(--border-strong);
+}
+
+button.stepper__trigger:hover .stepper__title,
+button.stepper__trigger.is-hover .stepper__title {
+  color: var(--foreground);
+}
+
+button.stepper__trigger:active .stepper__indicator,
+button.stepper__trigger.is-active .stepper__indicator {
+  background: var(--surface-cream-pressed);
+  border-color: var(--border-strong);
+  color: var(--foreground);
+}
+
+button.stepper__trigger:active .stepper__title,
+button.stepper__trigger.is-active .stepper__title {
+  color: var(--foreground);
+}
+
+.stepper__step--current button.stepper__trigger:hover .stepper__indicator,
+.stepper__step--current button.stepper__trigger.is-hover .stepper__indicator,
+.stepper__step[aria-current="step"] button.stepper__trigger:hover .stepper__indicator,
+.stepper__step[aria-current="step"] button.stepper__trigger.is-hover .stepper__indicator {
+  border-color: var(--selected-border);
+}
+
+.stepper__step--current button.stepper__trigger:active .stepper__indicator,
+.stepper__step--current button.stepper__trigger.is-active .stepper__indicator,
+.stepper__step[aria-current="step"] button.stepper__trigger:active .stepper__indicator,
+.stepper__step[aria-current="step"] button.stepper__trigger.is-active .stepper__indicator {
+  background: var(--surface-cream-pressed);
+  border-color: var(--selected-border);
+  color: var(--foreground);
+}
+
+.stepper__step--completed button.stepper__trigger:hover .stepper__indicator,
+.stepper__step--completed button.stepper__trigger.is-hover .stepper__indicator {
+  background: var(--success-hover);
+  border-color: transparent;
+  color: var(--success-foreground);
+}
+
+.stepper__step--completed button.stepper__trigger:active .stepper__indicator,
+.stepper__step--completed button.stepper__trigger.is-active .stepper__indicator {
+  background: var(--success-active);
+  border-color: transparent;
+  color: var(--success-foreground);
+}
+
+.stepper__step--error button.stepper__trigger:hover .stepper__indicator,
+.stepper__step--error button.stepper__trigger.is-hover .stepper__indicator {
+  background: var(--destructive-hover);
+  border-color: transparent;
+  color: var(--destructive-foreground);
+}
+
+.stepper__step--error button.stepper__trigger:active .stepper__indicator,
+.stepper__step--error button.stepper__trigger.is-active .stepper__indicator {
+  background: var(--destructive-active);
+  border-color: transparent;
+  color: var(--destructive-foreground);
+}
+
+button.stepper__trigger:focus-visible .stepper__indicator,
+button.stepper__trigger.is-focus-visible .stepper__indicator {
+  box-shadow: 0 0 0 var(--ring-width) var(--ring-focus);
+}
+
+.stepper__step--current button.stepper__trigger:focus-visible .stepper__indicator,
+.stepper__step--current button.stepper__trigger.is-focus-visible .stepper__indicator,
+.stepper__step[aria-current="step"] button.stepper__trigger:focus-visible .stepper__indicator,
+.stepper__step[aria-current="step"] button.stepper__trigger.is-focus-visible .stepper__indicator {
+  box-shadow:
+    0 0 0 var(--border-width-strong) var(--selected-border),
+    0 0 0 calc(var(--ring-width) + var(--border-width-strong)) var(--ring-focus);
+}
+
+.stepper__step--error button.stepper__trigger:focus-visible .stepper__indicator,
+.stepper__step--error button.stepper__trigger.is-focus-visible .stepper__indicator,
+.stepper__step--error[aria-current="step"] button.stepper__trigger:focus-visible .stepper__indicator,
+.stepper__step--error[aria-current="step"] button.stepper__trigger.is-focus-visible .stepper__indicator {
+  box-shadow: 0 0 0 var(--ring-width) var(--ring-focus);
+}
+
+/* ===== Horizontal ===== */
+
+.stepper--horizontal .stepper__list {
+  flex-direction: row;
+  align-items: flex-start;
+}
+
+.stepper--horizontal .stepper__step {
+  flex: 1 1 0;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.stepper--horizontal .stepper__step:last-child {
+  flex: 0 1 auto;
+}
+
+.stepper--horizontal .stepper__trigger {
+  flex-direction: column;
+  width: 100%;
+}
+
+.stepper--horizontal .stepper__marker {
+  width: 100%;
+  flex-direction: row;
+  gap: 0;
+}
+
+.stepper--horizontal .stepper__connector {
+  height: var(--border-width-strong);
+  width: auto;
+  min-height: var(--border-width-strong);
+  margin-inline: var(--space-2);
+}
+
+.stepper--horizontal .stepper__step:last-child .stepper__connector {
+  display: none;
+}
+
+.stepper--horizontal .stepper__content {
+  padding-top: var(--space-3);
+  padding-inline-end: var(--space-4);
+}
+
+.stepper--horizontal .stepper__step:last-child .stepper__content {
+  padding-inline-end: 0;
+}
+
+/* ===== Vertical ===== */
+
+.stepper--vertical .stepper__list {
+  flex-direction: column;
+}
+
+.stepper--vertical .stepper__step {
+  flex-direction: row;
+  align-items: stretch;
+  gap: var(--space-3);
+}
+
+.stepper--vertical .stepper__trigger {
+  flex-direction: row;
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.stepper--vertical .stepper__marker {
+  flex-direction: column;
+  align-items: center;
+  align-self: stretch;
+}
+
+.stepper--vertical .stepper__connector {
+  width: var(--border-width-strong);
+  min-width: var(--border-width-strong);
+  min-height: var(--space-6);
+  margin-block: var(--space-2);
+}
+
+.stepper--vertical .stepper__step:last-child .stepper__connector {
+  display: none;
+}
+
+.stepper--vertical .stepper__content {
+  padding-top: var(--space-1);
+  padding-bottom: var(--space-6);
+}
+
+.stepper--vertical .stepper__step:last-child .stepper__content {
+  padding-bottom: 0;
+}
+
+/* When the trigger owns the marker+content, vertical marker is inside
+   the trigger — reconnect layout so the connector still sits under the
+   indicator inside the marker column. */
+.stepper--vertical .stepper__trigger .stepper__marker {
+  align-self: stretch;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .stepper__indicator,
+  .stepper__title {
+    transition: none;
+  }
+}

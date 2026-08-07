@@ -1,0 +1,390 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Navbar — Component Showcase</title>
+<link rel="stylesheet" href="../src/styles/tokens.css">
+<link rel="stylesheet" href="../src/styles/typography.css">
+<link rel="stylesheet" href="../src/styles/separator.css">
+<link rel="stylesheet" href="../src/styles/button.css">
+<link rel="stylesheet" href="../src/styles/icon.css">
+<link rel="stylesheet" href="../src/styles/input.css">
+<link rel="stylesheet" href="../src/styles/search-field.css">
+<link rel="stylesheet" href="../src/styles/navbar.css">
+<style>
+  /* Page chrome — tokens only, no component values. */
+  *, *::before, *::after { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: var(--background);
+    color: var(--foreground);
+    font-family: var(--font-sans);
+    -webkit-font-smoothing: antialiased;
+  }
+  .container { max-width: var(--doc-container-max); margin: 0 auto; padding: 0 var(--space-6); }
+  .page-head { padding: var(--space-16) 0 var(--space-8); border-bottom: var(--border-width) solid var(--border); }
+  .page-head .text--overline { color: var(--primary); display: block; margin-bottom: var(--space-3); }
+  .page-head p { margin: var(--space-4) 0 0; max-width: 72ch; }
+  .demo-block { padding: var(--space-8) 0; }
+  .demo-block > .text--h5 { margin-bottom: var(--space-6); }
+  .demo-note { margin-top: var(--space-4); max-width: 84ch; color: var(--muted-foreground); }
+  .demo-caption { margin-bottom: var(--space-3); color: var(--caption-foreground); }
+  .demo-row { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-3); }
+  .demo-frame { border: var(--border-width) solid var(--border-soft); border-radius: var(--radius-lg); }
+  .demo-compare { display: grid; grid-template-columns: repeat(auto-fit, minmax(var(--doc-grid-min-card), 1fr)); gap: var(--space-6); align-items: start; }
+  .demo-col { display: grid; gap: var(--space-6); }
+  .demo-col > .text--h6 { color: var(--foreground-strong); }
+</style>
+</head>
+<body>
+
+<!-- ===================== Live sticky header ===================== -->
+<header class="navbar navbar--sticky" id="live-navbar">
+  <div class="navbar__inner">
+    <a class="navbar__brand" href="#top" aria-label="Relationship Network home">
+      <svg class="navbar__brand-mark" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+        <g stroke="currentColor" stroke-linecap="round">
+          <line x1="12" y1="1.5" x2="12" y2="6.2"/><line x1="12" y1="17.8" x2="12" y2="22.5"/>
+          <line x1="1.5" y1="12" x2="6.2" y2="12"/><line x1="17.8" y1="12" x2="22.5" y2="12"/>
+          <line x1="4.6" y1="4.6" x2="7.9" y2="7.9"/><line x1="16.1" y1="16.1" x2="19.4" y2="19.4"/>
+          <line x1="19.4" y1="4.6" x2="16.1" y2="7.9"/><line x1="7.9" y1="16.1" x2="4.6" y2="19.4"/>
+        </g>
+      </svg>
+      <span class="navbar__brand-name">Relationship Network</span>
+    </a>
+    <nav class="navbar__primary" id="live-menu" aria-label="Primary">
+      <ul class="navbar__list">
+        <li><a class="navbar__item" href="#top" aria-current="page">Dashboard</a></li>
+        <li><a class="navbar__item" href="#compare">Companies</a></li>
+        <li><a class="navbar__item" href="#states">Jobs</a></li>
+        <li><a class="navbar__item" href="#states" aria-disabled="true">Usage</a></li>
+      </ul>
+    </nav>
+    <div class="search-field input-wrap input-wrap--sm navbar__search">
+      <svg class="input__icon" viewBox="0 0 24 24" fill="none" aria-hidden="true"><circle cx="11" cy="11" r="6.5" stroke="currentColor"/><path d="m16 16 4.5 4.5" stroke="currentColor" stroke-linecap="round"/></svg>
+      <input class="input" type="search" placeholder="Search candidates…" aria-label="Search candidates">
+      <span class="search-field__kbd">⌘K</span>
+      <button class="input__clear" type="button" aria-label="Clear search">
+        <svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="m7 7 10 10M17 7 7 17" stroke="currentColor" stroke-linecap="round"/></svg>
+      </button>
+    </div>
+    <nav class="navbar__secondary" aria-label="Secondary">
+      <ul class="navbar__list">
+        <li><a class="navbar__item navbar__item--quiet" href="#states">Docs</a></li>
+        <li><a class="navbar__item navbar__item--quiet" href="#states">Support</a></li>
+      </ul>
+    </nav>
+    <div class="navbar__actions">
+      <button class="btn btn--secondary btn--sm" type="button">Sign in</button>
+      <button class="btn btn--primary btn--sm" type="button">Get started</button>
+    </div>
+    <button class="icon-btn navbar__menu-trigger" type="button" aria-expanded="false" aria-controls="live-menu" aria-label="Open menu">
+      <svg class="icon icon--md icon--default navbar__icon-open" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M4 7h16M4 12h16M4 17h16" stroke="currentColor" stroke-linecap="round"/></svg>
+      <svg class="icon icon--md icon--default navbar__icon-close" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="m7 7 10 10M17 7 7 17" stroke="currentColor" stroke-linecap="round"/></svg>
+    </button>
+  </div>
+</header>
+
+<main id="top">
+
+<header class="page-head">
+  <div class="container">
+    <span class="text text--overline">Component</span>
+    <h1 class="text text--h1">Navbar</h1>
+    <p class="text text--body-md">
+      Every navigation and container state, explicit and token-driven. The current
+      destination is painted with the semantic selection pair
+      (<code class="text text--code">--selected-bg</code> +
+      <code class="text text--code">--selected-border</code> edge) from
+      <code class="text text--code">aria-current="page"</code>; focus keeps the shared
+      <code class="text text--code">--ring-focus</code> recipe; the scrolled header lifts its
+      hairline to <code class="text text--code">--border</code> and takes
+      <code class="text text--code">--shadow-subtle</code>. Desktop and mobile previews render
+      side by side below — scroll this page to see the live header transition.
+    </p>
+  </div>
+</header>
+
+<div class="container">
+
+  <!-- ===================== Desktop full anatomy ===================== -->
+  <section class="demo-block" aria-labelledby="anatomy-heading">
+    <h2 class="text text--h5" id="anatomy-heading">Desktop — full anatomy</h2>
+    <div class="demo-frame">
+      <header class="navbar">
+        <div class="navbar__inner">
+          <a class="navbar__brand" href="#top" aria-label="Relationship Network home">
+            <svg class="navbar__brand-mark" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+              <g stroke="currentColor" stroke-linecap="round">
+                <line x1="12" y1="1.5" x2="12" y2="6.2"/><line x1="12" y1="17.8" x2="12" y2="22.5"/>
+                <line x1="1.5" y1="12" x2="6.2" y2="12"/><line x1="17.8" y1="12" x2="22.5" y2="12"/>
+                <line x1="4.6" y1="4.6" x2="7.9" y2="7.9"/><line x1="16.1" y1="16.1" x2="19.4" y2="19.4"/>
+                <line x1="19.4" y1="4.6" x2="16.1" y2="7.9"/><line x1="7.9" y1="16.1" x2="4.6" y2="19.4"/>
+              </g>
+            </svg>
+            <span class="navbar__brand-name">Relationship Network</span>
+          </a>
+          <nav class="navbar__primary" aria-label="Primary">
+            <ul class="navbar__list">
+              <li><a class="navbar__item" href="#top" aria-current="page">Dashboard</a></li>
+              <li><a class="navbar__item" href="#top">Companies</a></li>
+              <li><a class="navbar__item" href="#top">Jobs</a></li>
+              <li><a class="navbar__item" href="#top" aria-disabled="true">Usage</a></li>
+            </ul>
+          </nav>
+          <div class="search-field input-wrap input-wrap--sm navbar__search">
+            <svg class="input__icon" viewBox="0 0 24 24" fill="none" aria-hidden="true"><circle cx="11" cy="11" r="6.5" stroke="currentColor"/><path d="m16 16 4.5 4.5" stroke="currentColor" stroke-linecap="round"/></svg>
+            <input class="input" type="search" placeholder="Search candidates…" aria-label="Search candidates">
+            <span class="search-field__kbd">⌘K</span>
+            <button class="input__clear" type="button" aria-label="Clear search">
+              <svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="m7 7 10 10M17 7 7 17" stroke="currentColor" stroke-linecap="round"/></svg>
+            </button>
+          </div>
+          <nav class="navbar__secondary" aria-label="Secondary">
+            <ul class="navbar__list">
+              <li><a class="navbar__item navbar__item--quiet" href="#top">Docs</a></li>
+              <li><a class="navbar__item navbar__item--quiet" href="#top">Support</a></li>
+            </ul>
+          </nav>
+          <div class="navbar__actions">
+            <button class="btn btn--secondary btn--sm" type="button">Sign in</button>
+            <button class="btn btn--primary btn--sm" type="button">Get started</button>
+          </div>
+          <button class="icon-btn navbar__menu-trigger" type="button" aria-expanded="false" aria-controls="anatomy-menu" aria-label="Open menu">
+            <svg class="icon icon--md icon--default navbar__icon-open" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M4 7h16M4 12h16M4 17h16" stroke="currentColor" stroke-linecap="round"/></svg>
+            <svg class="icon icon--md icon--default navbar__icon-close" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="m7 7 10 10M17 7 7 17" stroke="currentColor" stroke-linecap="round"/></svg>
+          </button>
+        </div>
+      </header>
+    </div>
+    <p class="text text--caption demo-note">
+      Brand (mark at <code class="text text--code">--brand-mark-size</code> /
+      <code class="text text--code">--stroke-width-brand</code>, name in
+      <code class="text text--code">--font-display</code> at
+      <code class="text text--code">--text-title-md</code>), primary nav, SearchField sm
+      composed unmodified at a <code class="text text--code">calc(--space-24 * 3)</code>
+      measure, quiet secondary nav, real Button children in the action area, and the
+      mobile trigger (hidden at this width).
+    </p>
+  </section>
+
+  <hr class="separator separator--horizontal separator--subtle" role="presentation">
+
+  <!-- ===================== Breakpoint comparison ===================== -->
+  <section class="demo-block" aria-labelledby="compare-heading">
+    <h2 class="text text--h5" id="compare-heading">Breakpoint comparison — desktop × mobile, state by state</h2>
+    <div class="demo-compare">
+
+      <!-- Desktop column -->
+      <div class="demo-col" role="group" aria-label="Desktop previews">
+        <h3 class="text text--h6">Desktop ≥ 768px</h3>
+
+        <div>
+          <p class="text text--caption demo-caption">default — brand · primary · actions</p>
+          <div class="demo-frame">
+            <header class="navbar">
+              <div class="navbar__inner">
+                <a class="navbar__brand" href="#compare" aria-label="Relationship Network home">
+                  <svg class="navbar__brand-mark" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                    <g stroke="currentColor" stroke-linecap="round">
+                      <line x1="12" y1="1.5" x2="12" y2="6.2"/><line x1="12" y1="17.8" x2="12" y2="22.5"/>
+                      <line x1="1.5" y1="12" x2="6.2" y2="12"/><line x1="17.8" y1="12" x2="22.5" y2="12"/>
+                      <line x1="4.6" y1="4.6" x2="7.9" y2="7.9"/><line x1="16.1" y1="16.1" x2="19.4" y2="19.4"/>
+                      <line x1="19.4" y1="4.6" x2="16.1" y2="7.9"/><line x1="7.9" y1="16.1" x2="4.6" y2="19.4"/>
+                    </g>
+                  </svg>
+                  <span class="navbar__brand-name">Relationship Network</span>
+                </a>
+                <nav class="navbar__primary" aria-label="Primary">
+                  <ul class="navbar__list">
+                    <li><a class="navbar__item" href="#compare" aria-current="page">Dashboard</a></li>
+                    <li><a class="navbar__item" href="#compare">Companies</a></li>
+                    <li><a class="navbar__item" href="#compare">Jobs</a></li>
+                    <li><a class="navbar__item" href="#compare" aria-disabled="true">Usage</a></li>
+                  </ul>
+                </nav>
+                <div class="navbar__actions" style="margin-inline-start: auto;">
+                  <button class="btn btn--primary btn--sm" type="button">Get started</button>
+                </div>
+              </div>
+            </header>
+          </div>
+        </div>
+
+        <div>
+          <p class="text text--caption demo-caption">sticky / scrolled — --border hairline + --shadow-subtle</p>
+          <div class="demo-frame">
+            <header class="navbar is-scrolled">
+              <div class="navbar__inner">
+                <a class="navbar__brand" href="#compare" aria-label="Relationship Network home">
+                  <svg class="navbar__brand-mark" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                    <g stroke="currentColor" stroke-linecap="round">
+                      <line x1="12" y1="1.5" x2="12" y2="6.2"/><line x1="12" y1="17.8" x2="12" y2="22.5"/>
+                      <line x1="1.5" y1="12" x2="6.2" y2="12"/><line x1="17.8" y1="12" x2="22.5" y2="12"/>
+                      <line x1="4.6" y1="4.6" x2="7.9" y2="7.9"/><line x1="16.1" y1="16.1" x2="19.4" y2="19.4"/>
+                      <line x1="19.4" y1="4.6" x2="16.1" y2="7.9"/><line x1="7.9" y1="16.1" x2="4.6" y2="19.4"/>
+                    </g>
+                  </svg>
+                  <span class="navbar__brand-name">Relationship Network</span>
+                </a>
+                <nav class="navbar__primary" aria-label="Primary">
+                  <ul class="navbar__list">
+                    <li><a class="navbar__item" href="#compare" aria-current="page">Dashboard</a></li>
+                    <li><a class="navbar__item" href="#compare">Companies</a></li>
+                    <li><a class="navbar__item" href="#compare">Jobs</a></li>
+                  </ul>
+                </nav>
+                <div class="navbar__actions" style="margin-inline-start: auto;">
+                  <button class="btn btn--primary btn--sm" type="button">Get started</button>
+                </div>
+              </div>
+            </header>
+          </div>
+        </div>
+      </div>
+
+      <!-- Mobile column -->
+      <div class="demo-col" role="group" aria-label="Mobile previews">
+        <h3 class="text text--h6">Mobile ≤ 768px (forced with .navbar--mobile)</h3>
+
+        <div>
+          <p class="text text--caption demo-caption">collapsed — brand · action · trigger; nav yields to the panel</p>
+          <div class="demo-frame">
+            <header class="navbar navbar--mobile">
+              <div class="navbar__inner">
+                <a class="navbar__brand" href="#compare" aria-label="Relationship Network home">
+                  <svg class="navbar__brand-mark" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                    <g stroke="currentColor" stroke-linecap="round">
+                      <line x1="12" y1="1.5" x2="12" y2="6.2"/><line x1="12" y1="17.8" x2="12" y2="22.5"/>
+                      <line x1="1.5" y1="12" x2="6.2" y2="12"/><line x1="17.8" y1="12" x2="22.5" y2="12"/>
+                      <line x1="4.6" y1="4.6" x2="7.9" y2="7.9"/><line x1="16.1" y1="16.1" x2="19.4" y2="19.4"/>
+                      <line x1="19.4" y1="4.6" x2="16.1" y2="7.9"/><line x1="7.9" y1="16.1" x2="4.6" y2="19.4"/>
+                    </g>
+                  </svg>
+                  <span class="navbar__brand-name">Relationship Network</span>
+                </a>
+                <nav class="navbar__primary" id="m-closed" aria-label="Primary">
+                  <ul class="navbar__list">
+                    <li><a class="navbar__item" href="#compare" aria-current="page">Dashboard</a></li>
+                    <li><a class="navbar__item" href="#compare">Companies</a></li>
+                    <li><a class="navbar__item" href="#compare">Jobs</a></li>
+                    <li><a class="navbar__item" href="#compare" aria-disabled="true">Usage</a></li>
+                  </ul>
+                </nav>
+                <div class="navbar__actions">
+                  <button class="btn btn--primary btn--sm" type="button">Get started</button>
+                </div>
+                <button class="icon-btn navbar__menu-trigger" type="button" aria-expanded="false" aria-controls="m-closed" aria-label="Open menu">
+                  <svg class="icon icon--md icon--default navbar__icon-open" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M4 7h16M4 12h16M4 17h16" stroke="currentColor" stroke-linecap="round"/></svg>
+                  <svg class="icon icon--md icon--default navbar__icon-close" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="m7 7 10 10M17 7 7 17" stroke="currentColor" stroke-linecap="round"/></svg>
+                </button>
+              </div>
+            </header>
+          </div>
+        </div>
+
+        <div>
+          <p class="text text--caption demo-caption">menu open — the primary nav re-flowed as a panel; same items, same states</p>
+          <div class="demo-frame">
+            <header class="navbar navbar--mobile navbar--menu-open is-scrolled">
+              <div class="navbar__inner">
+                <a class="navbar__brand" href="#compare" aria-label="Relationship Network home">
+                  <svg class="navbar__brand-mark" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                    <g stroke="currentColor" stroke-linecap="round">
+                      <line x1="12" y1="1.5" x2="12" y2="6.2"/><line x1="12" y1="17.8" x2="12" y2="22.5"/>
+                      <line x1="1.5" y1="12" x2="6.2" y2="12"/><line x1="17.8" y1="12" x2="22.5" y2="12"/>
+                      <line x1="4.6" y1="4.6" x2="7.9" y2="7.9"/><line x1="16.1" y1="16.1" x2="19.4" y2="19.4"/>
+                      <line x1="19.4" y1="4.6" x2="16.1" y2="7.9"/><line x1="7.9" y1="16.1" x2="4.6" y2="19.4"/>
+                    </g>
+                  </svg>
+                  <span class="navbar__brand-name">Relationship Network</span>
+                </a>
+                <nav class="navbar__primary" id="m-open" aria-label="Primary">
+                  <ul class="navbar__list">
+                    <li><a class="navbar__item" href="#compare" aria-current="page">Dashboard</a></li>
+                    <li><a class="navbar__item" href="#compare">Companies</a></li>
+                    <li><a class="navbar__item" href="#compare">Jobs</a></li>
+                    <li><a class="navbar__item" href="#compare" aria-disabled="true">Usage</a></li>
+                  </ul>
+                </nav>
+                <div class="navbar__actions">
+                  <button class="btn btn--primary btn--sm" type="button">Get started</button>
+                </div>
+                <button class="icon-btn navbar__menu-trigger" type="button" aria-expanded="true" aria-controls="m-open" aria-label="Close menu">
+                  <svg class="icon icon--md icon--default navbar__icon-open" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M4 7h16M4 12h16M4 17h16" stroke="currentColor" stroke-linecap="round"/></svg>
+                  <svg class="icon icon--md icon--default navbar__icon-close" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="m7 7 10 10M17 7 7 17" stroke="currentColor" stroke-linecap="round"/></svg>
+                </button>
+              </div>
+            </header>
+            <div style="height: calc(var(--space-16) * 4);"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <p class="text text--caption demo-note">
+      Same component, same tokens at both breakpoints: the mobile column only re-flows layout
+      (panel = the primary nav, column list at <code class="text text--code">--space-1</code>,
+      full-width items, <code class="text text--code">--border</code> hairline +
+      <code class="text text--code">--shadow-subtle</code>); search and secondary nav yield
+      there. The open-menu preview also carries the scrolled elevation so both header states
+      stack in one frame. Narrow this window and the live header above collapses identically.
+    </p>
+  </section>
+
+  <hr class="separator separator--horizontal separator--subtle" role="presentation">
+
+  <!-- ===================== Nav item states ===================== -->
+  <section class="demo-block" aria-labelledby="states-heading">
+    <h2 class="text text--h5" id="states-heading">Navigation item states</h2>
+    <p class="text text--caption demo-caption">Forced with .is-* classes for the static showcase; live items use the pseudo-classes and aria-current.</p>
+    <div class="demo-row">
+      <a class="navbar__item" href="#states">Default</a>
+      <a class="navbar__item is-hover" href="#states">Hover</a>
+      <a class="navbar__item is-active" href="#states">Pressed</a>
+      <a class="navbar__item" href="#states" aria-current="page">Current</a>
+      <a class="navbar__item is-focus-visible" href="#states">Focus-visible</a>
+      <a class="navbar__item is-focus-visible" href="#states" aria-current="page">Current + focus</a>
+      <a class="navbar__item" href="#states" aria-disabled="true">Disabled</a>
+      <a class="navbar__item navbar__item--quiet" href="#states">Quiet</a>
+      <a class="navbar__item navbar__item--quiet is-hover" href="#states">Quiet hover</a>
+    </div>
+    <p class="text text--caption demo-note">
+      Hover fills <code class="text text--code">--accent</code>; pressed holds the
+      <code class="text text--code">--surface-cream-strong</code> active-tab band; current is
+      the semantic selection pair — <code class="text text--code">--selected-bg</code> fill
+      with a <code class="text text--code">--selected-border</code> bottom edge at
+      <code class="text text--code">--border-width-strong</code> — driven by
+      <code class="text text--code">aria-current="page"</code>, never a parallel class. Focus
+      is the shared <code class="text text--code">--ring-focus</code> ring (stacking under the
+      edge when current); disabled dims at
+      <code class="text text--code">--opacity-disabled</code>; quiet items run the
+      <code class="text text--code">--muted-foreground</code> hover/active pairs.
+    </p>
+  </section>
+
+</div>
+
+</main>
+
+<script>
+  /* Live header: scrolled state + mobile menu toggle. Visuals stay in CSS. */
+  const live = document.getElementById("live-navbar");
+  addEventListener(
+    "scroll",
+    () => live.classList.toggle("is-scrolled", scrollY > 0),
+    { passive: true },
+  );
+  document.addEventListener("click", (event) => {
+    const trigger = event.target.closest(".navbar__menu-trigger");
+    if (!trigger) return;
+    const header = trigger.closest(".navbar");
+    const open = header.classList.toggle("navbar--menu-open");
+    trigger.setAttribute("aria-expanded", String(open));
+    trigger.setAttribute("aria-label", open ? "Close menu" : "Open menu");
+  });
+</script>
+
+</body>
+</html>

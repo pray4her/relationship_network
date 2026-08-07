@@ -1,0 +1,405 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Tabs — Component Showcase</title>
+<link rel="stylesheet" href="../src/styles/tokens.css">
+<link rel="stylesheet" href="../src/styles/typography.css">
+<link rel="stylesheet" href="../src/styles/separator.css">
+<link rel="stylesheet" href="../src/styles/badge.css">
+<link rel="stylesheet" href="../src/styles/tabs.css">
+<style>
+  /* Page chrome — tokens only, no component values. */
+  *, *::before, *::after { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: var(--background);
+    color: var(--foreground);
+    font-family: var(--font-sans);
+    -webkit-font-smoothing: antialiased;
+  }
+  .container { max-width: var(--doc-container-max); margin: 0 auto; padding: 0 var(--space-6); }
+  .page-head { padding: var(--space-16) 0 var(--space-8); border-bottom: var(--border-width) solid var(--border); }
+  .page-head .text--overline { color: var(--primary); display: block; margin-bottom: var(--space-3); }
+  .page-head p { margin: var(--space-4) 0 0; max-width: 64ch; }
+  .demo-block { padding: var(--space-8) 0; }
+  .demo-block > .text--h5 { margin-bottom: var(--space-6); }
+  .demo-row { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-4); }
+  .demo-row + .demo-row { margin-top: var(--space-4); }
+  .demo-label { width: var(--doc-demo-label-width); flex: none; color: var(--caption-foreground); }
+  .demo-note { margin-top: var(--space-4); max-width: 72ch; color: var(--muted-foreground); }
+  .state-grid { display: grid; grid-template-columns: var(--doc-demo-label-width) repeat(6, auto); gap: var(--space-4); align-items: center; justify-content: start; }
+  .narrow-wrap { max-width: var(--doc-field-max-width); }
+  .panel-demo { max-width: 64ch; }
+</style>
+</head>
+<body>
+
+<header class="page-head">
+  <div class="container">
+    <span class="text text--overline">Component</span>
+    <h1 class="text text--h1">Tabs</h1>
+    <p class="text text--body-md">
+      Two variants (underline, contained), three sizes, six states — every value a
+      <code class="text text--code">tokens.css</code> reference. Static state classes
+      (<code class="text text--code">.is-hover</code>, <code class="text text--code">.is-active</code>,
+      <code class="text text--code">.is-focus-visible</code>) mirror the real pseudo-classes;
+      selection is styled from <code class="text text--code">aria-selected="true"</code>, never a
+      parallel class. The live demos below implement the full WAI-ARIA tabs pattern:
+      roving tabindex, Arrow/Home/End keys, disabled tabs skipped.
+    </p>
+  </div>
+</header>
+
+<main class="container">
+
+  <!-- ===================== Underline × states ===================== -->
+  <section class="demo-block" aria-labelledby="underline-heading">
+    <h2 class="text text--h5" id="underline-heading">Underline × states</h2>
+    <div class="state-grid">
+      <span></span>
+      <span class="text text--caption">default</span>
+      <span class="text text--caption">hover</span>
+      <span class="text text--caption">pressed</span>
+      <span class="text text--caption">focus-visible</span>
+      <span class="text text--caption">disabled</span>
+      <span class="text text--caption">selected</span>
+
+      <span class="text text--caption demo-label">underline</span>
+      <div class="tabs--underline" role="tablist" aria-label="Underline states (static)" style="display: contents;">
+        <button class="tabs__tab" role="tab" type="button" tabindex="-1">Overview</button>
+        <button class="tabs__tab is-hover" role="tab" type="button" tabindex="-1">Overview</button>
+        <button class="tabs__tab is-active" role="tab" type="button" tabindex="-1">Overview</button>
+        <button class="tabs__tab is-focus-visible" role="tab" type="button" tabindex="-1">Overview</button>
+        <button class="tabs__tab" role="tab" type="button" tabindex="-1" disabled>Overview</button>
+        <button class="tabs__tab" role="tab" type="button" tabindex="-1" aria-selected="true">Overview</button>
+      </div>
+    </div>
+    <p class="text text--caption demo-note">
+      Quiet rail (<code class="text text--code">--border-soft</code>), muted labels that darken
+      through the <code class="text text--code">--muted-foreground</code> hover/active pair, and a
+      <code class="text text--code">--primary</code> indicator at
+      <code class="text text--code">--border-width-strong</code> for the selected tab. The indicator
+      is an inset shadow, so the focus ring stacks on top without moving it.
+    </p>
+  </section>
+
+  <hr class="separator separator--horizontal separator--subtle" role="presentation">
+
+  <!-- ===================== Contained × states ===================== -->
+  <section class="demo-block" aria-labelledby="contained-heading">
+    <h2 class="text text--h5" id="contained-heading">Contained × states</h2>
+    <div class="state-grid">
+      <span></span>
+      <span class="text text--caption">default</span>
+      <span class="text text--caption">hover</span>
+      <span class="text text--caption">pressed</span>
+      <span class="text text--caption">focus-visible</span>
+      <span class="text text--caption">disabled</span>
+      <span class="text text--caption">selected</span>
+
+      <span class="text text--caption demo-label">contained</span>
+      <div class="tabs--contained" role="tablist" aria-label="Contained states (static)" style="display: contents;">
+        <button class="tabs__tab" role="tab" type="button" tabindex="-1">All</button>
+        <button class="tabs__tab is-hover" role="tab" type="button" tabindex="-1">All</button>
+        <button class="tabs__tab is-active" role="tab" type="button" tabindex="-1">All</button>
+        <button class="tabs__tab is-focus-visible" role="tab" type="button" tabindex="-1">All</button>
+        <button class="tabs__tab" role="tab" type="button" tabindex="-1" disabled>All</button>
+        <button class="tabs__tab" role="tab" type="button" tabindex="-1" aria-selected="true">All</button>
+      </div>
+    </div>
+    <p class="text text--caption demo-note">
+      The design spec's "Category tabs" recipe: transparent at rest,
+      <code class="text text--code">--accent</code> on hover ("hover/tab-active bg"),
+      <code class="text text--code">--surface-cream-strong</code> when selected ("active tabs").
+      Selection is one tone deeper than hover, so the two states never collide.
+    </p>
+  </section>
+
+  <hr class="separator separator--horizontal separator--subtle" role="presentation">
+
+  <!-- ===================== Sizes ===================== -->
+  <section class="demo-block" aria-labelledby="sizes-heading">
+    <h2 class="text text--h5" id="sizes-heading">Sizes</h2>
+    <div class="demo-row">
+      <span class="demo-label text text--caption">sm — 32px token</span>
+      <div class="tabs tabs--underline tabs--sm">
+        <div class="tabs__list" role="tablist" aria-label="Small underline (static)">
+          <button class="tabs__tab" role="tab" type="button" tabindex="-1" aria-selected="true">Members</button>
+          <button class="tabs__tab" role="tab" type="button" tabindex="-1">Invites</button>
+          <button class="tabs__tab" role="tab" type="button" tabindex="-1">Roles</button>
+        </div>
+      </div>
+      <div class="tabs tabs--contained tabs--sm">
+        <div class="tabs__list" role="tablist" aria-label="Small contained (static)">
+          <button class="tabs__tab" role="tab" type="button" tabindex="-1" aria-selected="true">All</button>
+          <button class="tabs__tab" role="tab" type="button" tabindex="-1">Writing</button>
+          <button class="tabs__tab" role="tab" type="button" tabindex="-1">Coding</button>
+        </div>
+      </div>
+    </div>
+    <div class="demo-row">
+      <span class="demo-label text text--caption">md — 40px token</span>
+      <div class="tabs tabs--underline">
+        <div class="tabs__list" role="tablist" aria-label="Medium underline (static)">
+          <button class="tabs__tab" role="tab" type="button" tabindex="-1" aria-selected="true">Members</button>
+          <button class="tabs__tab" role="tab" type="button" tabindex="-1">Invites</button>
+          <button class="tabs__tab" role="tab" type="button" tabindex="-1">Roles</button>
+        </div>
+      </div>
+      <div class="tabs tabs--contained">
+        <div class="tabs__list" role="tablist" aria-label="Medium contained (static)">
+          <button class="tabs__tab" role="tab" type="button" tabindex="-1" aria-selected="true">All</button>
+          <button class="tabs__tab" role="tab" type="button" tabindex="-1">Writing</button>
+          <button class="tabs__tab" role="tab" type="button" tabindex="-1">Coding</button>
+        </div>
+      </div>
+    </div>
+    <div class="demo-row">
+      <span class="demo-label text text--caption">lg — 48px token</span>
+      <div class="tabs tabs--underline tabs--lg">
+        <div class="tabs__list" role="tablist" aria-label="Large underline (static)">
+          <button class="tabs__tab" role="tab" type="button" tabindex="-1" aria-selected="true">Members</button>
+          <button class="tabs__tab" role="tab" type="button" tabindex="-1">Invites</button>
+          <button class="tabs__tab" role="tab" type="button" tabindex="-1">Roles</button>
+        </div>
+      </div>
+      <div class="tabs tabs--contained tabs--lg">
+        <div class="tabs__list" role="tablist" aria-label="Large contained (static)">
+          <button class="tabs__tab" role="tab" type="button" tabindex="-1" aria-selected="true">All</button>
+          <button class="tabs__tab" role="tab" type="button" tabindex="-1">Writing</button>
+          <button class="tabs__tab" role="tab" type="button" tabindex="-1">Coding</button>
+        </div>
+      </div>
+    </div>
+    <p class="text text--caption demo-note">
+      Heights ride the shared control ladder
+      (<code class="text text--code">--control-height-sm</code> / <code class="text text--code">--control-height</code> /
+      <code class="text text--code">--control-height-lg</code>); text steps
+      <code class="text text--code">--text-caption</code> → <code class="text text--code">--text-nav-link</code> →
+      <code class="text text--code">--text-title-sm</code>; inline padding steps
+      <code class="text text--code">--space-3</code> → <code class="text text--code">--tab-padding-inline</code> →
+      <code class="text text--code">--space-6</code>.
+    </p>
+  </section>
+
+  <hr class="separator separator--horizontal separator--subtle" role="presentation">
+
+  <!-- ===================== Content configurations ===================== -->
+  <section class="demo-block" aria-labelledby="content-heading">
+    <h2 class="text text--h5" id="content-heading">Content configurations</h2>
+    <div class="tabs tabs--underline">
+      <div class="tabs__list" role="tablist" aria-label="Content configurations (static)">
+        <button class="tabs__tab" role="tab" type="button" tabindex="-1" aria-selected="true">Text only</button>
+        <button class="tabs__tab" role="tab" type="button" tabindex="-1">
+          <svg class="tabs__icon" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+            <circle cx="8" cy="5.5" r="2.5" stroke="currentColor"/>
+            <path d="M3 13.5c.8-2.2 2.7-3.5 5-3.5s4.2 1.3 5 3.5" stroke="currentColor" stroke-linecap="round"/>
+          </svg>
+          Icon + text
+        </button>
+        <button class="tabs__tab" role="tab" type="button" tabindex="-1">
+          With badge
+          <span class="badge badge--sm badge--primary" aria-label="12 items">12</span>
+        </button>
+        <button class="tabs__tab" role="tab" type="button" tabindex="-1">
+          <svg class="tabs__icon" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+            <rect x="2.5" y="3.5" width="11" height="9" rx="1.5" stroke="currentColor"/>
+            <path d="M2.5 6.5h11" stroke="currentColor"/>
+          </svg>
+          Everything
+          <span class="badge badge--sm badge--success" aria-label="3 new">3</span>
+        </button>
+      </div>
+    </div>
+    <div class="demo-row" style="margin-top: var(--space-6);">
+      <div class="tabs tabs--contained">
+        <div class="tabs__list" role="tablist" aria-label="Contained content configurations (static)">
+          <button class="tabs__tab" role="tab" type="button" tabindex="-1" aria-selected="true">Text only</button>
+          <button class="tabs__tab" role="tab" type="button" tabindex="-1">
+            <svg class="tabs__icon" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+              <circle cx="8" cy="5.5" r="2.5" stroke="currentColor"/>
+              <path d="M3 13.5c.8-2.2 2.7-3.5 5-3.5s4.2 1.3 5 3.5" stroke="currentColor" stroke-linecap="round"/>
+            </svg>
+            Icon + text
+          </button>
+          <button class="tabs__tab" role="tab" type="button" tabindex="-1">
+            With badge
+            <span class="badge badge--sm badge--info" aria-label="8 items">8</span>
+          </button>
+        </div>
+      </div>
+    </div>
+    <p class="text text--caption demo-note">
+      Icons size to <code class="text text--code">--icon-size-sm</code>
+      (<code class="text text--code">--icon-size-md</code> on lg tabs) with
+      <code class="text text--code">--stroke-width-icon</code> paths and inherit currentColor, so
+      they follow every tab state. Badges are composed unmodified from
+      <code class="text text--code">badge.css</code>; the <code class="text text--code">--space-2</code>
+      gap does the spacing.
+    </p>
+  </section>
+
+  <hr class="separator separator--horizontal separator--subtle" role="presentation">
+
+  <!-- ===================== Live keyboard demo ===================== -->
+  <section class="demo-block" aria-labelledby="live-heading">
+    <h2 class="text text--h5" id="live-heading">Live — keyboard navigation</h2>
+    <div class="tabs tabs--underline" data-tabs>
+      <div class="tabs__list" role="tablist" aria-label="Tenant settings sections">
+        <button class="tabs__tab" role="tab" type="button" id="live-u-1" aria-controls="live-u-p1" aria-selected="true">General</button>
+        <button class="tabs__tab" role="tab" type="button" id="live-u-2" aria-controls="live-u-p2">
+          Members
+          <span class="badge badge--sm badge--primary" aria-label="24 members">24</span>
+        </button>
+        <button class="tabs__tab" role="tab" type="button" id="live-u-3" aria-controls="live-u-p3">Billing</button>
+        <button class="tabs__tab" role="tab" type="button" id="live-u-4" aria-controls="live-u-p4" disabled>Danger zone</button>
+      </div>
+      <div class="tabs__panel panel-demo" role="tabpanel" id="live-u-p1" aria-labelledby="live-u-1" tabindex="0">
+        <p class="text text--body-md">General settings: tenant name, locale, and the public profile shown to candidates.</p>
+      </div>
+      <div class="tabs__panel panel-demo" role="tabpanel" id="live-u-p2" aria-labelledby="live-u-2" tabindex="0" hidden>
+        <p class="text text--body-md">Invite members, assign roles, and review pending invitations.</p>
+      </div>
+      <div class="tabs__panel panel-demo" role="tabpanel" id="live-u-p3" aria-labelledby="live-u-3" tabindex="0" hidden>
+        <p class="text text--body-md">Current plan, invoices, and usage for this billing period.</p>
+      </div>
+      <div class="tabs__panel panel-demo" role="tabpanel" id="live-u-p4" aria-labelledby="live-u-4" tabindex="0" hidden>
+        <p class="text text--body-md">Destructive tenant operations. Disabled while the tenant is read-only.</p>
+      </div>
+    </div>
+    <div class="demo-row" style="margin-top: var(--space-8);">
+      <div class="tabs tabs--contained" data-tabs>
+        <div class="tabs__list" role="tablist" aria-label="Content categories">
+          <button class="tabs__tab" role="tab" type="button" id="live-c-1" aria-controls="live-c-p1" aria-selected="true">All</button>
+          <button class="tabs__tab" role="tab" type="button" id="live-c-2" aria-controls="live-c-p2">
+            <svg class="tabs__icon" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+              <path d="M4 2.5h8a1 1 0 0 1 1 1v9a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1v-9a1 1 0 0 1 1-1Z" stroke="currentColor"/>
+              <path d="M5.5 5.5h5M5.5 8h5M5.5 10.5h3" stroke="currentColor" stroke-linecap="round"/>
+            </svg>
+            Writing
+          </button>
+          <button class="tabs__tab" role="tab" type="button" id="live-c-3" aria-controls="live-c-p3">Coding</button>
+          <button class="tabs__tab" role="tab" type="button" id="live-c-4" aria-controls="live-c-p4" disabled>Analysis</button>
+        </div>
+        <div class="tabs__panel panel-demo" role="tabpanel" id="live-c-p1" aria-labelledby="live-c-1" tabindex="0">
+          <p class="text text--body-md">Everything, across all categories.</p>
+        </div>
+        <div class="tabs__panel panel-demo" role="tabpanel" id="live-c-p2" aria-labelledby="live-c-2" tabindex="0" hidden>
+          <p class="text text--body-md">Long-form writing and documentation samples.</p>
+        </div>
+        <div class="tabs__panel panel-demo" role="tabpanel" id="live-c-p3" aria-labelledby="live-c-3" tabindex="0" hidden>
+          <p class="text text--body-md">Code walkthroughs and repository links.</p>
+        </div>
+        <div class="tabs__panel panel-demo" role="tabpanel" id="live-c-p4" aria-labelledby="live-c-4" tabindex="0" hidden>
+          <p class="text text--body-md">Analysis artifacts.</p>
+        </div>
+      </div>
+    </div>
+    <p class="text text--caption demo-note">
+      Try it: Tab into a tablist, then ArrowLeft/ArrowRight to move (wraps at the ends),
+      Home/End to jump — activation follows focus, and the disabled tab is skipped by
+      keyboard and pointer alike. Panels are focusable so keyboard users can continue
+      into the content.
+    </p>
+  </section>
+
+  <hr class="separator separator--horizontal separator--subtle" role="presentation">
+
+  <!-- ===================== Overflow ===================== -->
+  <section class="demo-block" aria-labelledby="overflow-heading">
+    <h2 class="text text--h5" id="overflow-heading">Overflow — narrow container</h2>
+    <div class="narrow-wrap">
+      <div class="tabs tabs--underline" data-tabs>
+        <div class="tabs__list" role="tablist" aria-label="Workflow stages (scrollable)">
+          <button class="tabs__tab" role="tab" type="button" id="ov-1" aria-controls="ov-p" >Sourcing</button>
+          <button class="tabs__tab" role="tab" type="button" id="ov-2" aria-controls="ov-p">Screening</button>
+          <button class="tabs__tab" role="tab" type="button" id="ov-3" aria-controls="ov-p">Interviews</button>
+          <button class="tabs__tab" role="tab" type="button" id="ov-4" aria-controls="ov-p">Assessments</button>
+          <button class="tabs__tab" role="tab" type="button" id="ov-5" aria-controls="ov-p">References</button>
+          <button class="tabs__tab" role="tab" type="button" id="ov-6" aria-controls="ov-p" aria-selected="true">Offers</button>
+          <button class="tabs__tab" role="tab" type="button" id="ov-7" aria-controls="ov-p">Onboarding</button>
+        </div>
+        <div class="tabs__panel" role="tabpanel" id="ov-p" aria-labelledby="ov-6" tabindex="0">
+          <p class="text text--body-md">
+            Tabs never wrap or squash: the list scrolls horizontally and keeps every tab at
+            full width. The selected tab scrolls into view when reached by keyboard.
+          </p>
+        </div>
+      </div>
+    </div>
+    <p class="text text--caption demo-note">
+      The tablist is <code class="text text--code">overflow-x: auto</code> with
+      <code class="text text--code">--ring-width</code> of breathing room (negative-margin
+      compensated) so the focus ring is never clipped by the scroller.
+    </p>
+  </section>
+
+</main>
+
+<script>
+/* WAI-ARIA tabs keyboard layer: roving tabindex, automatic activation.
+   Visuals live entirely in tabs.css — this script only toggles
+   aria-selected / tabindex / hidden and moves focus. */
+for (const root of document.querySelectorAll("[data-tabs]")) {
+  const list = root.querySelector('[role="tablist"]');
+  if (!list) continue;
+  const enabled = () => [...list.querySelectorAll('[role="tab"]:not([disabled])')];
+
+  function select(tab, focus = true) {
+    for (const t of list.querySelectorAll('[role="tab"]')) {
+      const on = t === tab;
+      t.setAttribute("aria-selected", String(on));
+      t.tabIndex = on ? 0 : -1;
+      const panelId = t.getAttribute("aria-controls");
+      const panel = panelId ? document.getElementById(panelId) : null;
+      if (panel) {
+        panel.hidden = !on;
+        if (on && tab.id) panel.setAttribute("aria-labelledby", tab.id);
+      }
+    }
+    if (focus) {
+      tab.focus();
+      tab.scrollIntoView({ block: "nearest", inline: "nearest" });
+    }
+  }
+
+  /* Normalize initial roving tabindex. */
+  const current = list.querySelector('[aria-selected="true"]:not([disabled])') ?? enabled()[0];
+  if (current) select(current, false);
+
+  list.addEventListener("click", (event) => {
+    const tab = event.target.closest('[role="tab"]');
+    if (tab && !tab.disabled) select(tab, false);
+  });
+
+  list.addEventListener("keydown", (event) => {
+    const tabs = enabled();
+    const index = tabs.indexOf(document.activeElement);
+    if (index < 0) return;
+    let next = null;
+    switch (event.key) {
+      case "ArrowRight":
+        next = tabs[(index + 1) % tabs.length];
+        break;
+      case "ArrowLeft":
+        next = tabs[(index - 1 + tabs.length) % tabs.length];
+        break;
+      case "Home":
+        next = tabs[0];
+        break;
+      case "End":
+        next = tabs.at(-1);
+        break;
+      default:
+        return;
+    }
+    event.preventDefault();
+    select(next);
+  });
+}
+</script>
+
+</body>
+</html>
