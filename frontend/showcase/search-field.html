@@ -1,218 +1,269 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
-<head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>SearchField — Component Showcase</title>
-<link rel="stylesheet" href="../src/styles/tokens.css">
-<link rel="stylesheet" href="../src/styles/typography.css">
-<link rel="stylesheet" href="../src/styles/separator.css">
-<link rel="stylesheet" href="../src/styles/form-field.css">
-<link rel="stylesheet" href="../src/styles/input.css">
-<link rel="stylesheet" href="../src/styles/search-field.css">
-<style>
-  /* Page chrome — tokens only, no component values. */
-  *, *::before, *::after { box-sizing: border-box; }
-  body {
-    margin: 0;
-    background: var(--background);
-    color: var(--foreground);
-    font-family: var(--font-sans);
-    -webkit-font-smoothing: antialiased;
-  }
-  .container { max-width: var(--doc-container-max); margin: 0 auto; padding: 0 var(--space-6); }
-  .page-head { padding: var(--space-16) 0 var(--space-8); border-bottom: var(--border-width) solid var(--border); }
-  .page-head .text--overline { color: var(--primary); display: block; margin-bottom: var(--space-3); }
-  .page-head p { margin: var(--space-4) 0 0; max-width: 64ch; }
-  .demo-block { padding: var(--space-8) 0; }
-  .demo-block > .text--h5 { margin-bottom: var(--space-6); }
-  .demo-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(var(--doc-grid-min-card), 1fr)); gap: var(--space-8); align-items: start; }
-  .demo-note { margin-top: var(--space-4); max-width: 72ch; color: var(--muted-foreground); }
-  .demo-caption { margin-bottom: var(--space-2); color: var(--caption-foreground); }
-</style>
-</head>
-<body>
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>SearchField — Component Showcase</title>
+    <link rel="stylesheet" href="../src/styles/tokens.css" />
+    <link rel="stylesheet" href="../src/styles/typography.css" />
+    <link rel="stylesheet" href="../src/styles/form-field.css" />
+    <link rel="stylesheet" href="../src/styles/input.css" />
+    <link rel="stylesheet" href="../src/styles/search-field.css" />
+    <style>
+      *,
+      *::before,
+      *::after {
+        box-sizing: border-box;
+      }
 
-<header class="page-head">
-  <div class="container">
-    <span class="text text--overline">Component</span>
-    <h1 class="text text--h1">SearchField</h1>
-    <p class="text text--body-md">
-      Input with a search dialect, not a new language: the chrome, sizes, states,
-      and clear control are Input's own classes (<code class="text text--code">.input-wrap</code>,
-      <code class="text text--code">.input</code>, <code class="text text--code">.input__icon</code>,
-      <code class="text text--code">.input__clear</code>). This component adds only the shortcut
-      hint and the loading spinner. Empty fields show the hint; typing swaps it for
-      the clear button; loading swaps both for the spinner.
-    </p>
-  </div>
-</header>
+      body {
+        margin: unset;
+        background: var(--background);
+        color: var(--foreground);
+        font-family: var(--font-sans);
+        -webkit-font-smoothing: antialiased;
+      }
 
-<main class="container">
+      .container {
+        max-width: var(--doc-container-max);
+        margin-inline: auto;
+        padding-inline: var(--space-6);
+      }
 
-  <!-- ===================== Anatomy states ===================== -->
-  <section class="demo-block" aria-labelledby="states-heading">
-    <h2 class="text text--h5" id="states-heading">States — the trailing slot lifecycle</h2>
-    <div class="demo-grid">
+      .page-head {
+        padding-block: var(--space-16) var(--space-8);
+        border-bottom: var(--border-width) solid var(--border);
+      }
 
-      <div>
-        <p class="text text--caption demo-caption">empty — placeholder + shortcut hint</p>
-        <div class="search-field input-wrap">
-          <svg class="input__icon" viewBox="0 0 16 16" fill="none" aria-hidden="true">
-            <circle cx="7" cy="7" r="4.5" stroke="currentColor"/>
-            <path d="m10.5 10.5 3 3" stroke="currentColor" stroke-linecap="round"/>
-          </svg>
-          <input class="input" type="search" placeholder="Search the network"
-                 aria-label="Search the network">
-          <kbd class="search-field__kbd" aria-hidden="true">⌘K</kbd>
-        </div>
-      </div>
+      .page-head .text--overline {
+        display: block;
+        margin-bottom: var(--space-3);
+        color: var(--primary);
+      }
 
-      <div>
-        <p class="text text--caption demo-caption">has-value — hint yields to the clear button</p>
-        <div class="search-field input-wrap">
-          <svg class="input__icon" viewBox="0 0 16 16" fill="none" aria-hidden="true">
-            <circle cx="7" cy="7" r="4.5" stroke="currentColor"/>
-            <path d="m10.5 10.5 3 3" stroke="currentColor" stroke-linecap="round"/>
-          </svg>
-          <input class="input" type="search" value="platform engineer"
-                 placeholder="Search the network" aria-label="Search the network">
-          <kbd class="search-field__kbd" aria-hidden="true">⌘K</kbd>
-          <button class="input__clear" type="button" aria-label="Clear search">
-            <svg viewBox="0 0 16 16" fill="none" aria-hidden="true">
-              <path d="m4 4 8 8M12 4l-8 8" stroke="currentColor" stroke-linecap="round"/>
-            </svg>
-          </button>
-        </div>
-      </div>
+      .page-head p {
+        max-width: var(--doc-table-min-width);
+        margin-block: var(--space-4) unset;
+      }
 
-      <div>
-        <p class="text text--caption demo-caption">loading — spinner claims the slot, aria-busy on the input</p>
-        <div class="search-field search-field--loading input-wrap">
-          <svg class="input__icon" viewBox="0 0 16 16" fill="none" aria-hidden="true">
-            <circle cx="7" cy="7" r="4.5" stroke="currentColor"/>
-            <path d="m10.5 10.5 3 3" stroke="currentColor" stroke-linecap="round"/>
-          </svg>
-          <input class="input" type="search" value="platform engineer"
-                 placeholder="Search the network" aria-label="Search the network"
-                 aria-busy="true">
-          <kbd class="search-field__kbd" aria-hidden="true">⌘K</kbd>
-          <button class="input__clear" type="button" aria-label="Clear search">
-            <svg viewBox="0 0 16 16" fill="none" aria-hidden="true">
-              <path d="m4 4 8 8M12 4l-8 8" stroke="currentColor" stroke-linecap="round"/>
-            </svg>
-          </button>
-          <span class="search-field__spinner" role="status" aria-label="Searching"></span>
-        </div>
-      </div>
+      .showcase-section {
+        padding-block: var(--space-8);
+        border-bottom: var(--border-width) solid var(--border-soft);
+      }
 
-      <div>
-        <p class="text text--caption demo-caption">hover / focus-visible — live: hover or Tab in</p>
-        <div class="search-field input-wrap">
-          <svg class="input__icon" viewBox="0 0 16 16" fill="none" aria-hidden="true">
-            <circle cx="7" cy="7" r="4.5" stroke="currentColor"/>
-            <path d="m10.5 10.5 3 3" stroke="currentColor" stroke-linecap="round"/>
-          </svg>
-          <input class="input" type="search" placeholder="Tab into me"
-                 aria-label="Interactive focus demo">
-          <kbd class="search-field__kbd" aria-hidden="true">/</kbd>
-        </div>
-      </div>
+      .section-heading {
+        margin-bottom: var(--space-2);
+      }
 
-      <div>
-        <p class="text text--caption demo-caption">disabled — Input's :has(:disabled) rule</p>
-        <div class="search-field input-wrap">
-          <svg class="input__icon" viewBox="0 0 16 16" fill="none" aria-hidden="true">
-            <circle cx="7" cy="7" r="4.5" stroke="currentColor"/>
-            <path d="m10.5 10.5 3 3" stroke="currentColor" stroke-linecap="round"/>
-          </svg>
-          <input class="input" type="search" value="Archive is read-only"
-                 placeholder="Search the archive" aria-label="Search the archive" disabled>
-        </div>
-      </div>
+      .section-intro {
+        max-width: var(--doc-table-min-width);
+        margin-block: unset var(--space-6);
+      }
 
-      <div class="field field--error">
-        <div class="field__header"><label class="field__label" for="sf-error">Search companies</label></div>
-        <div class="field__control">
-          <div class="search-field input-wrap input-wrap--error">
-            <svg class="input__icon" viewBox="0 0 16 16" fill="none" aria-hidden="true">
-              <circle cx="7" cy="7" r="4.5" stroke="currentColor"/>
-              <path d="m10.5 10.5 3 3" stroke="currentColor" stroke-linecap="round"/>
-            </svg>
-            <input class="input" id="sf-error" type="search" value="a"
-                   placeholder="At least 3 characters" aria-invalid="true"
-                   aria-describedby="sf-error-error">
-            <button class="input__clear" type="button" aria-label="Clear search">
-              <svg viewBox="0 0 16 16" fill="none" aria-hidden="true">
-                <path d="m4 4 8 8M12 4l-8 8" stroke="currentColor" stroke-linecap="round"/>
-              </svg>
-            </button>
-          </div>
-        </div>
-        <p class="field__error" id="sf-error-error" role="alert">
-          Keep typing — matches start at 3 characters.
+      .state-stack {
+        display: grid;
+        gap: var(--space-4);
+        max-width: var(--doc-table-min-width);
+      }
+
+      .state-card,
+      .mapping-card {
+        padding: var(--space-6);
+        border: var(--border-width) solid var(--border);
+        border-radius: var(--radius-lg);
+        background: var(--card);
+      }
+
+      .state-card__name {
+        display: block;
+        margin-bottom: var(--space-4);
+        color: var(--primary);
+      }
+
+      .mapping-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(var(--doc-grid-min-card), 1fr));
+        gap: var(--space-4);
+      }
+
+      .mapping-card p {
+        margin: unset;
+      }
+
+      .token-stack {
+        display: grid;
+        gap: var(--space-1);
+        margin-top: var(--space-2);
+        color: var(--muted-foreground);
+      }
+    </style>
+  </head>
+  <body>
+    <header class="page-head">
+      <div class="container">
+        <span class="text text--overline">Component</span>
+        <h1 class="text text--h1">SearchField</h1>
+        <p class="text text--body-md">
+          Eight explicit search states built directly from Input. Search adds only its icon,
+          shortcut hint, clear action, and loading indicator; field chrome and semantics remain
+          shared.
         </p>
       </div>
+    </header>
 
-    </div>
-    <p class="text text--caption demo-note">
-      The slot lifecycle is pure CSS: <code class="text text--code">:placeholder-shown</code>
-      toggles hint vs clear, <code class="text text--code">.search-field--loading</code> overrides
-      both with the spinner. The clear control is a real
-      <code class="text text--code">&lt;button aria-label="Clear search"&gt;</code> — Tab to it
-      and the token focus ring appears.
-    </p>
-  </section>
+    <main class="container">
+      <section class="showcase-section" aria-labelledby="states-heading">
+        <h2 class="text text--h4 section-heading" id="states-heading">Complete state matrix</h2>
+        <p class="text text--body-sm text--muted section-intro">
+          Each state retains the search icon and native search input. Helper and validation text
+          come from FormField so the composition can be compared directly with Input.
+        </p>
 
-  <hr class="separator separator--horizontal separator--subtle" role="presentation">
+        <div class="state-stack">
+          <article class="state-card">
+            <span class="state-card__name text text--overline">Empty · shortcut hint</span>
+            <div class="field">
+              <div class="field__header"><label class="field__label" for="search-empty">Global search</label></div>
+              <div class="field__control">
+                <div class="search-field input-wrap">
+                  <svg class="input__icon" viewBox="0 0 16 16" fill="none" aria-hidden="true"><circle cx="7" cy="7" r="4.5" stroke="currentColor" /><path d="m10.5 10.5 3 3" stroke="currentColor" stroke-linecap="round" /></svg>
+                  <input class="input" id="search-empty" type="search" placeholder="Search people, companies, and roles" aria-describedby="search-empty-help" />
+                  <kbd class="search-field__kbd" aria-hidden="true">⌘K</kbd>
+                </div>
+              </div>
+              <p class="field__description" id="search-empty-help">Search across the active tenant.</p>
+            </div>
+          </article>
 
-  <!-- ===================== Sizes ===================== -->
-  <section class="demo-block" aria-labelledby="sizes-heading">
-    <h2 class="text text--h5" id="sizes-heading">Sizes — Input's own size classes</h2>
-    <div class="demo-grid">
-      <div>
-        <p class="text text--caption demo-caption">sm — .input-wrap--sm</p>
-        <div class="search-field input-wrap input-wrap--sm">
-          <svg class="input__icon" viewBox="0 0 16 16" fill="none" aria-hidden="true">
-            <circle cx="7" cy="7" r="4.5" stroke="currentColor"/>
-            <path d="m10.5 10.5 3 3" stroke="currentColor" stroke-linecap="round"/>
-          </svg>
-          <input class="input" type="search" placeholder="Filter members" aria-label="Filter members">
+          <article class="state-card">
+            <span class="state-card__name text text--overline">Hover</span>
+            <div class="field">
+              <div class="field__header"><label class="field__label" for="search-hover">Search members</label></div>
+              <div class="field__control">
+                <div class="search-field input-wrap is-hover">
+                  <svg class="input__icon" viewBox="0 0 16 16" fill="none" aria-hidden="true"><circle cx="7" cy="7" r="4.5" stroke="currentColor" /><path d="m10.5 10.5 3 3" stroke="currentColor" stroke-linecap="round" /></svg>
+                  <input class="input" id="search-hover" type="search" placeholder="Name or email" aria-describedby="search-hover-help" />
+                  <kbd class="search-field__kbd" aria-hidden="true">/</kbd>
+                </div>
+              </div>
+              <p class="field__description" id="search-hover-help">Hover is inherited from Input's strong border treatment.</p>
+            </div>
+          </article>
+
+          <article class="state-card">
+            <span class="state-card__name text text--overline">Focus-visible</span>
+            <div class="field field--focused">
+              <div class="field__header"><label class="field__label" for="search-focus">Search jobs</label></div>
+              <div class="field__control">
+                <div class="search-field input-wrap is-focus">
+                  <svg class="input__icon" viewBox="0 0 16 16" fill="none" aria-hidden="true"><circle cx="7" cy="7" r="4.5" stroke="currentColor" /><path d="m10.5 10.5 3 3" stroke="currentColor" stroke-linecap="round" /></svg>
+                  <input class="input" id="search-focus" type="search" placeholder="Title or skill" aria-describedby="search-focus-help" />
+                  <kbd class="search-field__kbd" aria-hidden="true">⌘K</kbd>
+                </div>
+              </div>
+              <p class="field__description" id="search-focus-help">Focus uses the same border and semantic ring as Input.</p>
+            </div>
+          </article>
+
+          <article class="state-card">
+            <span class="state-card__name text text--overline">Typing · clear action</span>
+            <div class="field field--focused">
+              <div class="field__header"><label class="field__label" for="search-typing">Search network</label></div>
+              <div class="field__control">
+                <div class="search-field input-wrap is-focus">
+                  <svg class="input__icon" viewBox="0 0 16 16" fill="none" aria-hidden="true"><circle cx="7" cy="7" r="4.5" stroke="currentColor" /><path d="m10.5 10.5 3 3" stroke="currentColor" stroke-linecap="round" /></svg>
+                  <input class="input" id="search-typing" type="search" value="platform eng" placeholder="Search the network" aria-describedby="search-typing-help" />
+                  <button class="input__clear" type="button" aria-label="Clear network search"><svg viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="m4 4 8 8M12 4l-8 8" stroke="currentColor" stroke-linecap="round" /></svg></button>
+                </div>
+              </div>
+              <p class="field__description" id="search-typing-help">Typed text replaces the shortcut hint with a clear action.</p>
+            </div>
+          </article>
+
+          <article class="state-card">
+            <span class="state-card__name text text--overline">Has value</span>
+            <div class="field field--filled">
+              <div class="field__header"><label class="field__label" for="search-value">Search companies</label></div>
+              <div class="field__control">
+                <div class="search-field input-wrap">
+                  <svg class="input__icon" viewBox="0 0 16 16" fill="none" aria-hidden="true"><circle cx="7" cy="7" r="4.5" stroke="currentColor" /><path d="m10.5 10.5 3 3" stroke="currentColor" stroke-linecap="round" /></svg>
+                  <input class="input" id="search-value" type="search" value="Northwind Labs" placeholder="Search companies" aria-describedby="search-value-help" />
+                  <button class="input__clear" type="button" aria-label="Clear company search"><svg viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="m4 4 8 8M12 4l-8 8" stroke="currentColor" stroke-linecap="round" /></svg></button>
+                </div>
+              </div>
+              <p class="field__description" id="search-value-help">Committed text retains the same clear affordance.</p>
+            </div>
+          </article>
+
+          <article class="state-card">
+            <span class="state-card__name text text--overline">Loading</span>
+            <div class="field">
+              <div class="field__header"><label class="field__label" for="search-loading">Search talent</label></div>
+              <div class="field__control">
+                <div class="search-field search-field--loading input-wrap">
+                  <svg class="input__icon" viewBox="0 0 16 16" fill="none" aria-hidden="true"><circle cx="7" cy="7" r="4.5" stroke="currentColor" /><path d="m10.5 10.5 3 3" stroke="currentColor" stroke-linecap="round" /></svg>
+                  <input class="input" id="search-loading" type="search" value="distributed systems" placeholder="Search talent" aria-busy="true" aria-describedby="search-loading-help" />
+                  <span class="search-field__spinner" role="status" aria-label="Searching"></span>
+                </div>
+              </div>
+              <p class="field__description" id="search-loading-help">Loading preserves dimensions and replaces trailing actions.</p>
+            </div>
+          </article>
+
+          <article class="state-card">
+            <span class="state-card__name text text--overline">Disabled</span>
+            <div class="field">
+              <div class="field__header"><label class="field__label" for="search-disabled">Search archive</label></div>
+              <div class="field__control">
+                <div class="search-field input-wrap">
+                  <svg class="input__icon" viewBox="0 0 16 16" fill="none" aria-hidden="true"><circle cx="7" cy="7" r="4.5" stroke="currentColor" /><path d="m10.5 10.5 3 3" stroke="currentColor" stroke-linecap="round" /></svg>
+                  <input class="input" id="search-disabled" type="search" value="Archive unavailable" disabled aria-describedby="search-disabled-help" />
+                </div>
+              </div>
+              <p class="field__description" id="search-disabled-help">Native disabled behavior and the system opacity treatment.</p>
+            </div>
+          </article>
+
+          <article class="state-card">
+            <span class="state-card__name text text--overline">Error</span>
+            <div class="field field--error">
+              <div class="field__header"><label class="field__label" for="search-error">Search by identifier</label></div>
+              <div class="field__control">
+                <div class="search-field input-wrap input-wrap--error">
+                  <svg class="input__icon" viewBox="0 0 16 16" fill="none" aria-hidden="true"><circle cx="7" cy="7" r="4.5" stroke="currentColor" /><path d="m10.5 10.5 3 3" stroke="currentColor" stroke-linecap="round" /></svg>
+                  <input class="input" id="search-error" type="search" value="a" placeholder="At least 3 characters" aria-invalid="true" aria-describedby="search-error-help search-error-message" />
+                  <button class="input__clear" type="button" aria-label="Clear identifier search"><svg viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="m4 4 8 8M12 4l-8 8" stroke="currentColor" stroke-linecap="round" /></svg></button>
+                </div>
+              </div>
+              <p class="field__description" id="search-error-help">Search starts after three characters.</p>
+              <p class="field__error" id="search-error-message" role="alert">Enter at least three characters.</p>
+            </div>
+          </article>
         </div>
-      </div>
-      <div>
-        <p class="text text--caption demo-caption">md — base</p>
-        <div class="search-field input-wrap">
-          <svg class="input__icon" viewBox="0 0 16 16" fill="none" aria-hidden="true">
-            <circle cx="7" cy="7" r="4.5" stroke="currentColor"/>
-            <path d="m10.5 10.5 3 3" stroke="currentColor" stroke-linecap="round"/>
-          </svg>
-          <input class="input" type="search" placeholder="Search jobs" aria-label="Search jobs">
-          <kbd class="search-field__kbd" aria-hidden="true">⌘K</kbd>
-        </div>
-      </div>
-      <div>
-        <p class="text text--caption demo-caption">lg — .input-wrap--lg</p>
-        <div class="search-field input-wrap input-wrap--lg">
-          <svg class="input__icon" viewBox="0 0 16 16" fill="none" aria-hidden="true">
-            <circle cx="7" cy="7" r="4.5" stroke="currentColor"/>
-            <path d="m10.5 10.5 3 3" stroke="currentColor" stroke-linecap="round"/>
-          </svg>
-          <input class="input" type="search" placeholder="Search people, companies, roles…"
-                 aria-label="Global search">
-          <kbd class="search-field__kbd" aria-hidden="true">⌘K</kbd>
-        </div>
-      </div>
-    </div>
-    <p class="text text--caption demo-note">
-      The shortcut hint is decorative (<code class="text text--code">aria-hidden</code>) — the
-      app wires the actual keystroke; the kbd only advertises it. Loading pairs with
-      <code class="text text--code">aria-busy="true"</code> on the input and a
-      <code class="text text--code">role="status"</code> spinner for announcement.
-    </p>
-  </section>
+      </section>
 
-</main>
+      <section class="showcase-section" aria-labelledby="mapping-heading">
+        <h2 class="text text--h4 section-heading" id="mapping-heading">Token map</h2>
+        <div class="mapping-grid">
+          <article class="mapping-card"><p class="text text--label">Input foundation</p><p class="text text--caption token-stack"><code class="text text--code">--background / --foreground / --input</code><code class="text text--code">--border-strong / --radius-md</code><code class="text text--code">--control-height / --input-padding-inline</code></p></article>
+          <article class="mapping-card"><p class="text text--label">Focus and validation</p><p class="text text--caption token-stack"><code class="text text--code">--primary / --ring-focus / --ring-width</code><code class="text text--code">--destructive / --ring-destructive</code><code class="text text--code">--opacity-disabled</code></p></article>
+          <article class="mapping-card"><p class="text text--label">Search additions</p><p class="text text--caption token-stack"><code class="text text--code">--icon-size-sm / --caption-foreground</code><code class="text text--code">--muted / --border / --radius-xs</code><code class="text text--code">--space-0-5 / --space-1</code></p></article>
+          <article class="mapping-card"><p class="text text--label">Loading motion</p><p class="text text--caption token-stack"><code class="text text--code">--duration-loading / --ease-linear</code><code class="text text--code">--motion-rotation-full</code><code class="text text--code">--muted-foreground</code></p></article>
+        </div>
+      </section>
+    </main>
 
-</body>
+    <script>
+      for (const button of document.querySelectorAll(".input__clear")) {
+        button.addEventListener("click", () => {
+          const field = button.closest(".search-field");
+          const input = field?.querySelector(".input");
+          if (input instanceof HTMLInputElement) {
+            input.value = "";
+            input.focus();
+          }
+        });
+      }
+    </script>
+  </body>
 </html>

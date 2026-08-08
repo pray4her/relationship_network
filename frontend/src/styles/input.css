@@ -63,6 +63,8 @@
      filled         no visual change by design: filled text is already
                     --foreground; the :placeholder-shown pseudo-class is
                     used only to auto-hide the clear button
+     showcase       .is-hover / .is-focus-visible mirror the native states for
+                    static documentation and visual regression tests
 
    REPORTED TOKEN GAPS (not silently invented — flagged for tokens.css):
    •  None open. Resolved: hover border → --border-strong; invalid focus
@@ -125,11 +127,14 @@
 
 /* ===== States (read from the control via :has / :focus-within) ===== */
 
-.input-wrap:hover {
+.input-wrap:not(:has(.input:disabled)):hover,
+.input-wrap.is-hover {
   border-color: var(--border-strong);
 }
 
-.input-wrap:focus-within {
+.input-wrap:focus-within,
+.input-wrap.is-focus-visible,
+.input-wrap.is-focus {
   border-color: var(--primary);
   box-shadow: 0 0 0 var(--ring-width) var(--ring-focus);
 }
@@ -153,6 +158,8 @@
 
 /* Invalid focus: swap the coral ring for the destructive one. */
 .input-wrap--error:focus-within,
+.input-wrap--error.is-focus-visible,
+.input-wrap--error.is-focus,
 .input-wrap:has(.input[aria-invalid="true"]):focus-within {
   box-shadow: 0 0 0 var(--ring-width) var(--ring-destructive);
 }

@@ -90,6 +90,11 @@
                     --icon-size-sm at --muted-foreground, margin-inline-start
                     auto, rotate(180deg) when expanded (geometric constant,
                     not a tokenized value), transform --duration-fast
+     active parent  derived with :has() when a descendant carries
+                    aria-current="page" (or forced with .is-parent-active):
+                    color --foreground + a quiet --selected-border edge at
+                    --border-width; the child retains the stronger selected
+                    fill + --border-width-strong edge
      sublist        visibility driven by [aria-expanded="true"] on the
                     parent button (attribute-driven, no parallel class);
                     margin-top --space-1, gap --space-1
@@ -290,6 +295,12 @@
   background: var(--selected-bg);
   color: var(--foreground);
   box-shadow: inset var(--border-width-strong) 0 0 var(--selected-border);
+}
+.sidebar__link.is-parent-active,
+.sidebar__list > li:has(> .sidebar__sublist .sidebar__link[aria-current="page"])
+  > .sidebar__link {
+  color: var(--foreground);
+  box-shadow: inset var(--border-width) 0 0 var(--selected-border);
 }
 .sidebar__link[aria-current="page"]:focus-visible,
 .sidebar__link[aria-current="page"].is-focus-visible {

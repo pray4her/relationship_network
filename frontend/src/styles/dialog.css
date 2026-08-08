@@ -1,0 +1,347 @@
+/* ============================================================================
+   Dialog / Modal
+   Token mapping — every visual value below references tokens.css, nothing else.
+
+   A modal surface built on the native <dialog> element. The behaviour layer
+   MUST open it with showModal(), never by adding `open` directly: the browser's
+   top layer then makes the rest of the document inert. The controller adds an
+   explicit Tab loop, chooses initial focus, returns focus to the opener, and
+   handles Escape through the native `cancel` event. Set
+   data-escape-close="false" only when dismissal would be inappropriate; set
+   data-overlay-close="false" when an explicit decision is required.
+
+   Anatomy (markup contract):
+     .dialog                 native <dialog>; size + variant + lifecycle class
+     .dialog__overlay        full-viewport scrim; aria-hidden="true"
+     .dialog__surface        modal surface; tabindex="-1" fallback focus target
+     .dialog__header         heading cluster + composed IconButton close control
+     .dialog__heading        title / description stack
+     .dialog__title          heading referenced by aria-labelledby
+     .dialog__description    copy referenced by aria-describedby
+     .dialog__body           scrollable main content
+     .dialog__footer         action row containing composed Button components
+     .dialog__close          alignment hook only; also data-dialog-close
+
+   SEMANTICS / VARIANTS
+     .dialog--standard       native <dialog> supplies the implied dialog role;
+                             routine content or a multi-step task
+     .dialog--confirmation   role="alertdialog" when an immediate decision is
+                             required; initial focus belongs on the safe action
+     destructive confirmation
+     .dialog--destructive    role="alertdialog"; colors the surface border +
+                             title with --destructive and uses a composed
+                             .btn--destructive for the committing action
+     modal state             aria-modal="true" while showModal() supplies native
+                             background inertness and top-layer containment
+
+   PROPERTY → TOKEN
+   ───────────────────────────────────────────────────────────────────────────
+   MODAL HOST
+     viewport inset   padding --space-6; the surface max-height is 100% of the
+                      resulting content box, so it stays one --space-6 inset
+                      from each viewport edge without a raw viewport offset
+     layering         --z-popover (tokens.css overlay rung, above dropdowns);
+                      native showModal() additionally places the host in the
+                      browser top layer
+   OVERLAY
+     fill             --scrim (ink at the system-approved overlay alpha)
+     motion           opacity over --duration-normal --ease-standard;
+                      closing switches to --duration-fast
+   SURFACE
+     background       --popover; text --popover-foreground
+     border           --border-width solid --border
+     shadow           --shadow-lift
+     radius           --radius-xl (largest sanctioned surface radius)
+     width            100%, capped by the selected size token composition
+     max-height       100% of the host's token-inset content box
+     motion           opacity + translate over --duration-normal
+                      --ease-standard; closing uses --duration-fast
+   SIZE → MAX WIDTH / SPACING
+     sm               max-width calc(--space-16 × 6) = 384px (Toast width
+                      precedent); header/body padding --space-4; footer
+                      padding block --space-3, inline --space-4; title
+                      --text-title-md; body --text-body-sm
+     md (default)     max-width calc(--space-16 × 8) = 512px (Popover max
+                      precedent); header/body padding --space-6; footer
+                      padding block --space-4, inline --space-6; title
+                      --text-title-lg; body --text-body-md
+     lg               max-width calc(--space-16 × 12) = 768px; header/body
+                      padding --space-8; footer padding block --space-6,
+                      inline --space-8; title --text-title-lg; body
+                      --text-body-md
+   HEADER
+     padding          --space-6
+     layout gap       --space-4 between heading cluster and close control
+     heading gap      --space-2 between title and description
+     divider          --border-width solid --border-soft
+   TEXT
+     title            --font-sans; --text-title-lg (+ line-height);
+                      --font-weight-medium; --foreground
+     destructive      title color --destructive
+     description      --font-sans; --text-body-sm (+ line-height);
+                      --font-weight-regular; --muted-foreground
+     body             --font-sans; --text-body-md (+ line-height);
+                      --font-weight-regular; --foreground-body
+   BODY
+     padding          --space-6
+     content gap      --space-4
+   FOOTER
+     padding          block --space-4, inline --space-6
+     action gap       --space-3; flex-wrap provides responsive reflow
+     background       --surface-soft
+     divider          --border-width solid --border-soft
+     buttons          existing .btn component; Dialog adds no button visuals
+   CLOSE CONTROL
+     existing .icon-btn + .icon--muted + .icon--sm; .dialog__close only
+     supplies flex alignment, so focus/hover/disabled remain IconButton-owned
+   LIFECYCLE
+     closed           native <dialog> without [open] is absent from rendering,
+                      accessibility tree, and tab order
+     opening          overlay + surface opacity --opacity-disabled; surface
+                      translated by --space-2 toward the viewport floor
+     open             full opacity; surface translate 0
+     closing          same half-opacity / --space-2 retreat, using
+                      --duration-fast before native close() removes the host
+   FOCUS
+     controls         Button / IconButton keep their shared
+                      --ring-width / --ring-focus focus-visible treatment
+     surface fallback box-shadow with --ring-width / --ring-focus at
+                      --radius-xl when no focusable child exists
+   REDUCED MOTION     overlay and surface transitions removed; transforms
+                      reset so open/close becomes immediate.
+
+   TOKEN NOTES: no new tokens were required. The modal reuses the sanctioned
+   overlay rung --z-popover; native top-layer placement guarantees it remains
+   above ordinary popovers. Widths are named size variants composed solely from
+   --space-16, following the existing Toast and Popover precedents.
+   ============================================================================ */
+
+.dialog {
+  box-sizing: border-box;
+  position: fixed;
+  inset: 0;
+  z-index: var(--z-popover);
+  width: 100%;
+  height: 100%;
+  max-width: none;
+  max-height: none;
+  margin: 0;
+  padding: var(--space-6);
+  border: 0;
+  background: transparent;
+  color: var(--popover-foreground);
+  overflow: hidden;
+}
+
+.dialog[open] {
+  display: grid;
+  place-items: center;
+}
+
+.dialog::backdrop {
+  background: transparent;
+}
+
+.dialog__overlay {
+  position: absolute;
+  inset: 0;
+  background: var(--scrim);
+  opacity: 0;
+  transition: opacity var(--duration-normal) var(--ease-standard);
+}
+
+.dialog__surface {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  max-width: calc(var(--space-16) * 8);
+  max-height: 100%;
+  overflow: hidden;
+  border: var(--border-width) solid var(--border);
+  border-radius: var(--radius-xl);
+  background: var(--popover);
+  color: var(--popover-foreground);
+  box-shadow: var(--shadow-lift);
+  opacity: 0;
+  translate: 0 var(--space-2);
+  transition:
+    opacity var(--duration-normal) var(--ease-standard),
+    translate var(--duration-normal) var(--ease-standard),
+    box-shadow var(--duration-fast) var(--ease-standard);
+}
+
+/* ===== Sizes ===== */
+
+.dialog--sm .dialog__surface {
+  max-width: calc(var(--space-16) * 6);
+}
+
+.dialog--md .dialog__surface {
+  max-width: calc(var(--space-16) * 8);
+}
+
+.dialog--lg .dialog__surface {
+  max-width: calc(var(--space-16) * 12);
+}
+
+/* ===== Anatomy ===== */
+
+.dialog__header {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-4);
+  padding: var(--space-6);
+  border-bottom: var(--border-width) solid var(--border-soft);
+}
+
+.dialog__heading {
+  display: grid;
+  flex: 1 1 auto;
+  gap: var(--space-2);
+  min-width: 0;
+}
+
+.dialog__title {
+  margin: 0;
+  font-family: var(--font-sans);
+  font-size: var(--text-title-lg);
+  font-weight: var(--font-weight-medium);
+  line-height: var(--text-title-lg--line-height);
+  color: var(--foreground);
+}
+
+.dialog--destructive .dialog__title {
+  color: var(--destructive);
+}
+
+.dialog--destructive .dialog__surface {
+  border-color: var(--destructive);
+}
+
+.dialog__description {
+  margin: 0;
+  font-family: var(--font-sans);
+  font-size: var(--text-body-sm);
+  font-weight: var(--font-weight-regular);
+  line-height: var(--text-body-sm--line-height);
+  color: var(--muted-foreground);
+}
+
+.dialog__close {
+  flex: none;
+  margin-inline-start: auto;
+}
+
+.dialog__body {
+  display: grid;
+  gap: var(--space-4);
+  min-height: 0;
+  padding: var(--space-6);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  font-family: var(--font-sans);
+  font-size: var(--text-body-md);
+  font-weight: var(--font-weight-regular);
+  line-height: var(--text-body-md--line-height);
+  color: var(--foreground-body);
+}
+
+.dialog__body > * {
+  margin: 0;
+}
+
+.dialog__footer {
+  display: flex;
+  flex: none;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: var(--space-3);
+  padding-block: var(--space-4);
+  padding-inline: var(--space-6);
+  border-top: var(--border-width) solid var(--border-soft);
+  background: var(--surface-soft);
+}
+
+/* Size modifiers deepen the same spacing scale; no component-local values. */
+
+.dialog--sm .dialog__header,
+.dialog--sm .dialog__body {
+  padding: var(--space-4);
+}
+
+.dialog--sm .dialog__footer {
+  padding-block: var(--space-3);
+  padding-inline: var(--space-4);
+}
+
+.dialog--sm .dialog__title {
+  font-size: var(--text-title-md);
+  line-height: var(--text-title-md--line-height);
+}
+
+.dialog--sm .dialog__body {
+  font-size: var(--text-body-sm);
+  line-height: var(--text-body-sm--line-height);
+}
+
+.dialog--lg .dialog__header,
+.dialog--lg .dialog__body {
+  padding: var(--space-8);
+}
+
+.dialog--lg .dialog__footer {
+  padding-block: var(--space-6);
+  padding-inline: var(--space-8);
+}
+
+/* ===== Focus fallback ===== */
+
+.dialog__surface:focus-visible,
+.dialog__surface.is-focus-visible {
+  outline: none;
+  box-shadow:
+    var(--shadow-lift),
+    0 0 0 var(--ring-width) var(--ring-focus);
+}
+
+/* ===== Lifecycle ===== */
+
+.dialog--opening .dialog__overlay,
+.dialog--closing .dialog__overlay {
+  opacity: var(--opacity-disabled);
+}
+
+.dialog--opening .dialog__surface,
+.dialog--closing .dialog__surface {
+  opacity: var(--opacity-disabled);
+  translate: 0 var(--space-2);
+}
+
+.dialog--open .dialog__overlay {
+  opacity: 1;
+}
+
+.dialog--open .dialog__surface {
+  opacity: 1;
+  translate: 0;
+}
+
+.dialog--closing .dialog__overlay,
+.dialog--closing .dialog__surface {
+  transition-duration: var(--duration-fast);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .dialog__overlay,
+  .dialog__surface {
+    transition: none;
+  }
+
+  .dialog__surface,
+  .dialog--opening .dialog__surface,
+  .dialog--closing .dialog__surface,
+  .dialog--open .dialog__surface {
+    translate: 0;
+  }
+}

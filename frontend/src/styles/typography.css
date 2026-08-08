@@ -46,6 +46,24 @@
    Letter-spacing: only display sizes and caption-up ship --letter-spacing
    tokens; every other style inherits `normal` (no raw value set).
 
+   CONTEXT → TOKEN (composes with every role above)
+   ─────────────────────────────────────────────────────────────────────────
+   normal       the role's own semantic color listed above
+   muted        .text--muted → --muted-foreground
+   inverse      .text--inverse → --on-dark; only on --surface-dark or another
+                sanctioned dark surface
+   disabled     .text--disabled → the role's own color at
+                --opacity-disabled; disabled is not a replacement color
+   success      .text--success → --success
+   warning      .text--warning → --warning
+   destructive  .text--destructive → --destructive
+   info         .text--info → --info
+
+   Semantic feedback modifiers use the base semantic colors, matching Alert's
+   text-on-soft-surface precedent. --success-foreground / --warning-foreground /
+   --destructive-foreground / --info-foreground mean ink ON bright solid fills
+   and are intentionally not used as colored feedback text.
+
    TOKEN NOTES: the 400/500 weights and the body-lg size were reported as
    gaps by this component and are now shipped in tokens.css as
    --font-weight-regular / --font-weight-medium and --text-body-lg
@@ -181,6 +199,38 @@
   font-weight: var(--font-weight-regular);
   line-height: var(--text-code--line-height);
   color: var(--foreground-strong);
+}
+
+/* ===== Context modifiers =====
+   Kept after every role so one context class predictably overrides the role's
+   normal semantic color without duplicating its typography. */
+
+.text--muted {
+  color: var(--muted-foreground);
+}
+
+.text--inverse {
+  color: var(--on-dark);
+}
+
+.text--disabled {
+  opacity: var(--opacity-disabled);
+}
+
+.text--success {
+  color: var(--success);
+}
+
+.text--warning {
+  color: var(--warning);
+}
+
+.text--destructive {
+  color: var(--destructive);
+}
+
+.text--info {
+  color: var(--info);
 }
 
 /* ===== Responsive =====

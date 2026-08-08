@@ -29,6 +29,18 @@
   .demo-caption { margin-bottom: var(--space-3); color: var(--caption-foreground); }
   .demo-stack { display: grid; gap: var(--space-6); max-width: var(--doc-field-max-width); }
   .demo-row { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-4); }
+  .progress-matrix {
+    display: grid;
+    grid-template-columns: var(--doc-demo-label-width) repeat(5, minmax(0, 1fr));
+    border: var(--border-width) solid var(--border);
+    border-radius: var(--radius-lg);
+    overflow: hidden;
+  }
+  .progress-matrix--patterns { grid-template-columns: var(--doc-demo-label-width) repeat(3, minmax(0, 1fr)); }
+  .progress-matrix--modes { grid-template-columns: var(--doc-demo-label-width) repeat(4, minmax(0, 1fr)); }
+  .progress-matrix__cell { display: grid; align-content: center; gap: var(--space-2); min-width: 0; padding: var(--space-4); border-inline-end: var(--border-width) solid var(--border-soft); border-block-end: var(--border-width) solid var(--border-soft); }
+  .progress-matrix__cell--head { background: var(--surface-soft); }
+  .progress-matrix__cell--label { background: var(--card); }
 </style>
 </head>
 <body>
@@ -52,7 +64,14 @@
 
   <!-- ===================== Variants ===================== -->
   <section class="demo-block" aria-labelledby="variants-heading">
-    <h2 class="text text--h5" id="variants-heading">Variants — status is meaning, not decoration</h2>
+    <h2 class="text text--h5" id="variants-heading">Full state matrix</h2>
+    <h3 class="text text--title-sm" style="margin-bottom: var(--space-4);">Semantic variant × determinate value</h3>
+    <div class="progress-matrix" id="progress-value-matrix"></div>
+    <h3 class="text text--title-sm" style="margin-block: var(--space-8) var(--space-4);">Size × labeling pattern</h3>
+    <div class="progress-matrix progress-matrix--patterns" id="progress-pattern-matrix"></div>
+    <h3 class="text text--title-sm" style="margin-block: var(--space-8) var(--space-4);">Indeterminate × semantic variant</h3>
+    <div class="progress-matrix progress-matrix--modes" id="progress-mode-matrix"></div>
+    <h3 class="text text--title-sm" style="margin-block: var(--space-8) var(--space-4);">Reference examples</h3>
     <div class="demo-stack">
       <div class="progress-field" role="progressbar" aria-labelledby="v-default" aria-valuemin="0" aria-valuemax="100" aria-valuenow="64" style="--_value: 64%;">
         <div class="progress-field__head">
@@ -222,6 +241,37 @@
   </section>
 
 </main>
+
+<script>
+  const progressVariants = ["default", "success", "warning", "destructive"];
+  const progressValues = [0, 25, 50, 75, 100];
+  const progressSizes = ["sm", "md", "lg"];
+  const progressPatterns = ["bar only", "label + bar", "label + percentage"];
+  const progressCell = (content, classes = "") => `<div class="progress-matrix__cell ${classes}">${content}</div>`;
+  const progressClass = (variant, size = "md") => `${variant === "default" ? "" : ` progress--${variant}`}${size === "md" ? "" : ` progress--${size}`}`;
+  const progressBar = (variant, value, size = "md", indeterminate = false) => `<div class="progress${progressClass(variant, size)}${indeterminate ? " progress--indeterminate" : ""}" role="progressbar" aria-label="${variant} progress${indeterminate ? ", indeterminate" : `, ${value}%`}" aria-valuemin="0" aria-valuemax="100" ${indeterminate ? "" : `aria-valuenow="${value}"`} style="--_value: ${value}%;"><div class="progress__track"><div class="progress__indicator"></div></div></div>`;
+  const valueMatrix = document.querySelector("#progress-value-matrix");
+  valueMatrix.innerHTML = progressCell("<span class='text text--overline'>Variant</span>", "progress-matrix__cell--head") +
+    progressValues.map((value) => progressCell(`<span class="text text--overline">${value}%</span>`, "progress-matrix__cell--head")).join("") +
+    progressVariants.map((variant) => progressCell(`<strong class="text text--body-sm">${variant}</strong>`, "progress-matrix__cell--label") +
+      progressValues.map((value) => progressCell(progressBar(variant, value))).join("")).join("");
+
+  const patternMatrix = document.querySelector("#progress-pattern-matrix");
+  patternMatrix.innerHTML = progressCell("<span class='text text--overline'>Size</span>", "progress-matrix__cell--head") +
+    progressPatterns.map((pattern) => progressCell(`<span class="text text--overline">${pattern}</span>`, "progress-matrix__cell--head")).join("") +
+    progressSizes.map((size) => progressCell(`<strong class="text text--body-sm">${size}</strong>`, "progress-matrix__cell--label") +
+      progressPatterns.map((pattern) => {
+        if (pattern === "bar only") return progressCell(progressBar("default", 50, size));
+        const value = pattern === "label + percentage" ? `<span class="progress-field__value">50%</span>` : "";
+        return progressCell(`<div class="progress-field${size === "md" ? "" : ` progress-field--${size}`}" role="progressbar" aria-label="${pattern}" aria-valuemin="0" aria-valuemax="100" aria-valuenow="50" style="--_value: 50%;"><div class="progress-field__head"><span class="progress-field__label">Profiles matched</span>${value}</div><div class="progress__track"><div class="progress__indicator"></div></div></div>`);
+      }).join("")).join("");
+
+  const modeMatrix = document.querySelector("#progress-mode-matrix");
+  modeMatrix.innerHTML = progressCell("<span class='text text--overline'>Mode</span>", "progress-matrix__cell--head") +
+    progressVariants.map((variant) => progressCell(`<span class="text text--overline">${variant}</span>`, "progress-matrix__cell--head")).join("") +
+    progressCell("<strong class='text text--body-sm'>indeterminate</strong>", "progress-matrix__cell--label") +
+    progressVariants.map((variant) => progressCell(progressBar(variant, 0, "md", true))).join("");
+</script>
 
 <script>
   /* Live demo: one custom property drives the fill; ARIA mirrors it. */

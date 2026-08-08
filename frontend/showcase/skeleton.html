@@ -31,6 +31,15 @@
   .demo-stack { display: grid; gap: var(--space-3); max-width: var(--doc-field-max-width); }
   .demo-row { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-4); }
   .demo-cols { display: grid; grid-template-columns: repeat(auto-fill, minmax(var(--doc-grid-min-card), 1fr)); gap: var(--space-6); align-items: start; }
+  .loading-matrix { display: grid; grid-template-columns: var(--doc-demo-label-width) repeat(3, minmax(0, 1fr)); border: var(--border-width) solid var(--border); border-radius: var(--radius-lg); overflow: hidden; }
+  .loading-matrix__cell { display: grid; align-content: center; gap: var(--space-2); min-width: 0; min-height: var(--space-20); padding: var(--space-4); border-inline-end: var(--border-width) solid var(--border-soft); border-block-end: var(--border-width) solid var(--border-soft); }
+  .loading-matrix__cell--head { min-height: auto; background: var(--surface-soft); }
+  .loading-matrix__cell--label { background: var(--card); }
+  .loading-pattern { display: flex; align-items: center; gap: var(--space-3); min-width: 0; }
+  .loading-pattern--stack { display: grid; gap: var(--space-2); }
+  .loading-pattern__grow { display: grid; flex: 1; gap: var(--space-2); min-width: 0; }
+  .loading-pattern--card { padding: var(--space-4); border: var(--border-width) solid var(--border); border-radius: var(--radius-lg); }
+  .loading-pattern--row { padding-block: var(--space-3); border-block: var(--border-width) solid var(--border-soft); }
 </style>
 </head>
 <body>
@@ -54,10 +63,18 @@
 
 <main class="container">
 
+  <section class="demo-block" aria-labelledby="full-matrix-heading">
+    <h2 class="text text--h5" id="full-matrix-heading">Full loading state matrix — context × motion treatment</h2>
+    <div class="loading-matrix" id="skeleton-state-matrix"></div>
+    <p class="text text--caption demo-note">Animated is the default loading treatment. Static suppresses the sheen intentionally; reduced-motion mirrors the system media-query result so all three outcomes remain visible in one capture.</p>
+  </section>
+
+  <hr class="separator separator--horizontal separator--subtle" role="presentation">
+
   <!-- ===================== Shapes & composable sizes ===================== -->
   <section class="demo-block" aria-labelledby="shapes-heading">
     <h2 class="text text--h5" id="shapes-heading">Shapes &amp; composable sizes</h2>
-    <div class="demo-stack" aria-busy="true" aria-label="Loading shape specimens">
+    <section class="demo-stack" aria-busy="true" aria-label="Loading shape specimens">
       <div class="skeleton" aria-hidden="true"></div>
       <div class="skeleton" aria-hidden="true" style="--_h: var(--space-24); --_r: var(--radius-lg);"></div>
       <div class="skeleton skeleton--text" aria-hidden="true"></div>
@@ -68,7 +85,7 @@
         <div class="skeleton skeleton--circle" aria-hidden="true" style="--_w: var(--avatar-size-lg); --_h: var(--avatar-size-lg);"></div>
         <div class="skeleton skeleton--circle" aria-hidden="true" style="--_w: var(--icon-button-size); --_h: var(--icon-button-size);"></div>
       </div>
-    </div>
+    </section>
     <p class="text text--caption demo-note">
       Three shapes, three aliases: rectangle (base, control-height block at
       <code class="text text--code">--radius-md</code>), text (the body-md line box composed as
@@ -86,12 +103,12 @@
   <!-- ===================== Text block ===================== -->
   <section class="demo-block" aria-labelledby="textblock-heading">
     <h2 class="text text--h5" id="textblock-heading">Example — text block</h2>
-    <div class="demo-stack" aria-busy="true" aria-label="Loading article summary">
+    <section class="demo-stack" aria-busy="true" aria-label="Loading article summary">
       <div class="skeleton skeleton--text" aria-hidden="true" style="--_h: calc(var(--text-title-lg) * var(--text-title-lg--line-height)); --_w: calc(100% - var(--space-16));"></div>
       <div class="skeleton skeleton--text" aria-hidden="true"></div>
       <div class="skeleton skeleton--text" aria-hidden="true"></div>
       <div class="skeleton skeleton--text" aria-hidden="true" style="--_w: calc(100% - var(--space-24));"></div>
-    </div>
+    </section>
     <p class="text text--caption demo-note">
       Line widths step down by spacing tokens (<code class="text text--code">--space-16</code>,
       <code class="text text--code">--space-24</code>) the way real paragraphs rag; the lead line
@@ -104,13 +121,13 @@
   <!-- ===================== Avatar + text ===================== -->
   <section class="demo-block" aria-labelledby="avatar-heading">
     <h2 class="text text--h5" id="avatar-heading">Example — avatar + text</h2>
-    <div class="demo-row" style="align-items: flex-start;" aria-busy="true" aria-label="Loading member">
+    <section class="demo-row" style="align-items: flex-start;" aria-busy="true" aria-label="Loading member">
       <div class="skeleton skeleton--circle" aria-hidden="true"></div>
       <div class="demo-stack" style="flex: 1; gap: var(--space-2);">
         <div class="skeleton skeleton--text" aria-hidden="true" style="--_w: calc(100% - var(--space-16));"></div>
         <div class="skeleton skeleton--text" aria-hidden="true" style="--_h: calc(var(--text-body-sm) * var(--text-body-sm--line-height)); --_w: calc(100% - var(--space-24));"></div>
       </div>
-    </div>
+    </section>
     <p class="text text--caption demo-note">
       The disc is the circle shape at its Avatar-scale default; the two lines compose the
       body-md and body-sm line boxes — the exact pair a loaded member row renders.
@@ -123,7 +140,7 @@
   <section class="demo-block" aria-labelledby="card-heading">
     <h2 class="text text--h5" id="card-heading">Example — card</h2>
     <div class="demo-cols">
-      <div class="card card--outlined" aria-busy="true" aria-label="Loading company card">
+      <section class="card card--outlined" aria-busy="true" aria-label="Loading company card">
         <div class="card__header">
           <div class="skeleton skeleton--circle" aria-hidden="true"></div>
           <div class="demo-stack" style="flex: 1; gap: var(--space-2);">
@@ -136,13 +153,13 @@
           <div class="skeleton" aria-hidden="true" style="--_h: var(--control-height); --_w: var(--space-24); --_r: var(--radius-md);"></div>
           <div class="skeleton" aria-hidden="true" style="--_h: var(--control-height); --_w: var(--space-24); --_r: var(--radius-md);"></div>
         </div>
-      </div>
-      <div class="card" aria-busy="true" aria-label="Loading feature card" style="--_bg: var(--surface-cream-strong);">
+      </section>
+      <section class="card" aria-busy="true" aria-label="Loading feature card" style="--_bg: var(--surface-cream-strong);">
         <div class="skeleton" aria-hidden="true" style="--_h: var(--icon-button-size); --_w: var(--icon-button-size); --_r: var(--radius-md);"></div>
         <div class="skeleton skeleton--text" aria-hidden="true" style="--_h: calc(var(--text-title-md) * var(--text-title-md--line-height)); --_w: calc(100% - var(--space-12));"></div>
         <div class="skeleton skeleton--text" aria-hidden="true"></div>
         <div class="skeleton skeleton--text" aria-hidden="true" style="--_w: calc(100% - var(--space-16));"></div>
-      </div>
+      </section>
     </div>
     <p class="text text--caption demo-note">
       Real Card surfaces host the placeholders. On the cream card the surface alias is
@@ -159,7 +176,7 @@
   <!-- ===================== Table row ===================== -->
   <section class="demo-block" aria-labelledby="table-heading">
     <h2 class="text text--h5" id="table-heading">Example — table rows</h2>
-    <div class="table-wrap" aria-busy="true" aria-label="Loading candidate table">
+    <section class="table-wrap" aria-busy="true" aria-label="Loading candidate table">
       <table class="table" style="min-width: var(--doc-table-min-width);">
         <thead>
           <tr>
@@ -205,7 +222,7 @@
           </tr>
         </tbody>
       </table>
-    </div>
+    </section>
     <p class="text text--caption demo-note">
       The real Table chrome (header band, dividers, radii) stays live while the body mirrors
       its cell types: xs avatar disc + name line, role line, end-aligned number, and a
@@ -233,6 +250,27 @@
   </section>
 
 </main>
+
+<script>
+  const skeletonModes = ["static", "animated", "reduced-motion"];
+  const skeletonContexts = ["single text line", "multi-line text", "avatar", "avatar + text", "card", "table row"];
+  const skeletonCell = (content, classes = "") => `<div class="loading-matrix__cell ${classes}">${content}</div>`;
+  const modeClass = (mode) => mode === "animated" ? "" : ` skeleton--${mode}`;
+  const sk = (mode, classes = "", style = "") => `<div class="skeleton${modeClass(mode)}${classes ? ` ${classes}` : ""}" aria-hidden="true"${style ? ` style="${style}"` : ""}></div>`;
+  const skeletonPattern = (context, mode) => {
+    if (context === "single text line") return sk(mode, "skeleton--text", "--_w: calc(100% - var(--space-8));");
+    if (context === "multi-line text") return `<div class="loading-pattern--stack">${sk(mode, "skeleton--text")}${sk(mode, "skeleton--text", "--_w: calc(100% - var(--space-8));")}${sk(mode, "skeleton--text", "--_w: calc(100% - var(--space-16));")}</div>`;
+    if (context === "avatar") return sk(mode, "skeleton--circle");
+    if (context === "avatar + text") return `<div class="loading-pattern">${sk(mode, "skeleton--circle")}<div class="loading-pattern__grow">${sk(mode, "skeleton--text")}${sk(mode, "skeleton--text", "--_w: calc(100% - var(--space-12));")}</div></div>`;
+    if (context === "card") return `<div class="loading-pattern--stack loading-pattern--card">${sk(mode, "", "--_h: var(--space-12);")}${sk(mode, "skeleton--text")}${sk(mode, "skeleton--text", "--_w: calc(100% - var(--space-8));")}</div>`;
+    return `<div class="loading-pattern loading-pattern--row">${sk(mode, "skeleton--circle", "--_w: var(--avatar-size-xs); --_h: var(--avatar-size-xs);")}<div class="loading-pattern__grow">${sk(mode, "skeleton--text")}</div>${sk(mode, "skeleton--text", "--_w: var(--space-8);")}</div>`;
+  };
+  const skeletonMatrix = document.querySelector("#skeleton-state-matrix");
+  skeletonMatrix.innerHTML = skeletonCell("<span class='text text--overline'>Context</span>", "loading-matrix__cell--head") +
+    skeletonModes.map((mode) => skeletonCell(`<span class="text text--overline">${mode}</span>`, "loading-matrix__cell--head")).join("") +
+    skeletonContexts.map((context) => skeletonCell(`<strong class="text text--body-sm">${context}</strong>`, "loading-matrix__cell--label") +
+      skeletonModes.map((mode) => skeletonCell(skeletonPattern(context, mode))).join("")).join("");
+</script>
 
 </body>
 </html>

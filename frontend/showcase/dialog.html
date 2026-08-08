@@ -1,0 +1,613 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Dialog / Modal — Component Showcase</title>
+<link rel="stylesheet" href="../src/styles/tokens.css">
+<link rel="stylesheet" href="../src/styles/typography.css">
+<link rel="stylesheet" href="../src/styles/separator.css">
+<link rel="stylesheet" href="../src/styles/button.css">
+<link rel="stylesheet" href="../src/styles/icon.css">
+<link rel="stylesheet" href="../src/styles/dialog.css">
+<style>
+  /* Page chrome and static preview framing — tokens only. */
+  *, *::before, *::after { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: var(--background);
+    color: var(--foreground);
+    font-family: var(--font-sans);
+    -webkit-font-smoothing: antialiased;
+  }
+  .container { max-width: var(--doc-container-max); margin: 0 auto; padding: 0 var(--space-6); }
+  .page-head { padding: var(--space-16) 0 var(--space-8); border-bottom: var(--border-width) solid var(--border); }
+  .page-head .text--overline { display: block; margin-bottom: var(--space-3); color: var(--primary); }
+  .page-head p { max-width: calc(var(--space-24) * 8); margin: var(--space-4) 0 0; }
+  .demo-block { padding: var(--space-8) 0 var(--space-16); }
+  .demo-block > .text--h5 { margin-bottom: var(--space-3); }
+  .demo-lede { max-width: calc(var(--space-24) * 8); margin: 0 0 var(--space-6); color: var(--muted-foreground); }
+  .demo-note { max-width: calc(var(--space-24) * 8); margin: var(--space-6) 0 0; color: var(--muted-foreground); }
+  .preview-region { display: grid; gap: var(--space-8); }
+  .matrix-row { display: grid; gap: var(--space-3); }
+  .matrix-row__head { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: var(--space-3); }
+  .matrix-row__head .text--caption { color: var(--caption-foreground); }
+  .matrix-panels { display: grid; grid-template-columns: repeat(auto-fit, minmax(var(--doc-grid-min-card), 1fr)); gap: var(--space-4); }
+  .matrix-cell { display: grid; gap: var(--space-2); min-width: 0; }
+  .matrix-cell__label { display: flex; flex-wrap: wrap; justify-content: space-between; gap: var(--space-2); color: var(--muted-foreground); }
+  .dialog.dialog--preview {
+    position: relative;
+    inset: auto;
+    display: grid;
+    width: 100%;
+    height: 100%;
+    min-height: calc(var(--space-24) * 5);
+    max-width: none;
+    max-height: none;
+    padding: var(--space-4);
+    overflow: hidden;
+  }
+  .dialog--preview .dialog__overlay { border-radius: var(--radius-lg); }
+  .dialog--preview .dialog__surface { align-self: center; max-height: none; }
+  .lifecycle-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(var(--doc-grid-min-swatch), 1fr)); gap: var(--space-4); }
+  .lifecycle-cell { display: grid; gap: var(--space-2); }
+  .lifecycle-cell .dialog--preview { min-height: calc(var(--space-24) * 3); }
+  .lifecycle-cell .dialog__header,
+  .lifecycle-cell .dialog__body { padding: var(--space-4); }
+  .lifecycle-cell .dialog__footer { padding: var(--space-3) var(--space-4); }
+  .closed-reference {
+    display: grid;
+    place-items: center;
+    min-height: calc(var(--space-24) * 3);
+    padding: var(--space-4);
+    border: var(--border-width) solid var(--border);
+    border-radius: var(--radius-lg);
+    background: var(--surface-soft);
+  }
+  .live-actions { display: flex; flex-wrap: wrap; gap: var(--space-3); }
+</style>
+</head>
+<body>
+
+<svg hidden aria-hidden="true">
+  <symbol id="dialog-x" viewBox="0 0 24 24">
+    <path d="M18 6 6 18M6 6l12 12" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"/>
+  </symbol>
+</svg>
+
+<header class="page-head">
+  <div class="container">
+    <span class="text text--overline">Component</span>
+    <h1 class="text text--h1">Dialog / Modal</h1>
+    <p class="text text--body-md">
+      Native modal semantics with explicit focus management. The matrix renders every size and
+      variant together; the lifecycle band makes closed, opening, open, and closing frames
+      visible. Every surface, state, focus ring, and transition resolves to
+      <code class="text text--code">tokens.css</code>.
+    </p>
+  </div>
+</header>
+
+<main class="container">
+
+  <!-- ===================== Size × variant × focus matrix ===================== -->
+  <section class="demo-block" aria-labelledby="matrix-heading">
+    <h2 class="text text--h5" id="matrix-heading">State matrix — sizes × variants × focus states</h2>
+    <p class="text text--body-sm demo-lede">
+      Columns are standard, confirmation, and destructive confirmation. Rows are sm, md, and lg.
+      Each open plate includes the complete anatomy and names the focus/action state it visualizes.
+      Static plates are hidden from assistive technology; the live examples below carry the real
+      dialog semantics.
+    </p>
+
+    <div class="preview-region">
+
+      <!-- Small row -->
+      <section class="matrix-row" aria-labelledby="size-sm-heading">
+        <div class="matrix-row__head">
+          <h3 class="text text--h6" id="size-sm-heading">Small</h3>
+          <span class="text text--caption">max-width calc(--space-16 × 6) · compact padding · sm Buttons</span>
+        </div>
+        <div class="matrix-panels">
+
+          <div class="matrix-cell">
+            <div class="matrix-cell__label text text--caption"><span>Standard</span><span>initial focus → primary</span></div>
+            <section class="dialog dialog--preview dialog--standard dialog--sm dialog--open" aria-hidden="true">
+              <div class="dialog__overlay"></div>
+              <article class="dialog__surface">
+                <header class="dialog__header">
+                  <div class="dialog__heading">
+                    <h4 class="dialog__title">Edit company</h4>
+                    <p class="dialog__description">Update the profile shared by tenant members.</p>
+                  </div>
+                  <button class="icon-btn dialog__close" type="button" tabindex="-1" aria-label="Close dialog">
+                    <svg class="icon icon--sm icon--muted" aria-hidden="true"><use href="#dialog-x"></use></svg>
+                  </button>
+                </header>
+                <div class="dialog__body"><p>Changes become visible to every member with access to this company.</p></div>
+                <footer class="dialog__footer">
+                  <button class="btn btn--secondary btn--sm" type="button" tabindex="-1">Cancel</button>
+                  <button class="btn btn--primary btn--sm is-focus-visible" type="button" tabindex="-1">Save changes</button>
+                </footer>
+              </article>
+            </section>
+          </div>
+
+          <div class="matrix-cell">
+            <div class="matrix-cell__label text text--caption"><span>Confirmation</span><span>initial focus → safe action</span></div>
+            <section class="dialog dialog--preview dialog--confirmation dialog--sm dialog--open" aria-hidden="true">
+              <div class="dialog__overlay"></div>
+              <article class="dialog__surface">
+                <header class="dialog__header">
+                  <div class="dialog__heading">
+                    <h4 class="dialog__title">Publish this job?</h4>
+                    <p class="dialog__description">Candidates will be able to discover it.</p>
+                  </div>
+                  <button class="icon-btn dialog__close" type="button" tabindex="-1" aria-label="Close dialog">
+                    <svg class="icon icon--sm icon--muted" aria-hidden="true"><use href="#dialog-x"></use></svg>
+                  </button>
+                </header>
+                <div class="dialog__body"><p>Review the title, location, and application materials before publishing.</p></div>
+                <footer class="dialog__footer">
+                  <button class="btn btn--secondary btn--sm is-focus-visible" type="button" tabindex="-1">Keep draft</button>
+                  <button class="btn btn--primary btn--sm" type="button" tabindex="-1">Publish job</button>
+                </footer>
+              </article>
+            </section>
+          </div>
+
+          <div class="matrix-cell">
+            <div class="matrix-cell__label text text--caption"><span>Destructive confirmation</span><span>disabled destructive action</span></div>
+            <section class="dialog dialog--preview dialog--destructive dialog--sm dialog--open" aria-hidden="true">
+              <div class="dialog__overlay"></div>
+              <article class="dialog__surface">
+                <header class="dialog__header">
+                  <div class="dialog__heading">
+                    <h4 class="dialog__title">Remove member?</h4>
+                    <p class="dialog__description">This member will immediately lose tenant access.</p>
+                  </div>
+                  <button class="icon-btn dialog__close" type="button" tabindex="-1" aria-label="Close dialog">
+                    <svg class="icon icon--sm icon--muted" aria-hidden="true"><use href="#dialog-x"></use></svg>
+                  </button>
+                </header>
+                <div class="dialog__body"><p>The tenant owner cannot be removed. Choose another member to continue.</p></div>
+                <footer class="dialog__footer">
+                  <button class="btn btn--secondary btn--sm" type="button" tabindex="-1">Cancel</button>
+                  <button class="btn btn--destructive btn--sm" type="button" tabindex="-1" disabled>Remove member</button>
+                </footer>
+              </article>
+            </section>
+          </div>
+
+        </div>
+      </section>
+
+      <!-- Medium row -->
+      <section class="matrix-row" aria-labelledby="size-md-heading">
+        <div class="matrix-row__head">
+          <h3 class="text text--h6" id="size-md-heading">Medium</h3>
+          <span class="text text--caption">max-width calc(--space-16 × 8) · default padding · md Buttons</span>
+        </div>
+        <div class="matrix-panels">
+
+          <div class="matrix-cell">
+            <div class="matrix-cell__label text text--caption"><span>Standard</span><span>focused close IconButton</span></div>
+            <section class="dialog dialog--preview dialog--standard dialog--md dialog--open" aria-hidden="true">
+              <div class="dialog__overlay"></div>
+              <article class="dialog__surface">
+                <header class="dialog__header">
+                  <div class="dialog__heading">
+                    <h4 class="dialog__title">Invite a member</h4>
+                    <p class="dialog__description">Send an invitation and assign a tenant role.</p>
+                  </div>
+                  <button class="icon-btn dialog__close is-focus" type="button" tabindex="-1" aria-label="Close dialog">
+                    <svg class="icon icon--sm icon--muted" aria-hidden="true"><use href="#dialog-x"></use></svg>
+                  </button>
+                </header>
+                <div class="dialog__body"><p>The invitee receives an email and joins after accepting the invitation.</p></div>
+                <footer class="dialog__footer">
+                  <button class="btn btn--secondary" type="button" tabindex="-1">Cancel</button>
+                  <button class="btn btn--primary" type="button" tabindex="-1">Send invite</button>
+                </footer>
+              </article>
+            </section>
+          </div>
+
+          <div class="matrix-cell">
+            <div class="matrix-cell__label text text--caption"><span>Confirmation</span><span>focused primary action</span></div>
+            <section class="dialog dialog--preview dialog--confirmation dialog--md dialog--open" aria-hidden="true">
+              <div class="dialog__overlay"></div>
+              <article class="dialog__surface">
+                <header class="dialog__header">
+                  <div class="dialog__heading">
+                    <h4 class="dialog__title">Submit the order?</h4>
+                    <p class="dialog__description">The offline order will enter review.</p>
+                  </div>
+                  <button class="icon-btn dialog__close" type="button" tabindex="-1" aria-label="Close dialog">
+                    <svg class="icon icon--sm icon--muted" aria-hidden="true"><use href="#dialog-x"></use></svg>
+                  </button>
+                </header>
+                <div class="dialog__body"><p>Confirm the plan, amount, and tenant before submitting the order.</p></div>
+                <footer class="dialog__footer">
+                  <button class="btn btn--secondary" type="button" tabindex="-1">Review again</button>
+                  <button class="btn btn--primary is-focus-visible" type="button" tabindex="-1">Submit order</button>
+                </footer>
+              </article>
+            </section>
+          </div>
+
+          <div class="matrix-cell">
+            <div class="matrix-cell__label text text--caption"><span>Destructive confirmation</span><span>focused destructive action</span></div>
+            <section class="dialog dialog--preview dialog--destructive dialog--md dialog--open" aria-hidden="true">
+              <div class="dialog__overlay"></div>
+              <article class="dialog__surface">
+                <header class="dialog__header">
+                  <div class="dialog__heading">
+                    <h4 class="dialog__title">Delete company?</h4>
+                    <p class="dialog__description">This operation cannot be undone.</p>
+                  </div>
+                  <button class="icon-btn dialog__close" type="button" tabindex="-1" aria-label="Close dialog">
+                    <svg class="icon icon--sm icon--muted" aria-hidden="true"><use href="#dialog-x"></use></svg>
+                  </button>
+                </header>
+                <div class="dialog__body"><p>Company details and private documents will no longer be available.</p></div>
+                <footer class="dialog__footer">
+                  <button class="btn btn--secondary" type="button" tabindex="-1">Cancel</button>
+                  <button class="btn btn--destructive is-focus-visible" type="button" tabindex="-1">Delete company</button>
+                </footer>
+              </article>
+            </section>
+          </div>
+
+        </div>
+      </section>
+
+      <!-- Large row -->
+      <section class="matrix-row" aria-labelledby="size-lg-heading">
+        <div class="matrix-row__head">
+          <h3 class="text text--h6" id="size-lg-heading">Large</h3>
+          <span class="text text--caption">max-width calc(--space-16 × 12) · spacious padding · lg Buttons</span>
+        </div>
+        <div class="matrix-panels">
+
+          <div class="matrix-cell">
+            <div class="matrix-cell__label text text--caption"><span>Standard</span><span>loading primary action</span></div>
+            <section class="dialog dialog--preview dialog--standard dialog--lg dialog--open" aria-hidden="true">
+              <div class="dialog__overlay"></div>
+              <article class="dialog__surface">
+                <header class="dialog__header">
+                  <div class="dialog__heading">
+                    <h4 class="dialog__title">Upload company documents</h4>
+                    <p class="dialog__description">Files remain private and downloads stay authenticated.</p>
+                  </div>
+                  <button class="icon-btn dialog__close" type="button" tabindex="-1" aria-label="Close dialog">
+                    <svg class="icon icon--md icon--muted" aria-hidden="true"><use href="#dialog-x"></use></svg>
+                  </button>
+                </header>
+                <div class="dialog__body"><p>Selected documents are validated before they are stored in the private object bucket.</p></div>
+                <footer class="dialog__footer">
+                  <button class="btn btn--secondary btn--lg" type="button" tabindex="-1">Cancel</button>
+                  <button class="btn btn--primary btn--lg is-loading" type="button" tabindex="-1" disabled aria-busy="true">
+                    Upload documents<span class="btn__spinner" aria-hidden="true"></span>
+                  </button>
+                </footer>
+              </article>
+            </section>
+          </div>
+
+          <div class="matrix-cell">
+            <div class="matrix-cell__label text text--caption"><span>Confirmation</span><span>initial focus → secondary</span></div>
+            <section class="dialog dialog--preview dialog--confirmation dialog--lg dialog--open" aria-hidden="true">
+              <div class="dialog__overlay"></div>
+              <article class="dialog__surface">
+                <header class="dialog__header">
+                  <div class="dialog__heading">
+                    <h4 class="dialog__title">Enable two-step verification?</h4>
+                    <p class="dialog__description">Future sign-ins will require a time-based code.</p>
+                  </div>
+                  <button class="icon-btn dialog__close" type="button" tabindex="-1" aria-label="Close dialog">
+                    <svg class="icon icon--md icon--muted" aria-hidden="true"><use href="#dialog-x"></use></svg>
+                  </button>
+                </header>
+                <div class="dialog__body"><p>Store recovery information safely before enabling two-step verification.</p></div>
+                <footer class="dialog__footer">
+                  <button class="btn btn--secondary btn--lg is-focus-visible" type="button" tabindex="-1">Not now</button>
+                  <button class="btn btn--primary btn--lg" type="button" tabindex="-1">Enable</button>
+                </footer>
+              </article>
+            </section>
+          </div>
+
+          <div class="matrix-cell">
+            <div class="matrix-cell__label text text--caption"><span>Destructive confirmation</span><span>loading destructive action</span></div>
+            <section class="dialog dialog--preview dialog--destructive dialog--lg dialog--open" aria-hidden="true">
+              <div class="dialog__overlay"></div>
+              <article class="dialog__surface">
+                <header class="dialog__header">
+                  <div class="dialog__heading">
+                    <h4 class="dialog__title">Cancel subscription?</h4>
+                    <p class="dialog__description">The tenant becomes read-only when the subscription expires.</p>
+                  </div>
+                  <button class="icon-btn dialog__close" type="button" tabindex="-1" aria-label="Close dialog">
+                    <svg class="icon icon--md icon--muted" aria-hidden="true"><use href="#dialog-x"></use></svg>
+                  </button>
+                </header>
+                <div class="dialog__body"><p>Members can still read existing records, but write operations will be unavailable.</p></div>
+                <footer class="dialog__footer">
+                  <button class="btn btn--secondary btn--lg" type="button" tabindex="-1">Keep subscription</button>
+                  <button class="btn btn--destructive btn--lg is-loading" type="button" tabindex="-1" disabled aria-busy="true">
+                    Cancel subscription<span class="btn__spinner" aria-hidden="true"></span>
+                  </button>
+                </footer>
+              </article>
+            </section>
+          </div>
+
+        </div>
+      </section>
+
+    </div>
+    <p class="text text--caption demo-note">
+      Destructive confirmation uses <code class="text text--code">--destructive</code> for the
+      surface border and title, plus the existing destructive Button tokens for the committing
+      action. Focus treatment remains the shared <code class="text text--code">--ring-width</code>
+      and <code class="text text--code">--ring-focus</code> recipe across all variants.
+    </p>
+  </section>
+
+  <hr class="separator separator--horizontal separator--subtle" role="presentation">
+
+  <!-- ===================== Lifecycle ===================== -->
+  <section class="demo-block" aria-labelledby="lifecycle-heading">
+    <h2 class="text text--h5" id="lifecycle-heading">Lifecycle — closed · opening · open · closing</h2>
+    <p class="text text--body-sm demo-lede">
+      The native closed state removes the dialog from rendering and the accessibility tree.
+      Opening and closing are shown at the system's
+      <code class="text text--code">--opacity-disabled</code> midpoint and
+      <code class="text text--code">--space-2</code> travel; open is fully settled.
+    </p>
+    <div class="lifecycle-grid">
+      <div class="lifecycle-cell">
+        <span class="text text--caption">Closed reference</span>
+        <div class="closed-reference">
+          <button class="btn btn--secondary" type="button" aria-expanded="false">Open dialog</button>
+        </div>
+      </div>
+      <div class="lifecycle-cell">
+        <span class="text text--caption">Opening · --duration-normal</span>
+        <section class="dialog dialog--preview dialog--standard dialog--md dialog--opening" aria-hidden="true">
+          <div class="dialog__overlay"></div>
+          <article class="dialog__surface">
+            <header class="dialog__header"><div class="dialog__heading"><h3 class="dialog__title">Opening</h3><p class="dialog__description">Initial focus moves as the modal opens.</p></div></header>
+            <div class="dialog__body"><p>Opacity and travel are token-driven.</p></div>
+          </article>
+        </section>
+      </div>
+      <div class="lifecycle-cell">
+        <span class="text text--caption">Open · focus trapped</span>
+        <section class="dialog dialog--preview dialog--standard dialog--md dialog--open" aria-hidden="true">
+          <div class="dialog__overlay"></div>
+          <article class="dialog__surface">
+            <header class="dialog__header"><div class="dialog__heading"><h3 class="dialog__title">Open</h3><p class="dialog__description">Surface is settled at full opacity.</p></div></header>
+            <div class="dialog__body"><p>Background interaction is unavailable.</p></div>
+            <footer class="dialog__footer"><button class="btn btn--primary btn--sm" type="button" tabindex="-1">Continue</button></footer>
+          </article>
+        </section>
+      </div>
+      <div class="lifecycle-cell">
+        <span class="text text--caption">Closing · --duration-fast</span>
+        <section class="dialog dialog--preview dialog--standard dialog--md dialog--closing" aria-hidden="true">
+          <div class="dialog__overlay"></div>
+          <article class="dialog__surface">
+            <header class="dialog__header"><div class="dialog__heading"><h3 class="dialog__title">Closing</h3><p class="dialog__description">Focus returns after the exit lands.</p></div></header>
+            <div class="dialog__body"><p>The native dialog then leaves the top layer.</p></div>
+          </article>
+        </section>
+      </div>
+    </div>
+  </section>
+
+  <hr class="separator separator--horizontal separator--subtle" role="presentation">
+
+  <!-- ===================== Live semantics & focus ===================== -->
+  <section class="demo-block" aria-labelledby="live-heading">
+    <h2 class="text text--h5" id="live-heading">Live — modality, focus trap, Escape, and focus return</h2>
+    <p class="text text--body-sm demo-lede">
+      Open any example, then use Tab and Shift+Tab. Focus cycles inside the modal. Escape closes
+      and returns focus to its trigger. Confirmation overlays do not dismiss on pointer click,
+      preserving the explicit decision; all three allow Escape because dismissal is safe here.
+    </p>
+    <div class="live-actions">
+      <button class="btn btn--secondary" type="button" data-dialog-target="live-standard" aria-haspopup="dialog" aria-controls="live-standard" aria-expanded="false">Open standard</button>
+      <button class="btn btn--primary" type="button" data-dialog-target="live-confirmation" aria-haspopup="dialog" aria-controls="live-confirmation" aria-expanded="false">Open confirmation</button>
+      <button class="btn btn--destructive" type="button" data-dialog-target="live-destructive" aria-haspopup="dialog" aria-controls="live-destructive" aria-expanded="false">Open destructive</button>
+    </div>
+  </section>
+
+</main>
+
+<!-- Real modal instances: showModal() supplies native top-layer modality. -->
+<dialog class="dialog dialog--standard dialog--md dialog--closed" id="live-standard" aria-modal="true" aria-labelledby="live-standard-title" aria-describedby="live-standard-description">
+  <div class="dialog__overlay" aria-hidden="true" data-dialog-overlay></div>
+  <section class="dialog__surface" tabindex="-1">
+    <header class="dialog__header">
+      <div class="dialog__heading">
+        <h2 class="dialog__title" id="live-standard-title">Edit company</h2>
+        <p class="dialog__description" id="live-standard-description">Update the profile shared by tenant members.</p>
+      </div>
+      <button class="icon-btn dialog__close" type="button" data-dialog-close aria-label="Close edit company dialog">
+        <svg class="icon icon--sm icon--muted" aria-hidden="true"><use href="#dialog-x"></use></svg>
+      </button>
+    </header>
+    <div class="dialog__body"><p>Changes become visible to every member with access to this company.</p></div>
+    <footer class="dialog__footer">
+      <button class="btn btn--secondary" type="button" data-dialog-close>Cancel</button>
+      <button class="btn btn--primary" type="button" data-dialog-initial-focus data-dialog-close>Save changes</button>
+    </footer>
+  </section>
+</dialog>
+
+<dialog class="dialog dialog--confirmation dialog--md dialog--closed" id="live-confirmation" role="alertdialog" aria-modal="true" aria-labelledby="live-confirmation-title" aria-describedby="live-confirmation-description" data-overlay-close="false">
+  <div class="dialog__overlay" aria-hidden="true" data-dialog-overlay></div>
+  <section class="dialog__surface" tabindex="-1">
+    <header class="dialog__header">
+      <div class="dialog__heading">
+        <h2 class="dialog__title" id="live-confirmation-title">Publish this job?</h2>
+        <p class="dialog__description" id="live-confirmation-description">Candidates will be able to discover it.</p>
+      </div>
+      <button class="icon-btn dialog__close" type="button" data-dialog-close aria-label="Close publish confirmation">
+        <svg class="icon icon--sm icon--muted" aria-hidden="true"><use href="#dialog-x"></use></svg>
+      </button>
+    </header>
+    <div class="dialog__body"><p>Review the title, location, and application materials before publishing.</p></div>
+    <footer class="dialog__footer">
+      <button class="btn btn--secondary" type="button" data-dialog-initial-focus data-dialog-close>Keep draft</button>
+      <button class="btn btn--primary" type="button" data-dialog-close>Publish job</button>
+    </footer>
+  </section>
+</dialog>
+
+<dialog class="dialog dialog--destructive dialog--md dialog--closed" id="live-destructive" role="alertdialog" aria-modal="true" aria-labelledby="live-destructive-title" aria-describedby="live-destructive-description" data-overlay-close="false">
+  <div class="dialog__overlay" aria-hidden="true" data-dialog-overlay></div>
+  <section class="dialog__surface" tabindex="-1">
+    <header class="dialog__header">
+      <div class="dialog__heading">
+        <h2 class="dialog__title" id="live-destructive-title">Delete company?</h2>
+        <p class="dialog__description" id="live-destructive-description">This operation cannot be undone.</p>
+      </div>
+      <button class="icon-btn dialog__close" type="button" data-dialog-close aria-label="Close delete company confirmation">
+        <svg class="icon icon--sm icon--muted" aria-hidden="true"><use href="#dialog-x"></use></svg>
+      </button>
+    </header>
+    <div class="dialog__body"><p>Company details and private documents will no longer be available.</p></div>
+    <footer class="dialog__footer">
+      <button class="btn btn--secondary" type="button" data-dialog-initial-focus data-dialog-close>Cancel</button>
+      <button class="btn btn--destructive" type="button" data-dialog-close>Delete company</button>
+    </footer>
+  </section>
+</dialog>
+
+<script>
+/* Dialog controller. Visuals live in dialog.css. Native showModal() supplies
+   top-layer background inertness; this layer makes focus selection, explicit
+   focus looping, lifecycle classes, Escape policy, and focus return auditable. */
+const FOCUSABLE = [
+  "a[href]",
+  "button:not([disabled])",
+  "input:not([disabled])",
+  "select:not([disabled])",
+  "textarea:not([disabled])",
+  '[tabindex]:not([tabindex="-1"])',
+].join(",");
+
+const openerFor = new WeakMap();
+const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)");
+
+const focusableWithin = (dialog) => [...dialog.querySelectorAll(FOCUSABLE)]
+  .filter((element) => !element.closest("[hidden]") && element.getAttribute("aria-hidden") !== "true");
+
+const focusInitial = (dialog) => {
+  const target = dialog.querySelector("[data-dialog-initial-focus]")
+    ?? focusableWithin(dialog)[0]
+    ?? dialog.querySelector(".dialog__surface");
+  target?.focus({ preventScroll: true });
+};
+
+const finishOpen = (dialog) => {
+  dialog.classList.remove("dialog--opening", "dialog--closed");
+  dialog.classList.add("dialog--open");
+};
+
+const openDialog = (dialog, opener) => {
+  openerFor.set(dialog, opener);
+  dialog.classList.remove("dialog--closed", "dialog--closing", "dialog--open");
+  dialog.classList.add("dialog--opening");
+  dialog.showModal();
+  opener.setAttribute("aria-expanded", "true");
+  focusInitial(dialog);
+  if (reducedMotion.matches) {
+    finishOpen(dialog);
+    return;
+  }
+  requestAnimationFrame(() => requestAnimationFrame(() => finishOpen(dialog)));
+};
+
+const finishClose = (dialog) => {
+  dialog.close();
+  dialog.classList.remove("dialog--closing", "dialog--opening", "dialog--open");
+  dialog.classList.add("dialog--closed");
+  const opener = openerFor.get(dialog);
+  opener?.setAttribute("aria-expanded", "false");
+  opener?.focus({ preventScroll: true });
+};
+
+const closeDialog = (dialog) => {
+  if (!dialog.open || dialog.classList.contains("dialog--closing")) return;
+  dialog.classList.remove("dialog--opening", "dialog--open");
+  dialog.classList.add("dialog--closing");
+  if (reducedMotion.matches) {
+    finishClose(dialog);
+    return;
+  }
+  const surface = dialog.querySelector(".dialog__surface");
+  if (!surface) {
+    finishClose(dialog);
+    return;
+  }
+  requestAnimationFrame(() => {
+    const animations = surface.getAnimations();
+    if (!animations.length) {
+      finishClose(dialog);
+      return;
+    }
+    Promise.allSettled(animations.map((animation) => animation.finished)).then(() => {
+      if (dialog.classList.contains("dialog--closing")) finishClose(dialog);
+    });
+  });
+};
+
+for (const opener of document.querySelectorAll("[data-dialog-target]")) {
+  const dialog = document.getElementById(opener.dataset.dialogTarget);
+  if (dialog instanceof HTMLDialogElement) {
+    opener.addEventListener("click", () => openDialog(dialog, opener));
+  }
+}
+
+for (const dialog of document.querySelectorAll("dialog.dialog")) {
+  dialog.addEventListener("click", (event) => {
+    if (event.target.closest("[data-dialog-close]")) closeDialog(dialog);
+    if (event.target.matches("[data-dialog-overlay]") && dialog.dataset.overlayClose !== "false") {
+      closeDialog(dialog);
+    }
+  });
+
+  dialog.addEventListener("cancel", (event) => {
+    event.preventDefault();
+    if (dialog.dataset.escapeClose !== "false") closeDialog(dialog);
+  });
+
+  dialog.addEventListener("keydown", (event) => {
+    if (event.key !== "Tab") return;
+    const focusable = focusableWithin(dialog);
+    const surface = dialog.querySelector(".dialog__surface");
+    if (!focusable.length) {
+      event.preventDefault();
+      surface?.focus({ preventScroll: true });
+      return;
+    }
+    const first = focusable[0];
+    const last = focusable[focusable.length - 1];
+    const focusIsInsideLoop = focusable.includes(document.activeElement);
+    if (event.shiftKey && (!focusIsInsideLoop || document.activeElement === first)) {
+      event.preventDefault();
+      last.focus();
+    } else if (!event.shiftKey && (!focusIsInsideLoop || document.activeElement === last)) {
+      event.preventDefault();
+      first.focus();
+    }
+  });
+}
+</script>
+
+</body>
+</html>

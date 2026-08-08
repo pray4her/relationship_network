@@ -1,0 +1,301 @@
+/* ==========================================================================
+   Popover
+   Token mapping — every value below references tokens.css, nothing else.
+
+   A floating non-modal panel anchored to a trigger — richer than a
+   tooltip: it may hold a header, running content, and footer actions,
+   and its content IS interactive (the tooltip's pointer-events ban does
+   not apply). The trigger is a real button carrying aria-expanded +
+   aria-controls; the panel is role="dialog" (non-modal) labelled by its
+   title (or the trigger when headerless).
+
+   Placement & collision: the wrapper carries data-side=
+   "top|right|bottom|left" (default bottom) and data-open while shown.
+   The CSS renders whichever side it is told; choosing the side is
+   behaviour, not style — on open, script measures the trigger against
+   the viewport and keeps the preferred side when the panel fits, else
+   flips to the roomiest one (same behaviour/style split as the
+   accordion's single/multiple modes). No offset or elevation is
+   hard-coded: the park distance is --space-2 and the layer is
+   --z-popover.
+
+   Lifecycle (the tooltip precedent, reused verbatim):
+     closed    visibility hidden + opacity 0, parked --space-1 toward the
+               trigger — out of the accessibility tree and the tab order
+     opening   enter over --duration-normal --ease-standard, travelling
+               the parked --space-1
+     open      opacity 1, settled at the --space-2 offset
+     closing   exit over --duration-fast, fading as it retreats;
+               visibility holds until the fade lands
+
+   Keyboard & focus (behaviour layer, documented here as the contract):
+     Enter/Space on the trigger opens (native button); on open, focus
+     moves to the panel's first focusable element, else the panel itself
+     (tabindex="-1"); Escape dismisses and returns focus to the trigger;
+     a pointer-down outside dismisses without stealing focus; closing by
+     any path returns focus to the trigger.
+
+   Anatomy (markup contract):
+     .popover              wrapper <span>; data-side / data-open
+     (trigger)             first child: a .btn with aria-expanded,
+                           aria-controls → panel id
+     .popover__panel       role="dialog" surface; tabindex="-1"
+     .popover__header      OPTIONAL bar: .popover__title + optional
+                           close control (a reused .btn--ghost .btn--sm)
+     .popover__title       the heading; labels the dialog
+     .popover__content     the running body
+     .popover__footer      OPTIONAL action bar; reused .btn children
+     .is-open / .is-opening / .is-closing   static showcase mirrors
+
+   PROPERTY → TOKEN
+   ─────────────────────────────────────────────────────────────────────────
+   PANEL SURFACE
+     background      --popover (the token's stated role: floating panel
+                     fill) with --popover-foreground text
+     border          --border-width solid --border
+     radius          --radius-lg (the card rung — a popover is a floating
+                     card)
+     shadow          --shadow-lift (the elevated-surface lift)
+     layering        --z-popover (overlays above menus — the token's
+                     stated role)
+     measure         min-width --sidebar-width (256px, the app-rail rung,
+                     borrowed so a panel never collapses under its
+                     actions); max-width calc(var(--space-16) * 8) — 512px
+                     composed from the spacing scale
+     offset          parked --space-2 off the trigger edge on every side;
+                     closed tucks --space-1 of that away
+   HEADER
+     layout          flex, space-between, gap --space-3, padding
+                     --space-4; hairline --border-width solid
+                     --border-soft beneath
+     title           --text-title-sm (+ --line-height),
+                     --font-weight-medium, --font-sans, --foreground
+   CONTENT
+     typography      --text-body-sm (+ --line-height),
+                     --font-weight-regular, --foreground-body; padding
+                     --space-4
+   FOOTER
+     layout          flex, end-aligned, gap --space-2, padding block
+                     --space-3 inline --space-4; hairline --border-soft
+                     above; band --surface-soft (soft section bands) with
+                     the panel's bottom radii so the band meets the rim
+   FOCUS TREATMENT
+     panel           :focus-visible → 0 0 0 --ring-width --ring-focus
+                     (programmatic open-focus does not match
+                     :focus-visible; keyboard users who tab back to the
+                     panel see the shared ring)
+     inner controls  reused .btn / .link bring their own ring recipe
+   MOTION
+     opening         --duration-normal --ease-standard (opacity +
+                     translate + visibility)
+     closing         --duration-fast, same trio
+   REDUCED MOTION    transitions removed — show/hide becomes instant;
+                     visibility still gates tree and tab order.
+
+   TOKEN NOTES: no new tokens were needed — every role mapped to an
+   existing token, including the shadcn-role pair --popover /
+   --popover-foreground shipped for exactly this component. Documented
+   borrowings: --sidebar-width as the panel's min-width and
+   calc(--space-16 × 8) as its max. Collision detection and focus
+   management live in script (behaviour), mirroring how the accordion
+   keeps single/multiple modes out of the stylesheet; the mid-fade
+   showcase mirrors borrow --opacity-disabled as their frame opacity.
+   ========================================================================== */
+
+.popover {
+  position: relative;
+  display: inline-flex;
+}
+
+/* ===== Panel (closed by default) ===== */
+
+.popover__panel {
+  position: absolute;
+  z-index: var(--z-popover);
+  min-width: var(--sidebar-width);
+  max-width: calc(var(--space-16) * 8);
+  border: var(--border-width) solid var(--border);
+  border-radius: var(--radius-lg);
+  background: var(--popover);
+  color: var(--popover-foreground);
+  box-shadow: var(--shadow-lift);
+  font-family: var(--font-sans);
+  opacity: 0;
+  visibility: hidden;
+  /* closing curve */
+  transition:
+    opacity var(--duration-fast) var(--ease-standard),
+    translate var(--duration-fast) var(--ease-standard),
+    visibility var(--duration-fast);
+}
+
+.popover__panel:focus-visible {
+  outline: none;
+  box-shadow:
+    var(--shadow-lift),
+    0 0 0 var(--ring-width) var(--ring-focus);
+}
+
+/* ===== Header ===== */
+
+.popover__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  padding: var(--space-4);
+  border-bottom: var(--border-width) solid var(--border-soft);
+}
+
+.popover__title {
+  margin: 0;
+  font-size: var(--text-title-sm);
+  font-weight: var(--font-weight-medium);
+  line-height: var(--text-title-sm--line-height);
+  color: var(--foreground);
+}
+
+/* ===== Content ===== */
+
+.popover__content {
+  display: block;
+  padding: var(--space-4);
+  font-size: var(--text-body-sm);
+  font-weight: var(--font-weight-regular);
+  line-height: var(--text-body-sm--line-height);
+  color: var(--foreground-body);
+}
+
+.popover__content > :first-child { margin-top: 0; }
+.popover__content > :last-child { margin-bottom: 0; }
+
+/* ===== Footer ===== */
+
+.popover__footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--space-2);
+  padding-block: var(--space-3);
+  padding-inline: var(--space-4);
+  border-top: var(--border-width) solid var(--border-soft);
+  background: var(--surface-soft);
+  border-radius: 0 0 var(--radius-lg) var(--radius-lg);
+}
+
+/* ===== Placements — closed (parked --space-1 toward the trigger) ===== */
+
+.popover:not([data-side]) .popover__panel,
+.popover[data-side="bottom"] .popover__panel {
+  top: calc(100% + var(--space-2));
+  left: 50%;
+  translate: -50% calc(-1 * var(--space-1));
+}
+
+.popover[data-side="top"] .popover__panel {
+  bottom: calc(100% + var(--space-2));
+  left: 50%;
+  translate: -50% var(--space-1);
+}
+
+.popover[data-side="left"] .popover__panel {
+  right: calc(100% + var(--space-2));
+  top: 50%;
+  translate: var(--space-1) -50%;
+}
+
+.popover[data-side="right"] .popover__panel {
+  left: calc(100% + var(--space-2));
+  top: 50%;
+  translate: calc(-1 * var(--space-1)) -50%;
+}
+
+/* ===== Open (data-open or static mirror) =====
+   Enter curve declared here so opening travels while closing fades. */
+
+.popover[data-open]:not([data-side]) .popover__panel,
+.popover[data-open][data-side="bottom"] .popover__panel,
+.popover:not([data-side]) .popover__panel.is-open,
+.popover[data-side="bottom"] .popover__panel.is-open {
+  opacity: 1;
+  visibility: visible;
+  translate: -50% 0;
+  transition:
+    opacity var(--duration-normal) var(--ease-standard),
+    translate var(--duration-normal) var(--ease-standard),
+    visibility var(--duration-normal);
+}
+
+.popover[data-open][data-side="top"] .popover__panel,
+.popover[data-side="top"] .popover__panel.is-open {
+  opacity: 1;
+  visibility: visible;
+  translate: -50% 0;
+  transition:
+    opacity var(--duration-normal) var(--ease-standard),
+    translate var(--duration-normal) var(--ease-standard),
+    visibility var(--duration-normal);
+}
+
+.popover[data-open][data-side="left"] .popover__panel,
+.popover[data-side="left"] .popover__panel.is-open {
+  opacity: 1;
+  visibility: visible;
+  translate: 0 -50%;
+  transition:
+    opacity var(--duration-normal) var(--ease-standard),
+    translate var(--duration-normal) var(--ease-standard),
+    visibility var(--duration-normal);
+}
+
+.popover[data-open][data-side="right"] .popover__panel,
+.popover[data-side="right"] .popover__panel.is-open {
+  opacity: 1;
+  visibility: visible;
+  translate: 0 -50%;
+  transition:
+    opacity var(--duration-normal) var(--ease-standard),
+    translate var(--duration-normal) var(--ease-standard),
+    visibility var(--duration-normal);
+}
+
+/* ===== Static mirrors of the transitional frames =====
+   opening: early enter frame — half opacity, mid-travel;
+   closing: late exit frame — half opacity, fully retreated. */
+
+.popover:not([data-side]) .popover__panel.is-opening,
+.popover[data-side="bottom"] .popover__panel.is-opening {
+  opacity: var(--opacity-disabled);
+  visibility: visible;
+  translate: -50% calc(-1 * var(--space-0-5));
+}
+
+.popover[data-side="top"] .popover__panel.is-opening {
+  opacity: var(--opacity-disabled);
+  visibility: visible;
+  translate: -50% var(--space-0-5);
+}
+
+.popover[data-side="left"] .popover__panel.is-opening {
+  opacity: var(--opacity-disabled);
+  visibility: visible;
+  translate: var(--space-0-5) -50%;
+}
+
+.popover[data-side="right"] .popover__panel.is-opening {
+  opacity: var(--opacity-disabled);
+  visibility: visible;
+  translate: calc(-1 * var(--space-0-5)) -50%;
+}
+
+.popover__panel.is-closing {
+  opacity: var(--opacity-disabled);
+  visibility: visible;
+}
+
+/* ===== Reduced motion ===== */
+
+@media (prefers-reduced-motion: reduce) {
+  .popover__panel {
+    transition: none;
+  }
+}

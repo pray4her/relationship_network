@@ -220,13 +220,26 @@
     color var(--duration-fast) var(--ease-standard),
     box-shadow var(--duration-fast) var(--ease-standard);
 }
-.badge__dismiss:hover {
+.badge__dismiss:hover,
+.badge__dismiss.is-hover {
   background: var(--accent);
   color: var(--accent-foreground);
 }
-.badge__dismiss:focus-visible {
+.badge__dismiss:active,
+.badge__dismiss.is-active {
+  background: var(--selected-bg);
+  color: var(--foreground-active);
+}
+.badge__dismiss:focus-visible,
+.badge__dismiss.is-focus-visible {
   outline: none;
   box-shadow: 0 0 0 var(--ring-width) var(--ring-focus);
+}
+.badge__dismiss:disabled,
+.badge__dismiss.is-disabled {
+  opacity: var(--opacity-disabled);
+  cursor: not-allowed;
+  pointer-events: none;
 }
 .badge__dismiss svg {
   width: var(--icon-size-xs);

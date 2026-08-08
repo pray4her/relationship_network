@@ -29,6 +29,28 @@
   .demo-caption { margin-bottom: var(--space-3); color: var(--caption-foreground); }
   .demo-cell { display: grid; gap: var(--space-3); justify-items: start; }
   .demo-row { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-3); }
+  .state-matrix {
+    display: grid;
+    grid-template-columns: var(--doc-demo-label-width) repeat(3, minmax(0, 1fr));
+    border: var(--border-width) solid var(--border);
+    border-radius: var(--radius-lg);
+    overflow: hidden;
+  }
+  .state-matrix__cell {
+    display: grid;
+    align-content: start;
+    gap: var(--space-3);
+    padding: var(--space-4);
+    border-inline-end: var(--border-width) solid var(--border-soft);
+    border-block-end: var(--border-width) solid var(--border-soft);
+  }
+  .state-matrix__cell:nth-child(4n) { border-inline-end: 0; }
+  .state-matrix__cell--head { background: var(--surface-soft); }
+  .state-matrix__cell--variant { background: var(--card); }
+  .state-matrix__items { display: flex; flex-wrap: wrap; gap: var(--space-2); }
+  @media (max-width: 900px) {
+    .state-matrix { grid-template-columns: var(--doc-demo-label-width) repeat(3, var(--doc-grid-min-card)); overflow-x: auto; }
+  }
 </style>
 </head>
 <body>
@@ -49,44 +71,29 @@
 
 <main class="container">
 
+  <section class="demo-block" aria-labelledby="dismiss-matrix-heading">
+    <h2 class="text text--h5" id="dismiss-matrix-heading">Dismiss action state matrix</h2>
+    <div class="demo-grid">
+      <div class="demo-cell"><p class="text text--caption demo-caption">default</p><span class="badge badge--primary">Location: Berlin<button class="badge__dismiss" type="button" aria-label="Dismiss Location Berlin"><svg viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="m5 5 6 6m0-6-6 6" stroke="currentColor" stroke-linecap="round"/></svg></button></span></div>
+      <div class="demo-cell"><p class="text text--caption demo-caption">hover</p><span class="badge badge--primary">Location: Berlin<button class="badge__dismiss is-hover" type="button" aria-label="Dismiss Location Berlin, hover" tabindex="-1"><svg viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="m5 5 6 6m0-6-6 6" stroke="currentColor" stroke-linecap="round"/></svg></button></span></div>
+      <div class="demo-cell"><p class="text text--caption demo-caption">active</p><span class="badge badge--primary">Location: Berlin<button class="badge__dismiss is-active" type="button" aria-label="Dismiss Location Berlin, active" tabindex="-1"><svg viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="m5 5 6 6m0-6-6 6" stroke="currentColor" stroke-linecap="round"/></svg></button></span></div>
+      <div class="demo-cell"><p class="text text--caption demo-caption">focus-visible</p><span class="badge badge--primary">Location: Berlin<button class="badge__dismiss is-focus-visible" type="button" aria-label="Dismiss Location Berlin, focus-visible" tabindex="-1"><svg viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="m5 5 6 6m0-6-6 6" stroke="currentColor" stroke-linecap="round"/></svg></button></span></div>
+      <div class="demo-cell"><p class="text text--caption demo-caption">disabled</p><span class="badge badge--primary">Location: Berlin<button class="badge__dismiss" type="button" aria-label="Dismiss Location Berlin, disabled" disabled><svg viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="m5 5 6 6m0-6-6 6" stroke="currentColor" stroke-linecap="round"/></svg></button></span></div>
+    </div>
+    <p class="text text--caption demo-note">
+      The badge remains a status label; only the nested button is interactive. Hover uses
+      <code class="text text--code">--accent</code>, active uses
+      <code class="text text--code">--selected-bg</code>, focus-visible uses the shared ring,
+      and disabled uses <code class="text text--code">--opacity-disabled</code>.
+    </p>
+  </section>
+
+  <hr class="separator separator--horizontal separator--subtle" role="presentation">
+
   <!-- ===================== Variant × style matrix ===================== -->
   <section class="demo-block" aria-labelledby="matrix-heading">
-    <h2 class="text text--h5" id="matrix-heading">Variants × styles (md, with status dot)</h2>
-    <div class="demo-grid">
-      <div class="demo-cell">
-        <p class="text text--caption demo-caption">subtle — semantic tint surfaces; primary/neutral keep the neutral --card fill</p>
-        <div class="demo-row">
-          <span class="badge"><span class="badge__dot" role="presentation"></span>Draft</span>
-          <span class="badge badge--primary"><span class="badge__dot" role="presentation"></span>Featured</span>
-          <span class="badge badge--success"><span class="badge__dot" role="presentation"></span>Active</span>
-          <span class="badge badge--warning"><span class="badge__dot" role="presentation"></span>Expiring</span>
-          <span class="badge badge--destructive"><span class="badge__dot" role="presentation"></span>Suspended</span>
-          <span class="badge badge--info"><span class="badge__dot" role="presentation"></span>Connected</span>
-        </div>
-      </div>
-      <div class="demo-cell">
-        <p class="text text--caption demo-caption">solid — semantic fills, each paired with its on-* foreground token</p>
-        <div class="demo-row">
-          <span class="badge badge--solid"><span class="badge__dot" role="presentation"></span>Draft</span>
-          <span class="badge badge--solid badge--primary"><span class="badge__dot" role="presentation"></span>Featured</span>
-          <span class="badge badge--solid badge--success"><span class="badge__dot" role="presentation"></span>Active</span>
-          <span class="badge badge--solid badge--warning"><span class="badge__dot" role="presentation"></span>Expiring</span>
-          <span class="badge badge--solid badge--destructive"><span class="badge__dot" role="presentation"></span>Suspended</span>
-          <span class="badge badge--solid badge--info"><span class="badge__dot" role="presentation"></span>Connected</span>
-        </div>
-      </div>
-      <div class="demo-cell">
-        <p class="text text--caption demo-caption">outline — semantic hairline + dot, ink text (AA at caption sizes)</p>
-        <div class="demo-row">
-          <span class="badge badge--outline"><span class="badge__dot" role="presentation"></span>Draft</span>
-          <span class="badge badge--outline badge--primary"><span class="badge__dot" role="presentation"></span>Featured</span>
-          <span class="badge badge--outline badge--success"><span class="badge__dot" role="presentation"></span>Active</span>
-          <span class="badge badge--outline badge--warning"><span class="badge__dot" role="presentation"></span>Expiring</span>
-          <span class="badge badge--outline badge--destructive"><span class="badge__dot" role="presentation"></span>Suspended</span>
-          <span class="badge badge--outline badge--info"><span class="badge__dot" role="presentation"></span>Connected</span>
-        </div>
-      </div>
-    </div>
+    <h2 class="text text--h5" id="matrix-heading">Full state matrix — variant × style × content</h2>
+    <div class="state-matrix" id="badge-state-matrix"></div>
     <p class="text text--caption demo-note">
       The semantic roles resolve to dedicated tokens throughout:
       <code class="text text--code">--info</code> (= --accent-teal) with its
@@ -201,6 +208,39 @@
 </main>
 
 <script>
+  const badgeVariants = ["neutral", "primary", "info", "success", "warning", "destructive"];
+  const badgeStyles = ["subtle", "solid", "outline"];
+  const badgeLabels = {
+    neutral: "Draft",
+    primary: "Featured",
+    info: "Connected",
+    success: "Active",
+    warning: "Expiring",
+    destructive: "Suspended",
+  };
+  const badgeIcon = `<svg class="badge__icon" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="m5 12.5 4.5 4.5L19 7.5" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
+  const dismissIcon = `<svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="m7 7 10 10M17 7 7 17" stroke="currentColor" stroke-linecap="round"/></svg>`;
+  const matrix = document.querySelector("#badge-state-matrix");
+  const matrixCell = (content, classes = "") => `<div class="state-matrix__cell ${classes}">${content}</div>`;
+  matrix.innerHTML = matrixCell("<span class='text text--overline'>Variant</span>", "state-matrix__cell--head") +
+    badgeStyles.map((style) => matrixCell(`<span class="text text--overline">${style}</span>`, "state-matrix__cell--head")).join("") +
+    badgeVariants.map((variant) => {
+      const variantClass = variant === "neutral" ? "" : ` badge--${variant}`;
+      const label = badgeLabels[variant];
+      const cells = badgeStyles.map((style) => {
+        const styleClass = style === "subtle" ? "" : ` badge--${style}`;
+        const root = `badge${variantClass}${styleClass}`;
+        const items = [
+          `<span class="${root}">${label}</span>`,
+          `<span class="${root}">${badgeIcon}${label}</span>`,
+          `<span class="${root}"><span class="badge__dot" role="presentation"></span>${label}</span>`,
+          `<span class="${root}">${label}<button class="badge__dismiss" type="button" aria-label="Dismiss ${label}">${dismissIcon}</button></span>`,
+        ].join("");
+        return matrixCell(`<div class="state-matrix__items">${items}</div>`);
+      }).join("");
+      return matrixCell(`<strong class="text text--body-sm">${variant}</strong><span class="text text--caption">text · icon · dot · dismiss</span>`, "state-matrix__cell--variant") + cells;
+    }).join("");
+
   /* Dismiss contract: the button removes its badge. All visuals stay in CSS. */
   document.addEventListener("click", (event) => {
     const dismiss = event.target.closest(".badge__dismiss");

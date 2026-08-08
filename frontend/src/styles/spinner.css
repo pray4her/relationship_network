@@ -1,0 +1,173 @@
+/* ==========================================================================
+   Spinner
+   Token mapping — every value below references tokens.css, nothing else.
+
+   Indeterminate loading indicator: a quarter-arc foreground stroke rotating
+   over a full-ring background (track) stroke. Three compositions, expressed
+   purely in markup — the CSS is composition-agnostic:
+
+     spinner only        the ring alone; when IT communicates application
+                         state the wrapper carries role="status" and an
+                         author-supplied aria-label ("Loading", "Saving…").
+                         Next to text that already says so, the wrapper is
+                         aria-hidden="true" instead (decorative).
+     spinner + label     ring plus a visible .spinner__label; the wrapper
+                         is role="status" (implicit polite live region) and
+                         the ring is aria-hidden — the visible text is the
+                         accessible label, announced once, not spun.
+     inline in Button    the ring dropped into a .btn as an icon-slot child;
+                         the button's own --space-2 icon gap and text do the
+                         rest, and the button's label stays the accessible
+                         name (ring aria-hidden). Inverse on filled buttons
+                         (primary), default on quiet ones (secondary/ghost).
+
+   Anatomy (markup contract):
+     .spinner             wrapper <span>; size modifier --xs / --sm / --md
+                          (default) / --lg; variant modifier --primary /
+                          --inverse; role/aria per composition above
+     .spinner__ring       the animated border-ring <span>, always
+                          aria-hidden="true"
+     .spinner__label      optional visible loading text
+     .is-reduced           static showcase mirror of the
+                           prefers-reduced-motion freeze (.is-hover
+                           precedent), so the frozen treatment renders
+                           without OS-level settings
+
+   Variants: default and primary render on light surfaces; inverse is
+   supported where an inverse surface exists — it is the on-dark treatment
+   and belongs on --surface-dark bands or filled buttons, never on the
+   canvas (the token note beside --on-dark says as much).
+
+   PROPERTY → TOKEN
+   ─────────────────────────────────────────────────────────────────────────
+   WRAPPER
+     layout          inline-flex; align-items center; gap --space-2 between
+                     ring and label (the button icon-gap rung)
+   RING — SIZE LADDER (the icon-size scale, the house rung for glyphs)
+     xs              --icon-size-xs (12px)
+     sm              --icon-size-sm (16px) — identical footprint to the
+                     button's own .btn__spinner, so inline swaps align
+     md (default)    --icon-size-md (18px)
+     lg              --icon-size-lg (24px)
+   RING — STROKE THICKNESS (spacing-scale micro rungs)
+     xs / sm / md    --space-0-5 (2px) — the .btn__spinner ring-thickness
+                     precedent
+     lg              --space-0-75 (3px) — one micro rung up so the largest
+                     ring does not read hairline-thin
+   RING — STROKES (foreground arc over background track)
+     default         arc --foreground        track --border
+     primary         arc --primary           track --primary-disabled (the
+                     muted primary-hue cream, so the track stays in-family)
+     inverse         arc --on-dark           track --surface-dark-elevated
+                     (the elevated dark tone reads as a quiet ring on
+                     --surface-dark bands)
+     geometry        border-radius --radius-full (the circular recipe)
+   LABEL (.spinner__label)
+     typography      --text-body-sm (+ --line-height), --font-weight-medium,
+                     --font-sans
+     color           --muted-foreground on light; --on-dark-soft under
+                     --inverse (quiet voice on dark, still legible)
+   MOTION
+     rotation        --duration-slow, linear, infinite — the longest
+                     duration token, and linear because a continuous
+                     rotation has no easing to speak of (the Button
+                     spinner precedent: btn-spin uses the same pair)
+   OPACITY           the ring draws both strokes at full opacity with
+                     opaque token colors — no raw alpha anywhere. Opacity
+                     enters only through composed Button states
+                     (--opacity-disabled on a disabled button), owned by
+                     button.css, not by this component.
+   REDUCED MOTION    animation: none — the ring holds as a static
+                     three-quarter arc; the label (or aria-label) keeps
+                     carrying the loading meaning, so the state is still
+                     communicated without motion.
+
+   TOKEN NOTES: no new tokens were needed — every role mapped to an
+   existing token. Documented borrowings: --space-0-75 as the lg stroke
+   (one micro rung above the shared 2px), --duration-slow as the rotation
+   period (longest duration token in the system), and the `linear` keyword
+   for the spin (mechanic, Button precedent). The inverse variant is
+   deliberately gated to dark surfaces by its token choices, not by CSS.
+   ========================================================================== */
+
+.spinner {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+/* ===== Ring ===== */
+
+.spinner__ring {
+  flex: none;
+  width: var(--icon-size-md);
+  height: var(--icon-size-md);
+  border: var(--space-0-5) solid var(--border);
+  border-top-color: var(--foreground);
+  border-radius: var(--radius-full);
+  animation: spinner-rotate var(--duration-slow) linear infinite;
+}
+
+@keyframes spinner-rotate {
+  to {
+    rotate: 360deg;
+  }
+}
+
+/* ===== Sizes ===== */
+
+.spinner--xs .spinner__ring {
+  width: var(--icon-size-xs);
+  height: var(--icon-size-xs);
+}
+
+.spinner--sm .spinner__ring {
+  width: var(--icon-size-sm);
+  height: var(--icon-size-sm);
+}
+
+.spinner--lg .spinner__ring {
+  width: var(--icon-size-lg);
+  height: var(--icon-size-lg);
+  border-width: var(--space-0-75);
+}
+
+/* ===== Variants ===== */
+
+.spinner--primary .spinner__ring {
+  border-color: var(--primary-disabled);
+  border-top-color: var(--primary);
+}
+
+.spinner--inverse .spinner__ring {
+  border-color: var(--surface-dark-elevated);
+  border-top-color: var(--on-dark);
+}
+
+/* ===== Label ===== */
+
+.spinner__label {
+  font-family: var(--font-sans);
+  font-size: var(--text-body-sm);
+  font-weight: var(--font-weight-medium);
+  line-height: var(--text-body-sm--line-height);
+  color: var(--muted-foreground);
+}
+
+.spinner--inverse .spinner__label {
+  color: var(--on-dark-soft);
+}
+
+/* ===== Reduced motion =====
+   The ring freezes as a static arc; the label / aria-label keeps
+   communicating the loading state. */
+@media (prefers-reduced-motion: reduce) {
+  .spinner__ring {
+    animation: none;
+  }
+}
+
+/* Static showcase mirror of the freeze above (.is-hover precedent). */
+.spinner.is-reduced .spinner__ring {
+  animation: none;
+}

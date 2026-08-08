@@ -21,11 +21,11 @@
   .container { max-width: var(--doc-container-max); margin: 0 auto; padding: 0 var(--space-6); }
   .page-head { padding: var(--space-16) 0 var(--space-8); border-bottom: var(--border-width) solid var(--border); }
   .page-head .text--overline { color: var(--primary); display: block; margin-bottom: var(--space-3); }
-  .page-head p { margin: var(--space-4) 0 0; max-width: 64ch; }
+  .page-head p { margin: var(--space-4) 0 0; max-width: var(--doc-table-min-width); }
   .demo-block { padding: var(--space-8) 0; }
   .demo-block > .text--h5 { margin-bottom: var(--space-6); }
   .demo-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(var(--doc-grid-min-card), 1fr)); gap: var(--space-6) var(--space-8); align-items: start; }
-  .demo-note { margin-top: var(--space-4); max-width: 72ch; color: var(--muted-foreground); }
+  .demo-note { margin-top: var(--space-4); max-width: var(--doc-table-min-width); color: var(--muted-foreground); }
   .demo-caption { margin-bottom: var(--space-3); color: var(--caption-foreground); }
   .demo-cell { display: grid; gap: var(--space-3); justify-items: start; }
   /* Static plates show the popover inline, not overlaid. */
@@ -44,7 +44,7 @@
       <code class="text text--code">&lt;table&gt;</code> of real buttons on a roving tabindex.
       Arrows move by day, Home/End to week edges, PageUp/PageDown by month,
       Enter selects, Esc closes. Every state is styled from attributes —
-      <code class="text text--code">aria-selected</code>,
+      <code class="text text--code">aria-pressed</code>,
       <code class="text text--code">data-today</code>,
       <code class="text text--code">data-outside</code>,
       <code class="text text--code">data-range</code> — never from JS-set styles.
@@ -56,14 +56,14 @@
 
   <!-- ===================== Field states ===================== -->
   <section class="demo-block" aria-labelledby="field-heading">
-    <h2 class="text text--h5" id="field-heading">Field states</h2>
+    <h2 class="text text--h5" id="field-heading">Field state matrix</h2>
     <div class="demo-grid">
       <div class="demo-cell">
         <p class="text text--caption demo-caption">empty — placeholder in --caption-foreground</p>
         <div class="datepicker-field">
           <label class="datepicker-field__label" for="dp-empty">Available from</label>
           <div class="datepicker__control">
-            <input class="datepicker__input" id="dp-empty" type="text" readonly placeholder="Select a date" aria-haspopup="dialog" aria-expanded="false">
+            <input class="datepicker__input" id="dp-empty" type="text" role="combobox" readonly placeholder="Select a date" aria-haspopup="dialog" aria-expanded="false">
             <button class="datepicker__toggle" type="button" aria-label="Open calendar" tabindex="-1">
               <svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><rect x="3.5" y="5" width="17" height="15.5" rx="2" stroke="currentColor"/><line x1="3.5" y1="10" x2="20.5" y2="10" stroke="currentColor"/><line x1="8" y1="3" x2="8" y2="7" stroke="currentColor" stroke-linecap="round"/><line x1="16" y1="3" x2="16" y2="7" stroke="currentColor" stroke-linecap="round"/></svg>
             </button>
@@ -75,7 +75,7 @@
         <div class="datepicker-field">
           <label class="datepicker-field__label" for="dp-filled">Available from</label>
           <div class="datepicker__control">
-            <input class="datepicker__input" id="dp-filled" type="text" readonly value="Mar 18, 2026" aria-haspopup="dialog" aria-expanded="false">
+            <input class="datepicker__input" id="dp-filled" type="text" role="combobox" readonly value="Mar 18, 2026" aria-haspopup="dialog" aria-expanded="false">
             <button class="datepicker__toggle" type="button" aria-label="Open calendar" tabindex="-1">
               <svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><rect x="3.5" y="5" width="17" height="15.5" rx="2" stroke="currentColor"/><line x1="3.5" y1="10" x2="20.5" y2="10" stroke="currentColor"/><line x1="8" y1="3" x2="8" y2="7" stroke="currentColor" stroke-linecap="round"/><line x1="16" y1="3" x2="16" y2="7" stroke="currentColor" stroke-linecap="round"/></svg>
             </button>
@@ -87,7 +87,7 @@
         <div class="datepicker-field">
           <label class="datepicker-field__label" for="dp-hover">Available from</label>
           <div class="datepicker__control">
-            <input class="datepicker__input is-hover" id="dp-hover" type="text" readonly value="Mar 18, 2026" aria-haspopup="dialog" aria-expanded="false" tabindex="-1">
+            <input class="datepicker__input is-hover" id="dp-hover" type="text" role="combobox" readonly value="Mar 18, 2026" aria-haspopup="dialog" aria-expanded="false" tabindex="-1">
             <button class="datepicker__toggle" type="button" aria-label="Open calendar" tabindex="-1">
               <svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><rect x="3.5" y="5" width="17" height="15.5" rx="2" stroke="currentColor"/><line x1="3.5" y1="10" x2="20.5" y2="10" stroke="currentColor"/><line x1="8" y1="3" x2="8" y2="7" stroke="currentColor" stroke-linecap="round"/><line x1="16" y1="3" x2="16" y2="7" stroke="currentColor" stroke-linecap="round"/></svg>
             </button>
@@ -99,8 +99,32 @@
         <div class="datepicker-field">
           <label class="datepicker-field__label" for="dp-focus">Available from</label>
           <div class="datepicker__control">
-            <input class="datepicker__input is-focus-visible" id="dp-focus" type="text" readonly value="Mar 18, 2026" aria-haspopup="dialog" aria-expanded="false" tabindex="-1">
+            <input class="datepicker__input is-focus-visible" id="dp-focus" type="text" role="combobox" readonly value="Mar 18, 2026" aria-haspopup="dialog" aria-expanded="false" tabindex="-1">
             <button class="datepicker__toggle" type="button" aria-label="Open calendar" tabindex="-1">
+              <svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><rect x="3.5" y="5" width="17" height="15.5" rx="2" stroke="currentColor"/><line x1="3.5" y1="10" x2="20.5" y2="10" stroke="currentColor"/><line x1="8" y1="3" x2="8" y2="7" stroke="currentColor" stroke-linecap="round"/><line x1="16" y1="3" x2="16" y2="7" stroke="currentColor" stroke-linecap="round"/></svg>
+            </button>
+          </div>
+        </div>
+      </div>
+      <div class="demo-cell">
+        <p class="text text--caption demo-caption">active — toggle uses .is-active to mirror :active</p>
+        <div class="datepicker-field">
+          <label class="datepicker-field__label" for="dp-active">Available from</label>
+          <div class="datepicker__control">
+            <input class="datepicker__input" id="dp-active" type="text" role="combobox" readonly value="Mar 18, 2026" aria-haspopup="dialog" aria-expanded="false" tabindex="-1">
+            <button class="datepicker__toggle is-active" type="button" aria-label="Open calendar, active" tabindex="-1">
+              <svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><rect x="3.5" y="5" width="17" height="15.5" rx="2" stroke="currentColor"/><line x1="3.5" y1="10" x2="20.5" y2="10" stroke="currentColor"/><line x1="8" y1="3" x2="8" y2="7" stroke="currentColor" stroke-linecap="round"/><line x1="16" y1="3" x2="16" y2="7" stroke="currentColor" stroke-linecap="round"/></svg>
+            </button>
+          </div>
+        </div>
+      </div>
+      <div class="demo-cell">
+        <p class="text text--caption demo-caption">open — aria-expanded holds the shared focus treatment</p>
+        <div class="datepicker-field">
+          <label class="datepicker-field__label" for="dp-open">Available from</label>
+          <div class="datepicker__control">
+            <input class="datepicker__input" id="dp-open" type="text" role="combobox" readonly value="Mar 18, 2026" aria-haspopup="dialog" aria-expanded="true" aria-controls="calendar-state-plate">
+            <button class="datepicker__toggle" type="button" aria-label="Close calendar" tabindex="-1">
               <svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><rect x="3.5" y="5" width="17" height="15.5" rx="2" stroke="currentColor"/><line x1="3.5" y1="10" x2="20.5" y2="10" stroke="currentColor"/><line x1="8" y1="3" x2="8" y2="7" stroke="currentColor" stroke-linecap="round"/><line x1="16" y1="3" x2="16" y2="7" stroke="currentColor" stroke-linecap="round"/></svg>
             </button>
           </div>
@@ -111,7 +135,7 @@
         <div class="datepicker-field">
           <label class="datepicker-field__label" for="dp-disabled">Available from</label>
           <div class="datepicker__control">
-            <input class="datepicker__input" id="dp-disabled" type="text" readonly value="Mar 18, 2026" aria-haspopup="dialog" aria-expanded="false" disabled>
+            <input class="datepicker__input" id="dp-disabled" type="text" role="combobox" readonly value="Mar 18, 2026" aria-haspopup="dialog" aria-expanded="false" disabled>
             <button class="datepicker__toggle" type="button" aria-label="Open calendar" tabindex="-1" disabled>
               <svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><rect x="3.5" y="5" width="17" height="15.5" rx="2" stroke="currentColor"/><line x1="3.5" y1="10" x2="20.5" y2="10" stroke="currentColor"/><line x1="8" y1="3" x2="8" y2="7" stroke="currentColor" stroke-linecap="round"/><line x1="16" y1="3" x2="16" y2="7" stroke="currentColor" stroke-linecap="round"/></svg>
             </button>
@@ -123,12 +147,12 @@
         <div class="datepicker-field">
           <label class="datepicker-field__label" for="dp-error">Available from</label>
           <div class="datepicker__control">
-            <input class="datepicker__input" id="dp-error" type="text" readonly value="Feb 30, 2026" aria-haspopup="dialog" aria-expanded="false" aria-invalid="true" aria-describedby="dp-error-msg">
+            <input class="datepicker__input" id="dp-error" type="text" role="combobox" readonly value="Feb 30, 2026" aria-haspopup="dialog" aria-expanded="false" aria-invalid="true" aria-describedby="dp-error-msg">
             <button class="datepicker__toggle" type="button" aria-label="Open calendar" tabindex="-1">
               <svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><rect x="3.5" y="5" width="17" height="15.5" rx="2" stroke="currentColor"/><line x1="3.5" y1="10" x2="20.5" y2="10" stroke="currentColor"/><line x1="8" y1="3" x2="8" y2="7" stroke="currentColor" stroke-linecap="round"/><line x1="16" y1="3" x2="16" y2="7" stroke="currentColor" stroke-linecap="round"/></svg>
             </button>
           </div>
-          <p class="datepicker-field__error" id="dp-error-msg" style="margin: 0;">That date doesn't exist. Pick a real calendar day.</p>
+          <p class="datepicker-field__error" id="dp-error-msg">That date doesn't exist. Pick a real calendar day.</p>
         </div>
       </div>
     </div>
@@ -138,15 +162,15 @@
 
   <!-- ===================== Calendar day states ===================== -->
   <section class="demo-block" aria-labelledby="days-heading">
-    <h2 class="text text--h5" id="days-heading">Calendar day states (March 2026, static plate)</h2>
+    <h2 class="text text--h5" id="days-heading">Calendar day state matrix (March 2026, static plate)</h2>
     <div class="demo-grid">
       <div class="demo-cell">
         <p class="text text--caption demo-caption">
-          default · hover (10th) · today (12th, coral hairline) · selected (18th) ·
+          default · hover (10th) · active (11th) · today (12th, coral hairline) · selected (18th) ·
           focus-visible (20th) · disabled (25th–28th, past max) · outside-month (Apr 1–4)
         </p>
         <div class="datepicker__control">
-          <div class="datepicker__popover" role="dialog" aria-label="Calendar day states, March 2026">
+          <div class="datepicker__popover" id="calendar-state-plate" role="dialog" aria-label="Calendar day states, March 2026">
             <div class="datepicker__nav">
               <button class="datepicker__nav-btn" type="button" aria-label="Previous month" tabindex="-1">
                 <svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="m14.5 6-6 6 6 6" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"/></svg>
@@ -182,7 +206,7 @@
                   <td><button class="datepicker__day" type="button" tabindex="-1" aria-label="Sunday, March 8, 2026">8</button></td>
                   <td><button class="datepicker__day" type="button" tabindex="-1" aria-label="Monday, March 9, 2026">9</button></td>
                   <td><button class="datepicker__day is-hover" type="button" tabindex="-1" aria-label="Tuesday, March 10, 2026">10</button></td>
-                  <td><button class="datepicker__day" type="button" tabindex="-1" aria-label="Wednesday, March 11, 2026">11</button></td>
+                  <td><button class="datepicker__day is-active" type="button" tabindex="-1" aria-label="Wednesday, March 11, 2026, active">11</button></td>
                   <td><button class="datepicker__day" type="button" tabindex="-1" data-today aria-label="Thursday, March 12, 2026, today">12</button></td>
                   <td><button class="datepicker__day" type="button" tabindex="-1" aria-label="Friday, March 13, 2026">13</button></td>
                   <td><button class="datepicker__day" type="button" tabindex="-1" aria-label="Saturday, March 14, 2026">14</button></td>
@@ -191,7 +215,7 @@
                   <td><button class="datepicker__day" type="button" tabindex="-1" aria-label="Sunday, March 15, 2026">15</button></td>
                   <td><button class="datepicker__day" type="button" tabindex="-1" aria-label="Monday, March 16, 2026">16</button></td>
                   <td><button class="datepicker__day" type="button" tabindex="-1" aria-label="Tuesday, March 17, 2026">17</button></td>
-                  <td><button class="datepicker__day" type="button" tabindex="-1" aria-selected="true" aria-label="Wednesday, March 18, 2026, selected">18</button></td>
+                  <td><button class="datepicker__day" type="button" tabindex="-1" aria-pressed="true" aria-label="Wednesday, March 18, 2026, selected">18</button></td>
                   <td><button class="datepicker__day" type="button" tabindex="-1" aria-label="Thursday, March 19, 2026">19</button></td>
                   <td><button class="datepicker__day is-focus-visible" type="button" tabindex="-1" aria-label="Friday, March 20, 2026">20</button></td>
                   <td><button class="datepicker__day" type="button" tabindex="-1" aria-label="Saturday, March 21, 2026">21</button></td>
@@ -260,7 +284,7 @@
                 <tr>
                   <td><button class="datepicker__day" type="button" tabindex="-1" aria-label="Sunday, March 8, 2026">8</button></td>
                   <td><button class="datepicker__day" type="button" tabindex="-1" aria-label="Monday, March 9, 2026">9</button></td>
-                  <td data-range="start"><button class="datepicker__day" type="button" tabindex="-1" aria-selected="true" aria-label="Tuesday, March 10, 2026, range start">10</button></td>
+                  <td data-range="start"><button class="datepicker__day" type="button" tabindex="-1" aria-pressed="true" aria-label="Tuesday, March 10, 2026, range start">10</button></td>
                   <td data-range="middle"><button class="datepicker__day" type="button" tabindex="-1" aria-label="Wednesday, March 11, 2026, in range">11</button></td>
                   <td data-range="middle"><button class="datepicker__day" type="button" tabindex="-1" aria-label="Thursday, March 12, 2026, in range">12</button></td>
                   <td data-range="middle"><button class="datepicker__day" type="button" tabindex="-1" aria-label="Friday, March 13, 2026, in range">13</button></td>
@@ -270,7 +294,7 @@
                   <td data-range="middle"><button class="datepicker__day" type="button" tabindex="-1" aria-label="Sunday, March 15, 2026, in range">15</button></td>
                   <td data-range="middle"><button class="datepicker__day" type="button" tabindex="-1" aria-label="Monday, March 16, 2026, in range">16</button></td>
                   <td data-range="middle"><button class="datepicker__day" type="button" tabindex="-1" aria-label="Tuesday, March 17, 2026, in range">17</button></td>
-                  <td data-range="end"><button class="datepicker__day" type="button" tabindex="-1" aria-selected="true" aria-label="Wednesday, March 18, 2026, range end">18</button></td>
+                  <td data-range="end"><button class="datepicker__day" type="button" tabindex="-1" aria-pressed="true" aria-label="Wednesday, March 18, 2026, range end">18</button></td>
                   <td><button class="datepicker__day" type="button" tabindex="-1" aria-label="Thursday, March 19, 2026">19</button></td>
                   <td><button class="datepicker__day" type="button" tabindex="-1" aria-label="Friday, March 20, 2026">20</button></td>
                   <td><button class="datepicker__day" type="button" tabindex="-1" aria-label="Saturday, March 21, 2026">21</button></td>
@@ -318,11 +342,11 @@
         <div class="datepicker-field">
           <label class="datepicker-field__label" for="dp-live">Start date</label>
           <div class="datepicker__control" data-datepicker data-mode="single">
-            <input class="datepicker__input" id="dp-live" type="text" readonly placeholder="Select a date" aria-haspopup="dialog" aria-expanded="false">
+            <input class="datepicker__input" id="dp-live" type="text" role="combobox" readonly placeholder="Select a date" aria-haspopup="dialog" aria-expanded="false" aria-controls="dp-live-popover">
             <button class="datepicker__toggle" type="button" aria-label="Toggle calendar" tabindex="-1">
               <svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><rect x="3.5" y="5" width="17" height="15.5" rx="2" stroke="currentColor"/><line x1="3.5" y1="10" x2="20.5" y2="10" stroke="currentColor"/><line x1="8" y1="3" x2="8" y2="7" stroke="currentColor" stroke-linecap="round"/><line x1="16" y1="3" x2="16" y2="7" stroke="currentColor" stroke-linecap="round"/></svg>
             </button>
-            <div class="datepicker__popover" role="dialog" aria-label="Choose a date" hidden>
+            <div class="datepicker__popover" id="dp-live-popover" role="dialog" aria-label="Choose a date" hidden>
               <div class="datepicker__nav">
                 <button class="datepicker__nav-btn" type="button" data-nav="prev" aria-label="Previous month">
                   <svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="m14.5 6-6 6 6 6" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"/></svg>
@@ -364,11 +388,11 @@
         <div class="datepicker-field">
           <label class="datepicker-field__label" for="dp-range">Interview window</label>
           <div class="datepicker__control" data-datepicker data-mode="range">
-            <input class="datepicker__input" id="dp-range" type="text" readonly placeholder="Select a start and end date" aria-haspopup="dialog" aria-expanded="false">
+            <input class="datepicker__input" id="dp-range" type="text" role="combobox" readonly placeholder="Select a start and end date" aria-haspopup="dialog" aria-expanded="false" aria-controls="dp-range-popover">
             <button class="datepicker__toggle" type="button" aria-label="Toggle calendar" tabindex="-1">
               <svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><rect x="3.5" y="5" width="17" height="15.5" rx="2" stroke="currentColor"/><line x1="3.5" y1="10" x2="20.5" y2="10" stroke="currentColor"/><line x1="8" y1="3" x2="8" y2="7" stroke="currentColor" stroke-linecap="round"/><line x1="16" y1="3" x2="16" y2="7" stroke="currentColor" stroke-linecap="round"/></svg>
             </button>
-            <div class="datepicker__popover" role="dialog" aria-label="Choose a date range" hidden>
+            <div class="datepicker__popover" id="dp-range-popover" role="dialog" aria-label="Choose a date range" hidden>
               <div class="datepicker__nav">
                 <button class="datepicker__nav-btn" type="button" data-nav="prev" aria-label="Previous month">
                   <svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="m14.5 6-6 6 6 6" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"/></svg>
@@ -409,7 +433,7 @@
 <script>
   /* DatePicker controller — the behavioral contract:
      render the grid, move focus (roving tabindex), flip state ATTRIBUTES
-     (aria-selected / data-today / data-outside / data-range). It never sets
+     (aria-pressed / data-today / data-outside / data-range). It never sets
      an inline style: every visual decision stays in datepicker.css. */
   const DAY = 86400000;
   const fullDate = new Intl.DateTimeFormat("en-US", { weekday: "long", year: "numeric", month: "long", day: "numeric" });
@@ -449,17 +473,17 @@
           if (date.getMonth() !== view.getMonth()) btn.dataset.outside = "";
           if (sameDay(date, today)) { btn.dataset.today = ""; label += ", today"; }
           if (mode === "single" && sameDay(date, selected)) {
-            btn.setAttribute("aria-selected", "true"); label += ", selected";
+            btn.setAttribute("aria-pressed", "true"); label += ", selected";
           }
           if (mode === "range") {
             const { start, end } = rangeSel;
             if (start && sameDay(date, start)) {
-              btn.setAttribute("aria-selected", "true"); label += ", range start";
+              btn.setAttribute("aria-pressed", "true"); label += ", range start";
               if (end) td.dataset.range = "start"; // lone start: pill only, no band
             }
             if (end && sameDay(date, end)) {
               td.dataset.range = "end";
-              btn.setAttribute("aria-selected", "true"); label += ", range end";
+              btn.setAttribute("aria-pressed", "true"); label += ", range end";
             }
             if (start && end && date > start && date < end) {
               td.dataset.range = "middle"; label += ", in range";
@@ -500,16 +524,16 @@
       const { start, end } = rangeSel;
       if (!start || (start && end)) {
         rangeSel = { start: date, end: null };
-        input.value = shortDate.format(date) + " – …";
+        input.value = `${shortDate.format(date)} – …`;
       } else if (date < start) {
         rangeSel = { start: date, end: start };
-        input.value = shortDate.format(date) + " – " + shortDate.format(start);
+        input.value = `${shortDate.format(date)} – ${shortDate.format(start)}`;
         render();
         close();
         return;
       } else {
         rangeSel = { start, end: date };
-        input.value = shortDate.format(start) + " – " + shortDate.format(date);
+        input.value = `${shortDate.format(start)} – ${shortDate.format(date)}`;
         render();
         close();
         return;
@@ -520,10 +544,10 @@
     function moveFocus(date) {
       // Strip time-of-day: focusDate seeds from `new Date()`, and a fractional
       // day would round the grid index off by one.
-      date = new Date(date.getFullYear(), date.getMonth(), date.getDate());
-      focusDate = date;
-      if (date.getMonth() !== view.getMonth() || date.getFullYear() !== view.getFullYear()) {
-        view = new Date(date.getFullYear(), date.getMonth(), 1);
+      const normalizedDate = new Date(date.getFullYear(), date.getMonth(), date.getDate());
+      focusDate = normalizedDate;
+      if (normalizedDate.getMonth() !== view.getMonth() || normalizedDate.getFullYear() !== view.getFullYear()) {
+        view = new Date(normalizedDate.getFullYear(), normalizedDate.getMonth(), 1);
         render();
       } else {
         const prev = tbody.querySelector('[tabindex="0"]');
@@ -531,7 +555,7 @@
       }
       // The grid is a fixed 6×7 sequence from the week of the 1st — focus by index.
       const gridStart = new Date(view.getFullYear(), view.getMonth(), 1 - new Date(view.getFullYear(), view.getMonth(), 1).getDay());
-      const idx = Math.round((date - gridStart) / DAY);
+      const idx = Math.round((normalizedDate - gridStart) / DAY);
       const el = tbody.querySelectorAll(".datepicker__day")[idx];
       if (el) { el.tabIndex = 0; el.focus(); }
     }

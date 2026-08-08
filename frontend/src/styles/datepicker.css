@@ -7,7 +7,7 @@
    calendar <table>. Day cells are real <button>s with a roving tabindex —
    the controller moves focus (Arrows ±1/±7 days, Home/End to week edges,
    PageUp/PageDown ±1 month, Enter/Space selects, Esc closes), while every
-   visual state is styled from attributes: [aria-selected], [data-today],
+   visual state is styled from attributes: [aria-pressed], [data-today],
    [data-outside], [data-range], :disabled. Days carry full-date aria-labels
    ("Friday, March 20, 2026") so navigation announces dates; on selection
    focus returns to the input, whose updated value is announced.
@@ -89,13 +89,13 @@
                      --border-width --today-indicator (dedicated token,
                      same coral as --primary — a hairline, not a fill, so
                      today composes with hover/selected)
-     selected        [aria-selected="true"] → bg --primary,
+     selected        day[aria-pressed="true"] → bg --selected-border,
                      color --primary-foreground; hover --primary-hover
-     range middle    td bg --accent (the hover/tab-active surface doubles as
-                     the "inside the band" tint), day color
+     range middle    td bg --selected-bg, day color
                      --accent-foreground
-     range start/end day bg --primary + color --primary-foreground over a
-                     half-cell --accent band (gradient at 50%)
+     range start/end day bg --selected-border + color
+                     --primary-foreground over a half-cell --selected-bg
+                     band (gradient at 50%)
      outside month   [data-outside] → color --caption-foreground
                      (muted-soft: present but de-emphasized)
      day disabled    opacity --opacity-disabled + cursor not-allowed
@@ -131,12 +131,13 @@
 .datepicker-field__label {
   font-family: var(--font-sans);
   font-size: var(--text-body-md);
-  font-weight: 400;
+  font-weight: var(--font-weight-regular);
   line-height: var(--text-body-md--line-height);
   color: var(--foreground-strong);
 }
 
 .datepicker-field__error {
+  margin: unset;
   font-family: var(--font-sans);
   font-size: var(--text-caption);
   line-height: var(--text-caption--line-height);
@@ -187,6 +188,11 @@
 .datepicker__input[aria-invalid="true"] {
   border-color: var(--destructive);
 }
+.datepicker__input[aria-invalid="true"]:focus-visible,
+.datepicker__input[aria-invalid="true"].is-focus-visible,
+.datepicker__input[aria-invalid="true"][aria-expanded="true"] {
+  box-shadow: 0 0 0 var(--ring-width) var(--ring-destructive);
+}
 
 /* Toggle — sits inside the field's right edge, vertically centered. */
 .datepicker__toggle {
@@ -214,7 +220,8 @@
   background: var(--accent);
   color: var(--muted-foreground-hover);
 }
-.datepicker__toggle:active:not(:disabled) {
+.datepicker__toggle:active:not(:disabled),
+.datepicker__toggle.is-active {
   background: var(--surface-cream-strong);
   color: var(--muted-foreground-active);
 }
@@ -291,7 +298,8 @@
   background: var(--accent);
   color: var(--muted-foreground-hover);
 }
-.datepicker__nav-btn:active:not(:disabled) {
+.datepicker__nav-btn:active:not(:disabled),
+.datepicker__nav-btn.is-active {
   background: var(--surface-cream-strong);
   color: var(--muted-foreground-active);
 }
@@ -351,9 +359,13 @@
     color var(--duration-fast) var(--ease-standard),
     box-shadow var(--duration-fast) var(--ease-standard);
 }
-.datepicker__day:hover:not(:disabled):not([aria-selected="true"]),
-.datepicker__day.is-hover:not(:disabled):not([aria-selected="true"]) {
+.datepicker__day:hover:not(:disabled):not([aria-pressed="true"]),
+.datepicker__day.is-hover:not(:disabled):not([aria-pressed="true"]) {
   background: var(--accent);
+}
+.datepicker__day:active:not(:disabled):not([aria-pressed="true"]),
+.datepicker__day.is-active:not(:disabled):not([aria-pressed="true"]) {
+  background: var(--selected-bg);
 }
 
 /* Today — an inset coral hairline, so it composes with hover and selected. */
@@ -361,24 +373,29 @@
   box-shadow: inset 0 0 0 var(--border-width) var(--today-indicator);
 }
 
-/* Selected (single mode; range endpoints use data-range below). */
-.datepicker__day[aria-selected="true"] {
-  background: var(--primary);
+/* Selected state is exposed as the day button's pressed state; range
+   endpoints use data-range on the table cell below. */
+.datepicker__day[aria-pressed="true"] {
+  background: var(--selected-border);
   color: var(--primary-foreground);
 }
-.datepicker__day[aria-selected="true"]:hover:not(:disabled) {
+.datepicker__day[aria-pressed="true"]:hover:not(:disabled) {
   background: var(--primary-hover);
+}
+.datepicker__day[aria-pressed="true"]:active:not(:disabled),
+.datepicker__day[aria-pressed="true"].is-active {
+  background: var(--primary-active);
 }
 
 /* Range band — backgrounds live on the <td> so the band is contiguous. */
 .datepicker__cal td[data-range="middle"] {
-  background: var(--accent);
+  background: var(--selected-bg);
 }
 .datepicker__cal td[data-range="start"] {
-  background: linear-gradient(90deg, transparent 50%, var(--accent) 50%);
+  background: linear-gradient(to right, transparent 50%, var(--selected-bg) 50%);
 }
 .datepicker__cal td[data-range="end"] {
-  background: linear-gradient(90deg, var(--accent) 50%, transparent 50%);
+  background: linear-gradient(to right, var(--selected-bg) 50%, transparent 50%);
 }
 .datepicker__cal td[data-range="middle"] .datepicker__day {
   color: var(--accent-foreground);
@@ -386,7 +403,7 @@
 }
 .datepicker__cal td[data-range="start"] .datepicker__day,
 .datepicker__cal td[data-range="end"] .datepicker__day {
-  background: var(--primary);
+  background: var(--selected-border);
   color: var(--primary-foreground);
 }
 .datepicker__cal td[data-range="start"] .datepicker__day:hover:not(:disabled),

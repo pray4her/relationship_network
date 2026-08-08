@@ -1,0 +1,320 @@
+/* ==========================================================================
+   Tooltip
+   Token mapping — every value below references tokens.css, nothing else.
+
+   A transient dark bubble that supplements a trigger — label clarification
+   or a keyboard shortcut hint — and never contains essential interactive
+   controls (the bubble is pointer-events: none; content is supplementary
+   by contract). Opens on hover AND keyboard focus; dismisses on Escape
+   (script sets data-dismissed until the pointer leaves or focus moves on)
+   and whenever the trigger loses relevance (pointer leave, blur — the
+   plain CSS exit paths).
+
+   Anatomy (markup contract):
+     .tip               wrapper <span>; position context; placement via
+                        data-tip="top|right|bottom|left" (default top)
+     (trigger)          any focusable control as first child (.btn / .link);
+                        carries aria-describedby → the bubble's id
+     .tooltip           the bubble <span role="tooltip">; pointer-events
+                        none; states below
+     .tooltip__text     the supplementary copy
+     .tooltip__kbd      optional keyboard-shortcut hint (<kbd>)
+     .tooltip__arrow    rotated-square pointer, aria-hidden by decoration
+     .is-open / .is-opening / .is-closing   static showcase mirrors of the
+                        live states (.is-hover precedent)
+
+   States:
+     closed    opacity 0 + visibility hidden, parked --space-1 toward the
+               trigger; the exit (closing) transition lives here
+     opening   the enter transition — opacity + translate + visibility over
+               --duration-normal --ease-standard (declared on the open
+               rule, so enter and exit curve differently)
+     open      opacity 1, visibility visible, settled at the --space-2
+               offset; visibility flips at the start of the enter
+     closing   the exit transition — opacity + translate + visibility over
+               --duration-fast: the bubble fades as it retreats the half
+               step, reading quieter and quicker than the enter;
+               visibility holds until the fade finishes, then removes the
+               bubble from the accessibility tree and the hover surface
+
+   PROPERTY → TOKEN
+   ─────────────────────────────────────────────────────────────────────────
+   SURFACE & CHROME
+     background      --surface-dark (the bubble is an on-dark panel)
+     border          --border-width solid --surface-dark-elevated (one
+                     elevated rung above the fill — a quiet rim, same
+                     recipe as the spinner's inverse track)
+     shadow          --shadow-lift (the elevated-surface lift; tokens.css
+                     notes shadows are rare — a floating bubble qualifies)
+     radius          --radius-md (the shared control radius)
+     layering        --z-popover (overlays above menus)
+     padding         block --space-2, inline --space-3
+   TEXT
+     copy            --text-caption (+ --line-height), --font-weight-medium,
+                     --font-sans, color --on-dark; width max-content so
+                     the bubble hugs its copy despite the centering
+                     offsets, capped at max-width calc(var(--space-16) * 5)
+                     — 320px composed from the spacing scale
+                     (--sidebar-width precedent) so short copy hugs one
+                     line and longer supplementary copy wraps instead of
+                     running off the canvas
+     shortcut hint   <kbd>: --font-mono at --text-caption-up
+                     (+ --line-height), color --on-dark-soft, separated by
+                     --space-2 + a --border-width rule in
+                     --surface-dark-elevated (the rim tone doubles as the
+                     divider)
+   ARROW (.tooltip__arrow)
+     geometry        --space-2 square rotated 45deg (rotation is mechanic,
+                     not a themed magnitude), centered on the bubble edge
+                     so the inner half covers the rim seam; background
+                     --surface-dark; the two outward edges carry
+                     --border-width in --surface-dark-elevated to continue
+                     the rim around the pointer
+   OFFSET            bubble parks --space-2 off the trigger edge on every
+                     side (calc(100% + --space-2)); the closed state tucks
+                     --space-1 of that away so opening travels half a step
+   MOTION
+     opening         --duration-normal --ease-standard
+     closing         --duration-fast (visibility rides the same clock in
+                     both directions)
+   REDUCED MOTION    all transitions removed — the bubble appears and
+                     disappears instantly; visibility still gates the
+                     accessibility tree.
+
+   TOKEN NOTES: no new tokens were needed — every role mapped to an
+   existing token. The dark bubble reuses the on-dark surface family
+   (--surface-dark / -elevated / --on-dark / -soft) exactly as the spec's
+   code-mockup and footer bands do; the mid-fade showcase mirrors borrow
+   --opacity-disabled as their frame opacity (the system's only opacity
+   token) and --space-0-5 as the mid-shift, both documented, neither
+   shipped to live states.
+   ========================================================================== */
+
+.tip {
+  position: relative;
+  display: inline-flex;
+}
+
+/* ===== Bubble (closed by default) ===== */
+
+.tooltip {
+  position: absolute;
+  z-index: var(--z-popover);
+  padding-block: var(--space-2);
+  padding-inline: var(--space-3);
+  border: var(--border-width) solid var(--surface-dark-elevated);
+  border-radius: var(--radius-md);
+  background: var(--surface-dark);
+  box-shadow: var(--shadow-lift);
+  width: max-content;
+  max-width: calc(var(--space-16) * 5);
+  pointer-events: none;
+  font-family: var(--font-sans);
+  font-size: var(--text-caption);
+  font-weight: var(--font-weight-medium);
+  line-height: var(--text-caption--line-height);
+  color: var(--on-dark);
+  opacity: 0;
+  visibility: hidden;
+  /* closing curve: fade and retreat in place, fast */
+  transition:
+    opacity var(--duration-fast) var(--ease-standard),
+    translate var(--duration-fast) var(--ease-standard),
+    visibility var(--duration-fast);
+}
+
+/* ===== Text & shortcut hint ===== */
+
+.tooltip__kbd {
+  margin-inline-start: var(--space-2);
+  padding-inline-start: var(--space-2);
+  border-inline-start: var(--border-width) solid var(--surface-dark-elevated);
+  font-family: var(--font-mono);
+  font-size: var(--text-caption-up);
+  font-weight: var(--font-weight-regular);
+  line-height: var(--text-caption-up--line-height);
+  color: var(--on-dark-soft);
+}
+
+/* ===== Arrow =====
+   A --space-2 square rotated 45deg, centered on the bubble edge so its
+   inner half covers the rim seam; only the two outward edges carry the
+   rim so the pointer reads continuous with the bubble. */
+
+.tooltip__arrow {
+  position: absolute;
+  width: var(--space-2);
+  height: var(--space-2);
+  background: var(--surface-dark);
+  rotate: 45deg;
+}
+
+/* ===== Placements — closed (parked --space-1 toward the trigger) ===== */
+
+.tip:not([data-tip]) .tooltip,
+.tip[data-tip="top"] .tooltip {
+  bottom: calc(100% + var(--space-2));
+  left: 50%;
+  translate: -50% var(--space-1);
+}
+
+.tip[data-tip="bottom"] .tooltip {
+  top: calc(100% + var(--space-2));
+  left: 50%;
+  translate: -50% calc(-1 * var(--space-1));
+}
+
+.tip[data-tip="left"] .tooltip {
+  right: calc(100% + var(--space-2));
+  top: 50%;
+  translate: var(--space-1) -50%;
+}
+
+.tip[data-tip="right"] .tooltip {
+  left: calc(100% + var(--space-2));
+  top: 50%;
+  translate: calc(-1 * var(--space-1)) -50%;
+}
+
+/* ===== Arrow positions & outward rim edges ===== */
+
+.tip:not([data-tip]) .tooltip__arrow,
+.tip[data-tip="top"] .tooltip__arrow {
+  top: 100%;
+  left: 50%;
+  margin: calc(-1 * var(--space-1)) 0 0 calc(-1 * var(--space-1));
+  border-right: var(--border-width) solid var(--surface-dark-elevated);
+  border-bottom: var(--border-width) solid var(--surface-dark-elevated);
+}
+
+.tip[data-tip="bottom"] .tooltip__arrow {
+  bottom: 100%;
+  left: 50%;
+  margin: 0 0 calc(-1 * var(--space-1)) calc(-1 * var(--space-1));
+  border-top: var(--border-width) solid var(--surface-dark-elevated);
+  border-left: var(--border-width) solid var(--surface-dark-elevated);
+}
+
+.tip[data-tip="left"] .tooltip__arrow {
+  left: 100%;
+  top: 50%;
+  margin: calc(-1 * var(--space-1)) 0 0 calc(-1 * var(--space-1));
+  border-bottom: var(--border-width) solid var(--surface-dark-elevated);
+  border-left: var(--border-width) solid var(--surface-dark-elevated);
+}
+
+.tip[data-tip="right"] .tooltip__arrow {
+  right: 100%;
+  top: 50%;
+  margin: calc(-1 * var(--space-1)) calc(-1 * var(--space-1)) 0 0;
+  border-top: var(--border-width) solid var(--surface-dark-elevated);
+  border-right: var(--border-width) solid var(--surface-dark-elevated);
+}
+
+/* ===== Open (hover, keyboard focus, or static mirror) =====
+   The enter curve is declared here so opening travels (translate joins
+   the transition) while closing fades in place. */
+
+.tip:not([data-tip]):hover .tooltip,
+.tip:not([data-tip]):focus-within .tooltip,
+.tip[data-tip="top"]:hover .tooltip,
+.tip[data-tip="top"]:focus-within .tooltip,
+.tip[data-tip="top"] .tooltip.is-open,
+.tip:not([data-tip]) .tooltip.is-open {
+  opacity: 1;
+  visibility: visible;
+  translate: -50% 0;
+  transition:
+    opacity var(--duration-normal) var(--ease-standard),
+    translate var(--duration-normal) var(--ease-standard),
+    visibility var(--duration-normal);
+}
+
+.tip[data-tip="bottom"]:hover .tooltip,
+.tip[data-tip="bottom"]:focus-within .tooltip,
+.tip[data-tip="bottom"] .tooltip.is-open {
+  opacity: 1;
+  visibility: visible;
+  translate: -50% 0;
+  transition:
+    opacity var(--duration-normal) var(--ease-standard),
+    translate var(--duration-normal) var(--ease-standard),
+    visibility var(--duration-normal);
+}
+
+.tip[data-tip="left"]:hover .tooltip,
+.tip[data-tip="left"]:focus-within .tooltip,
+.tip[data-tip="left"] .tooltip.is-open {
+  opacity: 1;
+  visibility: visible;
+  translate: 0 -50%;
+  transition:
+    opacity var(--duration-normal) var(--ease-standard),
+    translate var(--duration-normal) var(--ease-standard),
+    visibility var(--duration-normal);
+}
+
+.tip[data-tip="right"]:hover .tooltip,
+.tip[data-tip="right"]:focus-within .tooltip,
+.tip[data-tip="right"] .tooltip.is-open {
+  opacity: 1;
+  visibility: visible;
+  translate: 0 -50%;
+  transition:
+    opacity var(--duration-normal) var(--ease-standard),
+    translate var(--duration-normal) var(--ease-standard),
+    visibility var(--duration-normal);
+}
+
+/* ===== Static mirrors of the transitional frames =====
+   opening: early enter frame — half opacity, mid-travel;
+   closing: late exit frame — half opacity, fully retreated (the parked
+   translate comes from the placement rules above). */
+
+.tip:not([data-tip]) .tooltip.is-opening,
+.tip[data-tip="top"] .tooltip.is-opening {
+  opacity: var(--opacity-disabled);
+  visibility: visible;
+  translate: -50% var(--space-0-5);
+}
+
+.tip[data-tip="bottom"] .tooltip.is-opening {
+  opacity: var(--opacity-disabled);
+  visibility: visible;
+  translate: -50% calc(-1 * var(--space-0-5));
+}
+
+.tip[data-tip="left"] .tooltip.is-opening {
+  opacity: var(--opacity-disabled);
+  visibility: visible;
+  translate: var(--space-0-5) -50%;
+}
+
+.tip[data-tip="right"] .tooltip.is-opening {
+  opacity: var(--opacity-disabled);
+  visibility: visible;
+  translate: calc(-1 * var(--space-0-5)) -50%;
+}
+
+.tooltip.is-closing {
+  opacity: var(--opacity-disabled);
+  visibility: visible;
+}
+
+/* ===== Escape dismissal =====
+   Script sets data-dismissed on the wrapper; it wins by order (last) over
+   the hover/focus open rules. Cleared when the pointer leaves or focus
+   moves on, so relevance — not a stale flag — governs the bubble. */
+
+.tip[data-dismissed] .tooltip {
+  opacity: 0;
+  visibility: hidden;
+}
+
+/* ===== Reduced motion ===== */
+
+@media (prefers-reduced-motion: reduce) {
+  .tooltip {
+    transition: none;
+  }
+}

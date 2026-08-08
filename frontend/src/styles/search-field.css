@@ -22,6 +22,9 @@
      .search-field__spinner    optional loading indicator; occupies the
                                trailing slot while .search-field--loading
 
+   Native search cancel decoration is hidden because the accessible,
+   token-styled .input__clear control owns that action consistently.
+
    PART → TOKEN (everything not listed here is Input's mapping, reused)
    ─────────────────────────────────────────────────────────────────────────
    search icon     Input's .input__icon: --icon-size-sm,
@@ -35,14 +38,15 @@
                    radius --radius-xs — plus its built-in auto-hide while
                    :placeholder-shown
    loading spinner --icon-size-sm, ring --space-0-5, color
-                   --muted-foreground, spin --duration-slow linear
-                   infinite (same recipe as Combobox's spinner)
+                   --muted-foreground, spin --duration-loading
+                   --ease-linear infinite through --motion-rotation-full
+                   (same recipe as Combobox's spinner)
 
    STATE → VISUAL OWNER
    ─────────────────────────────────────────────────────────────────────────
    empty           placeholder at --caption-foreground + kbd hint visible
                    (Input's :placeholder-shown rules + the kbd rule below)
-   hover           Input: border --muted-foreground ‡ (interim)
+   hover           Input: border --border-strong
    focus-visible   Input: :focus-within ring --ring-width --ring-focus,
                    border --primary
    typing/has-value Input: text --foreground; kbd hint hides, clear button
@@ -54,11 +58,15 @@
    error           Input: .input-wrap--error or [aria-invalid] → border
                    --destructive (pair with FormField for the message)
 
-   REPORTED TOKEN GAPS: none new — the hover-border and destructive-ring
-   interims are inherited from Input and reported there.
+   REPORTED TOKEN GAPS: none. Hover, destructive focus, and loading motion
+   all resolve through the shared Input and motion tokens.
    ========================================================================== */
 
 /* ===== Shortcut hint (visible only while empty) ===== */
+
+.search-field .input::-webkit-search-cancel-button {
+  display: none;
+}
 
 .search-field__kbd {
   display: none;
@@ -90,7 +98,7 @@
   border: var(--space-0-5) solid var(--muted-foreground);
   border-top-color: transparent;
   border-radius: var(--radius-full);
-  animation: search-field-spin var(--duration-slow) linear infinite;
+  animation: search-field-spin var(--duration-loading) var(--ease-linear) infinite;
 }
 .search-field--loading .search-field__spinner {
   display: block;
@@ -103,7 +111,7 @@
 
 @keyframes search-field-spin {
   to {
-    rotate: 360deg;
+    rotate: var(--motion-rotation-full);
   }
 }
 

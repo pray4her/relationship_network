@@ -1,266 +1,169 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
-<head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Switch — Component Showcase</title>
-<link rel="stylesheet" href="../src/styles/tokens.css">
-<link rel="stylesheet" href="../src/styles/typography.css">
-<link rel="stylesheet" href="../src/styles/separator.css">
-<link rel="stylesheet" href="../src/styles/switch.css">
-<style>
-  /* Page chrome — tokens only, no component values. */
-  *, *::before, *::after { box-sizing: border-box; }
-  body {
-    margin: 0;
-    background: var(--background);
-    color: var(--foreground);
-    font-family: var(--font-sans);
-    -webkit-font-smoothing: antialiased;
-  }
-  .container { max-width: var(--doc-container-max); margin: 0 auto; padding: 0 var(--space-6); }
-  .page-head { padding: var(--space-16) 0 var(--space-8); border-bottom: var(--border-width) solid var(--border); }
-  .page-head .text--overline { color: var(--primary); display: block; margin-bottom: var(--space-3); }
-  .page-head p { margin: var(--space-4) 0 0; max-width: 64ch; }
-  .demo-block { padding: var(--space-8) 0; }
-  .demo-block > .text--h5 { margin-bottom: var(--space-6); }
-  .demo-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(var(--doc-grid-min-card), 1fr)); gap: var(--space-6) var(--space-8); align-items: start; }
-  .demo-note { margin-top: var(--space-4); max-width: 72ch; color: var(--muted-foreground); }
-  .demo-caption { margin-bottom: var(--space-3); color: var(--caption-foreground); }
-  .demo-cell { display: grid; gap: var(--space-3); justify-items: start; }
-</style>
-</head>
-<body>
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Switch — Component Showcase</title>
+    <link rel="stylesheet" href="../src/styles/tokens.css" />
+    <link rel="stylesheet" href="../src/styles/typography.css" />
+    <link rel="stylesheet" href="../src/styles/switch.css" />
+    <style>
+      *,
+      *::before,
+      *::after {
+        box-sizing: border-box;
+      }
 
-<header class="page-head">
-  <div class="container">
-    <span class="text text--overline">Component</span>
-    <h1 class="text text--h1">Switch</h1>
-    <p class="text text--body-md">
-      A <code class="text text--code">&lt;button role="switch"&gt;</code> carrying
-      <code class="text text--code">aria-checked</code> — Space/Enter fire the native button
-      click, a three-line controller flips the attribute, and every visual state is styled
-      from it. Track width is <code class="text text--code">calc(track-height × 2)</code> and
-      the thumb's travel resolves to exactly one track height, so the checked position is
-      derived from tokens, never written as a raw number.
-    </p>
-  </div>
-</header>
+      body {
+        margin: unset;
+        background: var(--background);
+        color: var(--foreground);
+        font-family: var(--font-sans);
+        -webkit-font-smoothing: antialiased;
+      }
 
-<main class="container">
+      .container {
+        max-width: var(--doc-container-max);
+        margin-inline: auto;
+        padding-inline: var(--space-6);
+      }
 
-  <!-- ===================== States ===================== -->
-  <section class="demo-block" aria-labelledby="states-heading">
-    <h2 class="text text--h5" id="states-heading">States (md)</h2>
-    <div class="demo-grid">
-      <div class="demo-cell">
-        <p class="text text--caption demo-caption">off — default</p>
-        <button class="switch" type="button" role="switch" aria-checked="false" aria-label="Off example">
-          <span class="switch__thumb"></span>
-        </button>
-      </div>
-      <div class="demo-cell">
-        <p class="text text--caption demo-caption">on</p>
-        <button class="switch" type="button" role="switch" aria-checked="true" aria-label="On example">
-          <span class="switch__thumb"></span>
-        </button>
-      </div>
-      <div class="demo-cell">
-        <p class="text text--caption demo-caption">hover off — .is-hover mirrors :hover</p>
-        <button class="switch is-hover" type="button" role="switch" aria-checked="false" aria-label="Hover off example">
-          <span class="switch__thumb"></span>
-        </button>
-      </div>
-      <div class="demo-cell">
-        <p class="text text--caption demo-caption">hover on</p>
-        <button class="switch is-hover" type="button" role="switch" aria-checked="true" aria-label="Hover on example">
-          <span class="switch__thumb"></span>
-        </button>
-      </div>
-      <div class="demo-cell">
-        <p class="text text--caption demo-caption">active off — .is-active mirrors :active</p>
-        <button class="switch is-active" type="button" role="switch" aria-checked="false" aria-label="Active off example">
-          <span class="switch__thumb"></span>
-        </button>
-      </div>
-      <div class="demo-cell">
-        <p class="text text--caption demo-caption">active on</p>
-        <button class="switch is-active" type="button" role="switch" aria-checked="true" aria-label="Active on example">
-          <span class="switch__thumb"></span>
-        </button>
-      </div>
-      <div class="demo-cell">
-        <p class="text text--caption demo-caption">focus-visible — .is-focus-visible mirrors :focus-visible</p>
-        <button class="switch is-focus-visible" type="button" role="switch" aria-checked="false" aria-label="Focused example">
-          <span class="switch__thumb"></span>
-        </button>
-      </div>
-      <div class="demo-cell">
-        <p class="text text--caption demo-caption">disabled off</p>
-        <button class="switch" type="button" role="switch" aria-checked="false" disabled aria-label="Disabled off example">
-          <span class="switch__thumb"></span>
-        </button>
-      </div>
-      <div class="demo-cell">
-        <p class="text text--caption demo-caption">disabled on</p>
-        <button class="switch" type="button" role="switch" aria-checked="true" disabled aria-label="Disabled on example">
-          <span class="switch__thumb"></span>
-        </button>
-      </div>
-      <div class="demo-cell">
-        <p class="text text--caption demo-caption">loading off — disabled + aria-busy + .is-loading</p>
-        <button class="switch is-loading" type="button" role="switch" aria-checked="false" aria-busy="true" disabled aria-label="Saving notification preference">
-          <span class="switch__thumb"><span class="switch__spinner"></span></span>
-        </button>
-      </div>
-      <div class="demo-cell">
-        <p class="text text--caption demo-caption">loading on</p>
-        <button class="switch is-loading" type="button" role="switch" aria-checked="true" aria-busy="true" disabled aria-label="Saving notification preference">
-          <span class="switch__thumb"><span class="switch__spinner"></span></span>
-        </button>
-      </div>
-      <div class="demo-cell">
-        <p class="text text--caption demo-caption">live — hover, press, Tab, Space/Enter</p>
-        <button class="switch" type="button" role="switch" aria-checked="false" aria-label="Interactive example">
-          <span class="switch__thumb"></span>
-        </button>
-      </div>
-    </div>
-    <p class="text text--caption demo-note">
-      Keyboard is the button's own contract: Tab moves focus (token ring appears),
-      Space and Enter fire click — the controller below maps that onto
-      <code class="text text--code">aria-checked</code>. The <code class="text text--code">.is-*</code>
-      classes exist only so static pages like this one can render the pseudo-states.
-    </p>
-  </section>
+      .page-head {
+        padding-block: var(--space-16) var(--space-8);
+        border-bottom: var(--border-width) solid var(--border);
+      }
 
-  <hr class="separator separator--horizontal separator--subtle" role="presentation">
+      .page-head .text--overline {
+        display: block;
+        margin-bottom: var(--space-3);
+        color: var(--primary);
+      }
 
-  <!-- ===================== Sizes ===================== -->
-  <section class="demo-block" aria-labelledby="sizes-heading">
-    <h2 class="text text--h5" id="sizes-heading">Sizes</h2>
-    <div class="demo-grid">
-      <div class="demo-cell">
-        <p class="text text--caption demo-caption">sm — track --switch-track-height-sm (16px)</p>
-        <label class="switch-field">
-          <button class="switch switch--sm" type="button" role="switch" aria-checked="true">
-            <span class="switch__thumb"></span>
-          </button>
-          <span class="switch-field__text">
-            <span class="switch-field__label">Compact row</span>
-          </span>
-        </label>
-      </div>
-      <div class="demo-cell">
-        <p class="text text--caption demo-caption">md — track --switch-track-height-md (24px)</p>
-        <label class="switch-field">
-          <button class="switch" type="button" role="switch" aria-checked="true">
-            <span class="switch__thumb"></span>
-          </button>
-          <span class="switch-field__text">
-            <span class="switch-field__label">Standard row</span>
-          </span>
-        </label>
-      </div>
-      <div class="demo-cell">
-        <p class="text text--caption demo-caption">lg — track --switch-track-height-lg (32px)</p>
-        <label class="switch-field">
-          <button class="switch switch--lg" type="button" role="switch" aria-checked="true">
-            <span class="switch__thumb"></span>
-          </button>
-          <span class="switch-field__text">
-            <span class="switch-field__label">Emphasized row</span>
-          </span>
-        </label>
-      </div>
-    </div>
-    <p class="text text--caption demo-note">
-      Thumb diameter and travel distance re-derive from the size token — the
-      on-position thumb stays flush against the track edge at every size.
-    </p>
-  </section>
+      .page-head p {
+        max-width: var(--doc-table-min-width);
+        margin-block: var(--space-4) unset;
+      }
 
-  <hr class="separator separator--horizontal separator--subtle" role="presentation">
+      .showcase-section {
+        padding-block: var(--space-8);
+        border-bottom: var(--border-width) solid var(--border-soft);
+      }
 
-  <!-- ===================== Assemblies ===================== -->
-  <section class="demo-block" aria-labelledby="assemblies-heading">
-    <h2 class="text text--h5" id="assemblies-heading">Assemblies</h2>
-    <div class="demo-grid">
-      <div class="demo-cell">
-        <p class="text text--caption demo-caption">switch only — aria-label carries the name</p>
-        <button class="switch" type="button" role="switch" aria-checked="true" aria-label="Email notifications">
-          <span class="switch__thumb"></span>
-        </button>
-      </div>
-      <div class="demo-cell">
-        <p class="text text--caption demo-caption">switch + label — wrapping &lt;label&gt;, click anywhere</p>
-        <label class="switch-field">
-          <button class="switch" type="button" role="switch" aria-checked="true">
-            <span class="switch__thumb"></span>
-          </button>
-          <span class="switch-field__text">
-            <span class="switch-field__label">Email me application updates</span>
-          </span>
-        </label>
-      </div>
-      <div class="demo-cell">
-        <p class="text text--caption demo-caption">switch + label + description</p>
-        <label class="switch-field">
-          <button class="switch" type="button" role="switch" aria-checked="false">
-            <span class="switch__thumb"></span>
-          </button>
-          <span class="switch-field__text">
-            <span class="switch-field__label">Share profile with partner companies</span>
-            <span class="switch-field__description">
-              Partner tenants see your public profile and open roles. Nothing is
-              shared until a match is confirmed.
-            </span>
-          </span>
-        </label>
-      </div>
-      <div class="demo-cell">
-        <p class="text text--caption demo-caption">label + description, disabled</p>
-        <label class="switch-field">
-          <button class="switch" type="button" role="switch" aria-checked="true" disabled>
-            <span class="switch__thumb"></span>
-          </button>
-          <span class="switch-field__text">
-            <span class="switch-field__label">Two-step verification</span>
-            <span class="switch-field__description">
-              Enforced for platform administrators — it cannot be turned off.
-            </span>
-          </span>
-        </label>
-      </div>
-      <div class="demo-cell">
-        <p class="text text--caption demo-caption">label + description, loading — text stays opaque</p>
-        <label class="switch-field">
-          <button class="switch is-loading" type="button" role="switch" aria-checked="true" aria-busy="true" disabled>
-            <span class="switch__thumb"><span class="switch__spinner"></span></span>
-          </button>
-          <span class="switch-field__text">
-            <span class="switch-field__label">Match alerts</span>
-            <span class="switch-field__description">
-              Saving your preference…
-            </span>
-          </span>
-        </label>
-      </div>
-    </div>
-  </section>
+      .section-heading {
+        margin-bottom: var(--space-2);
+      }
 
-</main>
+      .section-intro {
+        max-width: var(--doc-table-min-width);
+        margin-block: unset var(--space-6);
+      }
 
-<script>
-  /* The entire behavioral contract: a native button click flips aria-checked.
-     Space/Enter already fire click on a <button>; disabled and .is-loading
-     buttons never fire it, so no guarding is needed here. */
-  document.addEventListener("click", (event) => {
-    const control = event.target.closest('.switch[role="switch"]');
-    if (!control) return;
-    control.setAttribute("aria-checked", control.getAttribute("aria-checked") !== "true");
-  });
-</script>
+      .state-grid,
+      .assembly-grid,
+      .mapping-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(var(--doc-grid-min-card), 1fr));
+        gap: var(--space-4);
+        align-items: start;
+      }
 
-</body>
+      .state-card,
+      .assembly-card,
+      .mapping-card {
+        display: grid;
+        gap: var(--space-4);
+        padding: var(--space-6);
+        border: var(--border-width) solid var(--border);
+        border-radius: var(--radius-lg);
+        background: var(--card);
+      }
+
+      .state-card__name {
+        color: var(--primary);
+      }
+
+      .mapping-card p {
+        margin: unset;
+      }
+
+      .token-stack {
+        display: grid;
+        gap: var(--space-1);
+        color: var(--muted-foreground);
+      }
+    </style>
+  </head>
+  <body>
+    <header class="page-head">
+      <div class="container">
+        <span class="text text--overline">Component</span>
+        <h1 class="text text--h1">Switch</h1>
+        <p class="text text--body-md">
+          Eleven explicit switch states using a native button with the ARIA switch pattern. Every
+          state remains distinguishable without relying on thumb animation.
+        </p>
+      </div>
+    </header>
+
+    <main class="container">
+      <section class="showcase-section" aria-labelledby="states-heading">
+        <h2 class="text text--h4 section-heading" id="states-heading">Complete state matrix</h2>
+        <p class="text text--body-sm text--muted section-intro">
+          ON tracks use the semantic brand token, disabled controls use system opacity, and both ON
+          and OFF focus states share the same semantic ring.
+        </p>
+        <div class="state-grid">
+          <article class="state-card"><span class="state-card__name text text--overline">Off</span><button class="switch" type="button" role="switch" aria-checked="false" aria-label="Switch off"><span class="switch__thumb"></span></button></article>
+          <article class="state-card"><span class="state-card__name text text--overline">Off hover</span><button class="switch is-hover" type="button" role="switch" aria-checked="false" aria-label="Switch off and hovered"><span class="switch__thumb"></span></button></article>
+          <article class="state-card"><span class="state-card__name text text--overline">Off active</span><button class="switch is-active" type="button" role="switch" aria-checked="false" aria-label="Switch off and active"><span class="switch__thumb"></span></button></article>
+          <article class="state-card"><span class="state-card__name text text--overline">Off focus-visible</span><button class="switch is-focus-visible" type="button" role="switch" aria-checked="false" aria-label="Switch off and focused"><span class="switch__thumb"></span></button></article>
+          <article class="state-card"><span class="state-card__name text text--overline">On</span><button class="switch" type="button" role="switch" aria-checked="true" aria-label="Switch on"><span class="switch__thumb"></span></button></article>
+          <article class="state-card"><span class="state-card__name text text--overline">On hover</span><button class="switch is-hover" type="button" role="switch" aria-checked="true" aria-label="Switch on and hovered"><span class="switch__thumb"></span></button></article>
+          <article class="state-card"><span class="state-card__name text text--overline">On active</span><button class="switch is-active" type="button" role="switch" aria-checked="true" aria-label="Switch on and active"><span class="switch__thumb"></span></button></article>
+          <article class="state-card"><span class="state-card__name text text--overline">On focus-visible</span><button class="switch is-focus-visible" type="button" role="switch" aria-checked="true" aria-label="Switch on and focused"><span class="switch__thumb"></span></button></article>
+          <article class="state-card"><span class="state-card__name text text--overline">Disabled off</span><button class="switch" type="button" role="switch" aria-checked="false" disabled aria-label="Disabled switch off"><span class="switch__thumb"></span></button></article>
+          <article class="state-card"><span class="state-card__name text text--overline">Disabled on</span><button class="switch" type="button" role="switch" aria-checked="true" disabled aria-label="Disabled switch on"><span class="switch__thumb"></span></button></article>
+          <article class="state-card"><span class="state-card__name text text--overline">Loading</span><button class="switch is-loading" type="button" role="switch" aria-checked="true" aria-busy="true" disabled aria-label="Saving switch preference"><span class="switch__thumb"><span class="switch__spinner" aria-hidden="true"></span></span></button></article>
+        </div>
+      </section>
+
+      <section class="showcase-section" aria-labelledby="assembly-heading">
+        <h2 class="text text--h4 section-heading" id="assembly-heading">Content assemblies</h2>
+        <div class="assembly-grid">
+          <article class="assembly-card">
+            <span class="state-card__name text text--overline">Switch only</span>
+            <button class="switch" type="button" role="switch" aria-checked="true" aria-label="Email notifications"><span class="switch__thumb"></span></button>
+          </article>
+          <article class="assembly-card">
+            <span class="state-card__name text text--overline">Switch + label</span>
+            <div class="switch-field"><button class="switch" type="button" role="switch" aria-checked="true" aria-labelledby="switch-label-only"><span class="switch__thumb"></span></button><span class="switch-field__text"><span class="switch-field__label" id="switch-label-only">Email application updates</span></span></div>
+          </article>
+          <article class="assembly-card">
+            <span class="state-card__name text text--overline">Switch + label + description</span>
+            <div class="switch-field"><button class="switch" type="button" role="switch" aria-checked="false" aria-labelledby="switch-rich-label" aria-describedby="switch-rich-description"><span class="switch__thumb"></span></button><span class="switch-field__text"><span class="switch-field__label" id="switch-rich-label">Share profile with partners</span><span class="switch-field__description" id="switch-rich-description">Partner tenants can view the public profile after a confirmed match.</span></span></div>
+          </article>
+        </div>
+      </section>
+
+      <section class="showcase-section" aria-labelledby="mapping-heading">
+        <h2 class="text text--h4 section-heading" id="mapping-heading">Token map</h2>
+        <div class="mapping-grid">
+          <article class="mapping-card"><p class="text text--label">Tracks and thumb</p><p class="text text--caption token-stack"><code class="text text--code">--surface-cream-strong / --primary</code><code class="text text--code">--primary-hover / --primary-active</code><code class="text text--code">--primary-foreground / --shadow-subtle</code></p></article>
+          <article class="mapping-card"><p class="text text--label">Focus and disabled</p><p class="text text--caption token-stack"><code class="text text--code">--ring-width / --ring-focus</code><code class="text text--code">--opacity-disabled</code></p></article>
+          <article class="mapping-card"><p class="text text--label">Dimensions</p><p class="text text--caption token-stack"><code class="text text--code">--switch-track-height-md</code><code class="text text--code">--space-0-5 / --border-width / --radius-full</code></p></article>
+          <article class="mapping-card"><p class="text text--label">Motion</p><p class="text text--caption token-stack"><code class="text text--code">--duration-fast / --duration-normal</code><code class="text text--code">--duration-loading / --ease-linear</code><code class="text text--code">--motion-rotation-full</code></p></article>
+        </div>
+      </section>
+    </main>
+
+    <script>
+      document.addEventListener("click", (event) => {
+        const target = event.target;
+        if (!(target instanceof Element)) return;
+        const control = target.closest('.switch[role="switch"]');
+        if (!(control instanceof HTMLButtonElement)) return;
+        control.setAttribute("aria-checked", String(control.getAttribute("aria-checked") !== "true"));
+      });
+    </script>
+  </body>
 </html>

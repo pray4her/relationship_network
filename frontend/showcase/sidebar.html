@@ -454,7 +454,7 @@
 
   <!-- ===================== Item states ===================== -->
   <section class="demo-block" aria-labelledby="states-heading">
-    <h2 class="text text--h5" id="states-heading">Navigation item states</h2>
+    <h2 class="text text--h5" id="states-heading">Navigation item state matrix</h2>
     <p class="text text--caption demo-caption">Forced with .is-* classes for the static showcase; live items use the pseudo-classes and aria-current.</p>
     <div class="demo-frame demo-frame--pad">
       <ul class="sidebar__list">
@@ -527,11 +527,11 @@
     <h2 class="text text--h5" id="nested-heading">Nested navigation</h2>
     <div class="demo-compare">
       <div role="group" aria-label="Parent expanded">
-        <p class="text text--caption demo-caption">parent expanded — aria-expanded="true"; a child carries the current page</p>
+        <p class="text text--caption demo-caption">parent-with-active-child — expanded via aria-expanded="true"; selection edge is lighter than the current child</p>
         <div class="demo-frame demo-frame--pad">
           <ul class="sidebar__list">
             <li>
-              <button class="sidebar__link" type="button" aria-expanded="true" aria-controls="nested-open" aria-label="Jobs">
+              <button class="sidebar__link is-parent-active" type="button" aria-expanded="true" aria-controls="nested-open" aria-label="Jobs">
                 <svg class="icon icon--md" viewBox="0 0 24 24" fill="none" aria-hidden="true">
                   <rect x="2" y="7" width="20" height="14" rx="2" stroke="currentColor"/>
                   <path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16" stroke="currentColor"/>

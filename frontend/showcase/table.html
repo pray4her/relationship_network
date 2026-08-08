@@ -171,11 +171,24 @@
 
   <!-- ===================== Sortable ===================== -->
   <section class="demo-block" aria-labelledby="sort-heading">
-    <h2 class="text text--h5" id="sort-heading">Sortable columns</h2>
+    <h2 class="text text--h5" id="sort-heading">Sortable header state matrix</h2>
     <p class="text text--caption demo-caption">
       Click or Tab + Enter on a header to toggle; the sorted column reads ink,
       the arrow flips, and aria-sort announces the direction.
     </p>
+    <div class="table-wrap" style="margin-bottom: var(--space-6);">
+      <table class="table" style="min-width: var(--doc-table-min-width);">
+        <thead>
+          <tr>
+            <th scope="col" aria-sort="none"><button class="table__sort" type="button">Unsorted<svg class="table__sort-icon table__sort-icon--asc" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M12 19V5m-6 6 6-6 6 6" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"/></svg><svg class="table__sort-icon table__sort-icon--desc" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M12 5v14m6-6-6 6-6-6" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"/></svg></button></th>
+            <th scope="col" aria-sort="ascending"><button class="table__sort" type="button">Ascending<svg class="table__sort-icon table__sort-icon--asc" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M12 19V5m-6 6 6-6 6 6" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"/></svg><svg class="table__sort-icon table__sort-icon--desc" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M12 5v14m6-6-6 6-6-6" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"/></svg></button></th>
+            <th scope="col" aria-sort="descending"><button class="table__sort" type="button">Descending<svg class="table__sort-icon table__sort-icon--asc" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M12 19V5m-6 6 6-6 6 6" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"/></svg><svg class="table__sort-icon table__sort-icon--desc" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M12 5v14m6-6-6 6-6-6" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"/></svg></button></th>
+            <th scope="col" aria-sort="none"><button class="table__sort is-hover" type="button">Hover<svg class="table__sort-icon table__sort-icon--asc" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M12 19V5m-6 6 6-6 6 6" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"/></svg><svg class="table__sort-icon table__sort-icon--desc" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M12 5v14m6-6-6 6-6-6" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"/></svg></button></th>
+            <th scope="col" aria-sort="none"><button class="table__sort is-focus-visible" type="button">Focus-visible<svg class="table__sort-icon table__sort-icon--asc" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M12 19V5m-6 6 6-6 6 6" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"/></svg><svg class="table__sort-icon table__sort-icon--desc" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M12 5v14m6-6-6 6-6-6" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"/></svg></button></th>
+          </tr>
+        </thead>
+      </table>
+    </div>
     <div class="table-wrap">
       <table class="table" id="sortable-table" style="min-width: var(--doc-table-min-width);">
         <thead>
@@ -247,12 +260,22 @@
 
   <!-- ===================== Selectable rows ===================== -->
   <section class="demo-block" aria-labelledby="select-heading">
-    <h2 class="text text--h5" id="select-heading">Row selection</h2>
+    <h2 class="text text--h5" id="select-heading">Selectable row state matrix</h2>
     <p class="text text--caption demo-caption">
       Space toggles a row's checkbox; selected rows take the selected-bg fill
       with a coral leading edge. The header checkbox selects all and turns
       indeterminate for partial selections.
     </p>
+    <div class="table-wrap" style="margin-bottom: var(--space-6);">
+      <table class="table" style="min-width: var(--doc-table-min-width);">
+        <thead><tr><th scope="col">Selection state</th><th scope="col">Control</th><th scope="col">Result</th></tr></thead>
+        <tbody>
+          <tr><td class="table__cell--strong">unchecked</td><td><input class="checkbox checkbox--sm table__checkbox" type="checkbox" aria-label="Unchecked row example"></td><td>Available</td></tr>
+          <tr class="is-selected"><td class="table__cell--strong">checked</td><td><input class="checkbox checkbox--sm table__checkbox" type="checkbox" checked aria-label="Checked row example"></td><td>Selected</td></tr>
+          <tr><td class="table__cell--strong">indeterminate select-all</td><td><input class="checkbox checkbox--sm table__checkbox" id="indeterminate-example" type="checkbox" aria-label="Partially selected example"></td><td>Some rows selected</td></tr>
+        </tbody>
+      </table>
+    </div>
     <div class="table-wrap">
       <table class="table" id="selectable-table" style="min-width: var(--doc-table-min-width);">
         <thead>
@@ -432,7 +455,7 @@
               </div>
             </td>
           </tr>
-          <tr class="is-focus">
+          <tr class="is-focus-visible">
             <td class="table__cell--strong">focus-within</td>
             <td>Katherine Johnson</td>
             <td class="table__cell--number">76%</td>
@@ -444,7 +467,7 @@
               </div>
             </td>
           </tr>
-          <tr class="is-selected is-focus">
+          <tr class="is-selected is-focus-visible">
             <td class="table__cell--strong">selected + focus-within</td>
             <td>Margaret Hamilton</td>
             <td class="table__cell--number">90%</td>
@@ -613,6 +636,7 @@
     all.checked = checked > 0 && checked === boxes.length;
     all.indeterminate = checked > 0 && checked < boxes.length;
   };
+  document.querySelector("#indeterminate-example").indeterminate = true;
   document.addEventListener("change", (event) => {
     const box = event.target;
     const table = box.closest("table");

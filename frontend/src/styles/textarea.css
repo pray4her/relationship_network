@@ -17,11 +17,13 @@
    border          --border-width solid --input
    hover border    --border-strong
    focus border    --primary
-   focus ring      box-shadow 0 0 0 --ring-width --ring-focus, on :focus —
+     focus ring      box-shadow 0 0 0 --ring-width --ring-focus, on :focus —
                    inputs announce focus on any entry (consistent with
                    Input's :focus-within)
    error           .textarea--error or [aria-invalid="true"] → border
                    --destructive; error focus ring --ring-destructive
+   success         .textarea--success → border --success; FormField owns
+                   the visible success message so status is not color-only
    disabled        opacity --opacity-disabled + cursor not-allowed;
                    the `disabled` attribute blocks interaction natively
    readonly        background --muted; stays focusable/copyable — no
@@ -48,6 +50,10 @@
 
    CHARACTER COUNT: delegated to FormField (.field__count, aria-live
    polite); Textarea owns no counter chrome of its own.
+
+   SHOWCASE STATE MIRRORS: .is-hover / .is-focus-visible reproduce the native
+   states without replacing :hover / :focus. Production behavior remains
+   native; the mirrors exist only for deterministic documentation.
 
    REPORTED TOKEN GAPS (not silently invented — flagged for tokens.css):
    •  None open. Resolved: hover border → --border-strong; error focus
@@ -89,11 +95,14 @@
 
 /* ===== States ===== */
 
-.textarea:hover {
+.textarea:not(:disabled):hover,
+.textarea.is-hover {
   border-color: var(--border-strong);
 }
 
-.textarea:focus {
+.textarea:focus,
+.textarea.is-focus-visible,
+.textarea.is-focus {
   outline: none;
   border-color: var(--primary);
   box-shadow: 0 0 0 var(--ring-width) var(--ring-focus);
@@ -114,9 +123,17 @@
   border-color: var(--destructive);
 }
 
+.textarea--success {
+  border-color: var(--success);
+}
+
 /* Invalid focus: swap the coral ring for the destructive one. */
 .textarea--error:focus,
-.textarea[aria-invalid="true"]:focus {
+.textarea--error.is-focus-visible,
+.textarea--error.is-focus,
+.textarea[aria-invalid="true"]:focus,
+.textarea[aria-invalid="true"].is-focus-visible,
+.textarea[aria-invalid="true"].is-focus {
   box-shadow: 0 0 0 var(--ring-width) var(--ring-destructive);
 }
 

@@ -1,88 +1,69 @@
 /* ==========================================================================
    Separator
-   Token mapping — every value below references tokens.css, nothing else.
 
-   VARIANT / PROPERTY → TOKEN
+   COMPLETE TOKEN MAPPING
    ─────────────────────────────────────────────────────────────────────────
-   COLOR (per variant)
-     subtle     border-color --border-soft   (token note: "quiet dividers")
-     default    border-color --border        (token note: "hairline")
-     strong     border-color --border-strong (token note: "strong line")
+   Role / property                         tokens.css
+   Subtle color                            --border-soft
+   Default color                           --border
+   Strong color                            --border-strong
+   Subtle/default thickness                --border-width
+   Strong thickness                        --border-width-strong
+   Horizontal surrounding spacing          --space-4 (margin-block)
+   Vertical surrounding spacing            --space-4 (margin-inline)
 
-   THICKNESS (per variant)
-     subtle / default  --border-width (1px) — token note: "every hairline
-                       border".
-     strong            --border-width-strong (2px) — token note:
-                       "emphasized dividers"; the strong variant now
-                       expresses weight through both color and thickness,
-                       no raw pixels invented.
+   Opacity
+   No opacity is applied. Contrast is expressed by semantic border-color
+   tokens. --opacity-disabled is reserved for disabled controls, while a
+   separator is non-interactive and cannot itself be disabled.
 
-   SPACING (adjacent-content rhythm, overridable by layout)
-     horizontal  margin-block  --space-4
-     vertical    margin-inline --space-4
+   Inverse surfaces
+   Not supported by the current Token set. tokens.css has no inverse border
+   or inverse separator tokens. --on-dark and --on-dark-soft are text roles,
+   so they are intentionally not borrowed for a line. Add semantic inverse
+   separator tokens before introducing this context.
 
-   OPACITY
-     None applied. Lightness differences between variants come from the
-     color tokens themselves, not from alpha. (See GAPS.)
-
-   ORIENTATION
-     horizontal  full-width hairline via border-top (height 0)
-     vertical    stretch hairline via border-left (width 0); needs a flex
-                 or grid context (align-self: stretch) or an explicit height
-
-   SEMANTICS (markup concern, class pair is element-agnostic)
-     decorative  <div class="separator ..." role="presentation">
-                 (or aria-hidden="true") — purely visual grouping
-     semantic    <hr class="separator separator--horizontal ...">
-                 (implicit role=separator) — an actual content boundary;
-                 for vertical use role="separator" aria-orientation="vertical"
-
-   REPORTED TOKEN GAPS (not silently invented — flagged for tokens.css):
-   ‡  RESOLVED — tokens.css now ships --border-strong (a true strong-divider
-      token; previously --muted-foreground was borrowed) and
-      --border-width-strong (2px), so the strong variant expresses weight
-      through both color and thickness; both are used below.
-   •  No opacity token fits this role — --opacity-disabled (0.5) is scoped
-      to disabled controls by its token note and is not reused here.
+   Semantics
+   Use <hr> for a meaningful horizontal boundary. Add
+   aria-orientation="vertical" to <hr> for a meaningful vertical boundary.
+   Purely visual dividers use aria-hidden="true".
    ========================================================================== */
 
 .separator {
-  /* <hr> UA reset: kills the default inset border and margins so the
-     token-driven hairline below is the only rendering. */
-  border: 0;
-  margin: 0;
-  flex-shrink: 0;
+  display: block;
+  flex: none;
+  border: none;
+  margin: unset;
+  background-color: var(--border);
 }
 
-/* ===== Orientations ===== */
-
 .separator--horizontal {
-  width: 100%;
-  height: 0;
-  border-top: var(--border-width) solid var(--border);
+  block-size: var(--border-width);
   margin-block: var(--space-4);
 }
 
 .separator--vertical {
   align-self: stretch;
-  width: 0;
-  border-left: var(--border-width) solid var(--border);
+  inline-size: var(--border-width);
   margin-inline: var(--space-4);
 }
 
-/* ===== Variants (strong doubles up: dedicated color AND 2px thickness) ===== */
-
 .separator--subtle {
-  border-color: var(--border-soft);
+  background-color: var(--border-soft);
 }
 
 .separator--default {
-  border-color: var(--border);
+  background-color: var(--border);
 }
 
-/* Strong differs in thickness too: border-width covers whichever side the
-   orientation sets (border-top for horizontal, border-left for vertical). */
 .separator--strong {
-  border-color: var(--border-strong);
-  border-width: var(--border-width-strong);
+  background-color: var(--border-strong);
+}
+
+.separator--horizontal.separator--strong {
+  block-size: var(--border-width-strong);
+}
+
+.separator--vertical.separator--strong {
+  inline-size: var(--border-width-strong);
 }

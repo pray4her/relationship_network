@@ -49,16 +49,49 @@
     <p class="text text--body-md">
       Every variant is explicit and token-driven: background, border, icon,
       and text all resolve to semantic status tokens — never hand-picked
-      blues, greens, yellows, or reds. Interactive actions show both default
-      and <code class="text text--code">focus-visible</code> in the same stack.
+      blues, greens, yellows, or reds. The static preview also exposes default,
+      hover, active, focus-visible, and disabled internal controls.
     </p>
   </div>
 </header>
 
 <main class="container">
 
+  <section class="demo-block" aria-labelledby="control-matrix-heading">
+    <h2 class="text text--h5" id="control-matrix-heading">Internal control state matrix</h2>
+    <p class="text text--body-sm demo-lede">
+      Each row keeps identical Alert anatomy while both the composed action and private dismiss
+      control hold the labeled state. Hover and active use different token surfaces; focus-visible
+      uses the shared ring; disabled uses the shared opacity plus native disabled semantics.
+    </p>
+    <div class="demo-stack">
+      <section class="alert alert--neutral" aria-label="Default internal controls">
+        <div class="alert__body"><h3 class="alert__title">Default</h3><div class="alert__actions"><button class="btn btn--secondary btn--sm" type="button">Open drafts</button></div></div>
+        <button class="alert__dismiss" type="button" aria-label="Dismiss, default"><svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="m7 7 10 10M17 7 7 17" stroke="currentColor" stroke-linecap="round"/></svg></button>
+      </section>
+      <section class="alert alert--neutral" aria-label="Hover internal controls">
+        <div class="alert__body"><h3 class="alert__title">Hover</h3><div class="alert__actions"><button class="btn btn--secondary btn--sm is-hover" type="button" tabindex="-1">Open drafts</button></div></div>
+        <button class="alert__dismiss is-hover" type="button" aria-label="Dismiss, hover" tabindex="-1"><svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="m7 7 10 10M17 7 7 17" stroke="currentColor" stroke-linecap="round"/></svg></button>
+      </section>
+      <section class="alert alert--neutral" aria-label="Active internal controls">
+        <div class="alert__body"><h3 class="alert__title">Active</h3><div class="alert__actions"><button class="btn btn--secondary btn--sm is-active" type="button" tabindex="-1">Open drafts</button></div></div>
+        <button class="alert__dismiss is-active" type="button" aria-label="Dismiss, active" tabindex="-1"><svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="m7 7 10 10M17 7 7 17" stroke="currentColor" stroke-linecap="round"/></svg></button>
+      </section>
+      <section class="alert alert--neutral" aria-label="Focus-visible internal controls">
+        <div class="alert__body"><h3 class="alert__title">Focus-visible</h3><div class="alert__actions"><button class="btn btn--secondary btn--sm is-focus-visible" type="button" tabindex="-1">Open drafts</button></div></div>
+        <button class="alert__dismiss is-focus-visible" type="button" aria-label="Dismiss, focus-visible" tabindex="-1"><svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="m7 7 10 10M17 7 7 17" stroke="currentColor" stroke-linecap="round"/></svg></button>
+      </section>
+      <section class="alert alert--neutral" aria-label="Disabled internal controls">
+        <div class="alert__body"><h3 class="alert__title">Disabled</h3><div class="alert__actions"><button class="btn btn--secondary btn--sm" type="button" disabled>Open drafts</button></div></div>
+        <button class="alert__dismiss" type="button" aria-label="Dismiss, disabled" disabled><svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="m7 7 10 10M17 7 7 17" stroke="currentColor" stroke-linecap="round"/></svg></button>
+      </section>
+    </div>
+  </section>
+
+  <hr class="separator separator--horizontal separator--subtle" role="presentation">
+
   <section class="demo-block" aria-labelledby="hierarchy-heading">
-    <h2 class="text text--h5" id="hierarchy-heading">Status hierarchy</h2>
+    <h2 class="text text--h5" id="hierarchy-heading">Semantic state matrix — status hierarchy</h2>
     <p class="text text--body-sm demo-lede">
       Neutral → info → success → warning → destructive in one stack. Each
       row carries the full anatomy (icon, title, description, action,

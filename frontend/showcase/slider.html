@@ -1,332 +1,182 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
-<head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Slider — Component Showcase</title>
-<link rel="stylesheet" href="../src/styles/tokens.css">
-<link rel="stylesheet" href="../src/styles/typography.css">
-<link rel="stylesheet" href="../src/styles/separator.css">
-<link rel="stylesheet" href="../src/styles/slider.css">
-<style>
-  /* Page chrome — tokens only, no component values. */
-  *, *::before, *::after { box-sizing: border-box; }
-  body {
-    margin: 0;
-    background: var(--background);
-    color: var(--foreground);
-    font-family: var(--font-sans);
-    -webkit-font-smoothing: antialiased;
-  }
-  .container { max-width: var(--doc-container-max); margin: 0 auto; padding: 0 var(--space-6); }
-  .page-head { padding: var(--space-16) 0 var(--space-8); border-bottom: var(--border-width) solid var(--border); }
-  .page-head .text--overline { color: var(--primary); display: block; margin-bottom: var(--space-3); }
-  .page-head p { margin: var(--space-4) 0 0; max-width: 64ch; }
-  .demo-block { padding: var(--space-8) 0; }
-  .demo-block > .text--h5 { margin-bottom: var(--space-6); }
-  .demo-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(var(--doc-grid-min-card), 1fr)); gap: var(--space-6) var(--space-8); align-items: start; }
-  .demo-note { margin-top: var(--space-4); max-width: 72ch; color: var(--muted-foreground); }
-  .demo-caption { margin-bottom: var(--space-3); color: var(--caption-foreground); }
-  .demo-cell { display: grid; gap: var(--space-3); }
-</style>
-</head>
-<body>
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Slider — Component Showcase</title>
+    <link rel="stylesheet" href="../src/styles/tokens.css" />
+    <link rel="stylesheet" href="../src/styles/typography.css" />
+    <link rel="stylesheet" href="../src/styles/slider.css" />
+    <style>
+      *,
+      *::before,
+      *::after {
+        box-sizing: border-box;
+      }
 
-<header class="page-head">
-  <div class="container">
-    <span class="text text--overline">Component</span>
-    <h1 class="text text--h1">Slider</h1>
-    <p class="text text--body-md">
-      A native <code class="text text--code">&lt;input type="range"&gt;</code> under
-      <code class="text text--code">appearance: none</code> — Arrow keys step, PageUp/PageDown
-      jump, Home/End hit the bounds, and the platform exposes
-      <code class="text text--code">role="slider"</code> with
-      <code class="text text--code">aria-valuemin/max/now</code> from the markup. Range mode
-      stacks two native inputs so each thumb keeps its own keyboard control and ARIA.
-      The fill percentages are dynamic state painted by a small controller; every
-      color, size, and motion value is a token.
-    </p>
-  </div>
-</header>
+      body {
+        margin: unset;
+        background: var(--background);
+        color: var(--foreground);
+        font-family: var(--font-sans);
+        -webkit-font-smoothing: antialiased;
+      }
 
-<main class="container">
+      .container {
+        max-width: var(--doc-container-max);
+        margin-inline: auto;
+        padding-inline: var(--space-6);
+      }
 
-  <!-- ===================== States (single, md) ===================== -->
-  <section class="demo-block" aria-labelledby="states-heading">
-    <h2 class="text text--h5" id="states-heading">States — single value (md)</h2>
-    <div class="demo-grid">
-      <div class="demo-cell">
-        <p class="text text--caption demo-caption">default</p>
-        <div class="slider-field">
-          <div class="slider-field__head">
-            <label class="slider-field__label" for="s-default">Match score threshold</label>
-            <output class="slider-field__value" for="s-default">60</output>
-          </div>
-          <input class="slider" type="range" id="s-default" min="0" max="100" value="60">
-          <div class="slider-field__bounds"><span>0</span><span>100</span></div>
-        </div>
+      .page-head {
+        padding-block: var(--space-16) var(--space-8);
+        border-bottom: var(--border-width) solid var(--border);
+      }
+
+      .page-head .text--overline {
+        display: block;
+        margin-bottom: var(--space-3);
+        color: var(--primary);
+      }
+
+      .page-head p {
+        max-width: var(--doc-table-min-width);
+        margin-block: var(--space-4) unset;
+      }
+
+      .showcase-section {
+        padding-block: var(--space-8);
+        border-bottom: var(--border-width) solid var(--border-soft);
+      }
+
+      .section-heading {
+        margin-bottom: var(--space-2);
+      }
+
+      .section-intro {
+        max-width: var(--doc-table-min-width);
+        margin-block: unset var(--space-6);
+      }
+
+      .state-grid,
+      .mapping-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(var(--doc-grid-min-card), 1fr));
+        gap: var(--space-4);
+        align-items: start;
+      }
+
+      .state-card,
+      .mapping-card {
+        display: grid;
+        gap: var(--space-4);
+        padding: var(--space-6);
+        border: var(--border-width) solid var(--border);
+        border-radius: var(--radius-lg);
+        background: var(--card);
+      }
+
+      .state-card__name {
+        color: var(--primary);
+      }
+
+      .mapping-card p {
+        margin: unset;
+      }
+
+      .token-stack {
+        display: grid;
+        gap: var(--space-1);
+        color: var(--muted-foreground);
+      }
+    </style>
+  </head>
+  <body>
+    <header class="page-head">
+      <div class="container">
+        <span class="text text--overline">Component</span>
+        <h1 class="text text--h1">Slider</h1>
+        <p class="text text--body-md">
+          Eight single-value states and five range states rendered explicitly. Native range inputs
+          retain Arrow, Page, Home, and End keyboard behavior; the script only mirrors values into
+          token-colored fill positions.
+        </p>
       </div>
-      <div class="demo-cell">
-        <p class="text text--caption demo-caption">hover — .is-hover mirrors :hover</p>
-        <div class="slider-field">
-          <div class="slider-field__head">
-            <label class="slider-field__label" for="s-hover">Match score threshold</label>
-            <output class="slider-field__value" for="s-hover">60</output>
-          </div>
-          <input class="slider is-hover" type="range" id="s-hover" min="0" max="100" value="60" tabindex="-1" aria-hidden="true">
-          <div class="slider-field__bounds"><span>0</span><span>100</span></div>
+    </header>
+
+    <main class="container">
+      <section class="showcase-section" aria-labelledby="single-heading">
+        <h2 class="text text--h4 section-heading" id="single-heading">Single-value state matrix</h2>
+        <p class="text text--body-sm text--muted section-intro">
+          Value labels expose each state without requiring pointer interaction.
+        </p>
+        <div class="state-grid">
+          <article class="state-card"><span class="state-card__name text text--overline">Default</span><div class="slider-field"><div class="slider-field__head"><label class="slider-field__label" for="slider-default">Match threshold</label><output class="slider-field__value" for="slider-default">35</output></div><input class="slider" id="slider-default" type="range" min="0" max="100" value="35" /><div class="slider-field__bounds"><span>0</span><span>100</span></div></div></article>
+          <article class="state-card"><span class="state-card__name text text--overline">Hover</span><div class="slider-field"><div class="slider-field__head"><label class="slider-field__label" for="slider-hover">Match threshold</label><output class="slider-field__value" for="slider-hover">35</output></div><input class="slider is-hover" id="slider-hover" type="range" min="0" max="100" value="35" /><div class="slider-field__bounds"><span>0</span><span>100</span></div></div></article>
+          <article class="state-card"><span class="state-card__name text text--overline">Focus-visible</span><div class="slider-field"><div class="slider-field__head"><label class="slider-field__label" for="slider-focus">Match threshold</label><output class="slider-field__value" for="slider-focus">35</output></div><input class="slider is-focus-visible" id="slider-focus" type="range" min="0" max="100" value="35" /><div class="slider-field__bounds"><span>0</span><span>100</span></div></div></article>
+          <article class="state-card"><span class="state-card__name text text--overline">Dragging</span><div class="slider-field"><div class="slider-field__head"><label class="slider-field__label" for="slider-dragging">Match threshold</label><output class="slider-field__value" for="slider-dragging">35</output></div><input class="slider is-dragging" id="slider-dragging" type="range" min="0" max="100" value="35" /><div class="slider-field__bounds"><span>0</span><span>100</span></div></div></article>
+          <article class="state-card"><span class="state-card__name text text--overline">Minimum value</span><div class="slider-field"><div class="slider-field__head"><label class="slider-field__label" for="slider-min">Experience</label><output class="slider-field__value" for="slider-min">0</output></div><input class="slider" id="slider-min" type="range" min="0" max="100" value="0" /><div class="slider-field__bounds"><span>0</span><span>100</span></div></div></article>
+          <article class="state-card"><span class="state-card__name text text--overline">Mid-range value</span><div class="slider-field"><div class="slider-field__head"><label class="slider-field__label" for="slider-mid">Experience</label><output class="slider-field__value" for="slider-mid">50</output></div><input class="slider" id="slider-mid" type="range" min="0" max="100" value="50" /><div class="slider-field__bounds"><span>0</span><span>100</span></div></div></article>
+          <article class="state-card"><span class="state-card__name text text--overline">Maximum value</span><div class="slider-field"><div class="slider-field__head"><label class="slider-field__label" for="slider-max">Experience</label><output class="slider-field__value" for="slider-max">100</output></div><input class="slider" id="slider-max" type="range" min="0" max="100" value="100" /><div class="slider-field__bounds"><span>0</span><span>100</span></div></div></article>
+          <article class="state-card"><span class="state-card__name text text--overline">Disabled</span><div class="slider-field"><div class="slider-field__head"><label class="slider-field__label" for="slider-disabled">Match threshold</label><output class="slider-field__value" for="slider-disabled">35</output></div><input class="slider" id="slider-disabled" type="range" min="0" max="100" value="35" disabled /><div class="slider-field__bounds"><span>0</span><span>100</span></div></div></article>
         </div>
-      </div>
-      <div class="demo-cell">
-        <p class="text text--caption demo-caption">dragging — .is-dragging mirrors :active</p>
-        <div class="slider-field">
-          <div class="slider-field__head">
-            <label class="slider-field__label" for="s-drag">Match score threshold</label>
-            <output class="slider-field__value" for="s-drag">60</output>
-          </div>
-          <input class="slider is-dragging" type="range" id="s-drag" min="0" max="100" value="60" tabindex="-1" aria-hidden="true">
-          <div class="slider-field__bounds"><span>0</span><span>100</span></div>
+      </section>
+
+      <section class="showcase-section" aria-labelledby="range-heading">
+        <h2 class="text text--h4 section-heading" id="range-heading">Range state matrix</h2>
+        <p class="text text--body-sm text--muted section-intro">
+          Each thumb remains an independently named native slider while the fieldset provides one
+          shared range label.
+        </p>
+        <div class="state-grid">
+          <article class="state-card"><span class="state-card__name text text--overline">Default</span><div class="slider-field"><div class="slider-field__head"><span class="slider-field__label" id="range-default-label">Salary range</span><output class="slider-field__value" for="range-default-min range-default-max">80 – 140</output></div><fieldset class="slider-range" aria-labelledby="range-default-label"><input class="slider" id="range-default-min" type="range" min="0" max="200" value="80" aria-label="Minimum salary" /><input class="slider" id="range-default-max" type="range" min="0" max="200" value="140" aria-label="Maximum salary" /></fieldset><div class="slider-field__bounds"><span>0</span><span>200</span></div></div></article>
+          <article class="state-card"><span class="state-card__name text text--overline">Hover</span><div class="slider-field"><div class="slider-field__head"><span class="slider-field__label" id="range-hover-label">Salary range</span><output class="slider-field__value" for="range-hover-min range-hover-max">80 – 140</output></div><fieldset class="slider-range" aria-labelledby="range-hover-label"><input class="slider" id="range-hover-min" type="range" min="0" max="200" value="80" aria-label="Minimum salary" /><input class="slider is-hover" id="range-hover-max" type="range" min="0" max="200" value="140" aria-label="Maximum salary, hovered" /></fieldset><div class="slider-field__bounds"><span>0</span><span>200</span></div></div></article>
+          <article class="state-card"><span class="state-card__name text text--overline">Focus-visible</span><div class="slider-field"><div class="slider-field__head"><span class="slider-field__label" id="range-focus-label">Salary range</span><output class="slider-field__value" for="range-focus-min range-focus-max">80 – 140</output></div><fieldset class="slider-range" aria-labelledby="range-focus-label"><input class="slider is-focus-visible" id="range-focus-min" type="range" min="0" max="200" value="80" aria-label="Minimum salary, focused" /><input class="slider" id="range-focus-max" type="range" min="0" max="200" value="140" aria-label="Maximum salary" /></fieldset><div class="slider-field__bounds"><span>0</span><span>200</span></div></div></article>
+          <article class="state-card"><span class="state-card__name text text--overline">Dragging one thumb</span><div class="slider-field"><div class="slider-field__head"><span class="slider-field__label" id="range-drag-label">Salary range</span><output class="slider-field__value" for="range-drag-min range-drag-max">80 – 140</output></div><fieldset class="slider-range" aria-labelledby="range-drag-label"><input class="slider" id="range-drag-min" type="range" min="0" max="200" value="80" aria-label="Minimum salary" /><input class="slider is-dragging" id="range-drag-max" type="range" min="0" max="200" value="140" aria-label="Maximum salary, dragging" /></fieldset><div class="slider-field__bounds"><span>0</span><span>200</span></div></div></article>
+          <article class="state-card"><span class="state-card__name text text--overline">Disabled</span><div class="slider-field"><div class="slider-field__head"><span class="slider-field__label" id="range-disabled-label">Salary range</span><output class="slider-field__value" for="range-disabled-min range-disabled-max">80 – 140</output></div><fieldset class="slider-range" aria-labelledby="range-disabled-label"><input class="slider" id="range-disabled-min" type="range" min="0" max="200" value="80" aria-label="Minimum salary" disabled /><input class="slider" id="range-disabled-max" type="range" min="0" max="200" value="140" aria-label="Maximum salary" disabled /></fieldset><div class="slider-field__bounds"><span>0</span><span>200</span></div></div></article>
         </div>
-      </div>
-      <div class="demo-cell">
-        <p class="text text--caption demo-caption">focus-visible — .is-focus-visible mirrors :focus-visible</p>
-        <div class="slider-field">
-          <div class="slider-field__head">
-            <label class="slider-field__label" for="s-focus">Match score threshold</label>
-            <output class="slider-field__value" for="s-focus">60</output>
-          </div>
-          <input class="slider is-focus-visible" type="range" id="s-focus" min="0" max="100" value="60" tabindex="-1" aria-hidden="true">
-          <div class="slider-field__bounds"><span>0</span><span>100</span></div>
+      </section>
+
+      <section class="showcase-section" aria-labelledby="mapping-heading">
+        <h2 class="text text--h4 section-heading" id="mapping-heading">Token map</h2>
+        <div class="mapping-grid">
+          <article class="mapping-card"><p class="text text--label">Track and fill</p><p class="text text--caption token-stack"><code class="text text--code">--surface-cream-strong / --primary</code><code class="text text--code">--slider-track-height-md / --radius-full</code></p></article>
+          <article class="mapping-card"><p class="text text--label">Thumb and focus</p><p class="text text--caption token-stack"><code class="text text--code">--slider-thumb-md / --shadow-subtle</code><code class="text text--code">--primary-hover / --primary-active</code><code class="text text--code">--ring-width / --ring-focus</code></p></article>
+          <article class="mapping-card"><p class="text text--label">Text and disabled</p><p class="text text--caption token-stack"><code class="text text--code">--foreground-strong / --caption-foreground</code><code class="text text--code">--opacity-disabled</code></p></article>
+          <article class="mapping-card"><p class="text text--label">Spacing and motion</p><p class="text text--caption token-stack"><code class="text text--code">--space-2 / --space-4</code><code class="text text--code">--duration-fast / --ease-standard</code></p></article>
         </div>
-      </div>
-      <div class="demo-cell">
-        <p class="text text--caption demo-caption">disabled</p>
-        <div class="slider-field">
-          <div class="slider-field__head">
-            <label class="slider-field__label" for="s-disabled">Match score threshold</label>
-            <output class="slider-field__value" for="s-disabled">60</output>
-          </div>
-          <input class="slider" type="range" id="s-disabled" min="0" max="100" value="60" disabled>
-          <div class="slider-field__bounds"><span>0</span><span>100</span></div>
-        </div>
-      </div>
-      <div class="demo-cell">
-        <p class="text text--caption demo-caption">live — drag, then Tab + Arrow / PageUp / PageDown / Home / End</p>
-        <div class="slider-field">
-          <div class="slider-field__head">
-            <label class="slider-field__label" for="s-live">Match score threshold</label>
-            <output class="slider-field__value" for="s-live">60</output>
-          </div>
-          <input class="slider" type="range" id="s-live" min="0" max="100" value="60">
-          <div class="slider-field__bounds"><span>0</span><span>100</span></div>
-        </div>
-      </div>
-    </div>
-    <p class="text text--caption demo-note">
-      Keyboard is the native contract of <code class="text text--code">type="range"</code>:
-      Arrow keys move one <code class="text text--code">step</code>, PageUp/PageDown move a
-      browser-defined large step, Home/End jump to min/max. The
-      <code class="text text--code">&lt;output&gt;</code> has implicit
-      <code class="text text--code">role="status"</code>, so value changes are announced.
-      Static-state cells are duplicates with <code class="text text--code">tabindex="-1"</code>
-      so they never enter the tab order.
-    </p>
-  </section>
+      </section>
+    </main>
 
-  <hr class="separator separator--horizontal separator--subtle" role="presentation">
+    <script>
+      const percentage = (input) =>
+        `${((Number(input.value) - Number(input.min)) / (Number(input.max) - Number(input.min))) * 100}%`;
 
-  <!-- ===================== Sizes ===================== -->
-  <section class="demo-block" aria-labelledby="sizes-heading">
-    <h2 class="text text--h5" id="sizes-heading">Sizes</h2>
-    <div class="demo-grid">
-      <div class="demo-cell">
-        <p class="text text--caption demo-caption">sm — track --slider-track-height-sm · thumb --slider-thumb-sm · box --control-height-sm</p>
-        <div class="slider-field">
-          <div class="slider-field__head">
-            <label class="slider-field__label" for="s-sm">Results per page</label>
-            <output class="slider-field__value" for="s-sm">20</output>
-          </div>
-          <input class="slider slider--sm" type="range" id="s-sm" min="10" max="50" value="20">
-          <div class="slider-field__bounds"><span>10</span><span>50</span></div>
-        </div>
-      </div>
-      <div class="demo-cell">
-        <p class="text text--caption demo-caption">md — track --slider-track-height-md · thumb --slider-thumb-md · box --control-height</p>
-        <div class="slider-field">
-          <div class="slider-field__head">
-            <label class="slider-field__label" for="s-md">Results per page</label>
-            <output class="slider-field__value" for="s-md">20</output>
-          </div>
-          <input class="slider" type="range" id="s-md" min="10" max="50" value="20">
-          <div class="slider-field__bounds"><span>10</span><span>50</span></div>
-        </div>
-      </div>
-      <div class="demo-cell">
-        <p class="text text--caption demo-caption">lg — track --slider-track-height-lg · thumb --slider-thumb-lg · box --control-height-lg</p>
-        <div class="slider-field">
-          <div class="slider-field__head">
-            <label class="slider-field__label" for="s-lg">Results per page</label>
-            <output class="slider-field__value" for="s-lg">20</output>
-          </div>
-          <input class="slider slider--lg" type="range" id="s-lg" min="10" max="50" value="20">
-          <div class="slider-field__bounds"><span>10</span><span>50</span></div>
-        </div>
-      </div>
-    </div>
-  </section>
+      const paintSingle = (input) => {
+        input.style.setProperty("--_fill", percentage(input));
+        const output = document.querySelector(`output[for~="${input.id}"]`);
+        if (output && !input.closest(".slider-range")) output.textContent = input.value;
+      };
 
-  <hr class="separator separator--horizontal separator--subtle" role="presentation">
+      const paintRange = (range) => {
+        const inputs = [...range.querySelectorAll(".slider")];
+        if (inputs.length !== 2) return;
+        const [lower, upper] = inputs;
+        range.style.setProperty("--_fill-a", percentage(lower));
+        range.style.setProperty("--_fill-b", percentage(upper));
+        const output = range.closest(".slider-field")?.querySelector("output");
+        if (output) output.textContent = `${lower.value} – ${upper.value}`;
+      };
 
-  <!-- ===================== Range mode ===================== -->
-  <section class="demo-block" aria-labelledby="range-heading">
-    <h2 class="text text--h5" id="range-heading">Range (two values)</h2>
-    <div class="demo-grid">
-      <div class="demo-cell">
-        <p class="text text--caption demo-caption">default — two stacked native inputs, each with its own ARIA</p>
-        <div class="slider-field">
-          <div class="slider-field__head">
-            <span class="slider-field__label" id="r-default-label">Salary band (USD k)</span>
-            <output class="slider-field__value" for="r-default-a r-default-b">80 – 140</output>
-          </div>
-          <div class="slider-range" role="group" aria-labelledby="r-default-label">
-            <input class="slider" type="range" id="r-default-a" min="0" max="200" value="80" aria-label="Minimum salary">
-            <input class="slider" type="range" id="r-default-b" min="0" max="200" value="140" aria-label="Maximum salary">
-          </div>
-          <div class="slider-field__bounds"><span>0</span><span>200</span></div>
-        </div>
-      </div>
-      <div class="demo-cell">
-        <p class="text text--caption demo-caption">upper thumb dragging — .is-dragging</p>
-        <div class="slider-field">
-          <div class="slider-field__head">
-            <span class="slider-field__label" id="r-drag-label">Salary band (USD k)</span>
-            <output class="slider-field__value" for="r-drag-a r-drag-b">80 – 140</output>
-          </div>
-          <div class="slider-range" role="group" aria-labelledby="r-drag-label">
-            <input class="slider" type="range" id="r-drag-a" min="0" max="200" value="80" aria-label="Minimum salary" tabindex="-1">
-            <input class="slider is-dragging" type="range" id="r-drag-b" min="0" max="200" value="140" aria-label="Maximum salary" tabindex="-1">
-          </div>
-          <div class="slider-field__bounds"><span>0</span><span>200</span></div>
-        </div>
-      </div>
-      <div class="demo-cell">
-        <p class="text text--caption demo-caption">disabled</p>
-        <div class="slider-field">
-          <div class="slider-field__head">
-            <span class="slider-field__label" id="r-disabled-label">Salary band (USD k)</span>
-            <output class="slider-field__value" for="r-disabled-a r-disabled-b">80 – 140</output>
-          </div>
-          <div class="slider-range" role="group" aria-labelledby="r-disabled-label">
-            <input class="slider" type="range" id="r-disabled-a" min="0" max="200" value="80" aria-label="Minimum salary" disabled>
-            <input class="slider" type="range" id="r-disabled-b" min="0" max="200" value="140" aria-label="Maximum salary" disabled>
-          </div>
-          <div class="slider-field__bounds"><span>0</span><span>200</span></div>
-        </div>
-      </div>
-    </div>
-    <p class="text text--caption demo-note">
-      Inputs are click-through except on their thumbs, so either thumb can be
-      grabbed where they overlap; Tab reaches both. The controller clamps the
-      pair (lower ≤ upper) and paints the two fill stops on the wrapper.
-    </p>
-  </section>
-
-  <hr class="separator separator--horizontal separator--subtle" role="presentation">
-
-  <!-- ===================== Step markers ===================== -->
-  <section class="demo-block" aria-labelledby="steps-heading">
-    <h2 class="text text--h5" id="steps-heading">Step markers</h2>
-    <div class="demo-grid">
-      <div class="demo-cell">
-        <p class="text text--caption demo-caption">step="25" — one tick per step, aligned to thumb centers</p>
-        <div class="slider-field">
-          <div class="slider-field__head">
-            <label class="slider-field__label" for="s-steps">Team size</label>
-            <output class="slider-field__value" for="s-steps">50</output>
-          </div>
-          <input class="slider" type="range" id="s-steps" min="0" max="100" step="25" value="50">
-          <div class="slider__ticks" aria-hidden="true">
-            <span></span><span></span><span></span><span></span><span></span>
-          </div>
-          <div class="slider-field__bounds"><span>0</span><span>100</span></div>
-        </div>
-      </div>
-      <div class="demo-cell">
-        <p class="text text--caption demo-caption">sm, step="10" — ticks follow the size token</p>
-        <div class="slider-field">
-          <div class="slider-field__head">
-            <label class="slider-field__label" for="s-steps-sm">Notice period (weeks)</label>
-            <output class="slider-field__value" for="s-steps-sm">40</output>
-          </div>
-          <input class="slider slider--sm" type="range" id="s-steps-sm" min="0" max="80" step="10" value="40">
-          <div class="slider__ticks" aria-hidden="true">
-            <span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span>
-          </div>
-          <div class="slider-field__bounds"><span>0</span><span>80</span></div>
-        </div>
-      </div>
-    </div>
-    <p class="text text--caption demo-note">
-      Ticks are markup (one <code class="text text--code">&lt;span&gt;</code> per step), not a
-      generated gradient — their alignment inset derives from the same
-      <code class="text text--code">--_thumb</code> token the control uses, so markers stay on
-      the thumb centers at every size. Arrow keys snap to the steps natively.
-    </p>
-  </section>
-
-</main>
-
-<script>
-  /* The entire behavioral contract:
-     1. paint the fill percentage(s) as custom properties (dynamic state,
-        not visual constants);
-     2. mirror the value into <output> (implicit role=status);
-     3. in range mode, clamp the pair so lower ≤ upper.
-     Keyboard, focus, and ARIA stay native — nothing here touches them. */
-  const pct = (input) => ((input.value - input.min) / (input.max - input.min)) * 100 + "%";
-
-  function paintSingle(input) {
-    input.style.setProperty("--_fill", pct(input));
-  }
-
-  function paintRange(wrapper) {
-    const [lower, upper] = wrapper.querySelectorAll(".slider");
-    wrapper.style.setProperty("--_fill-a", pct(lower));
-    wrapper.style.setProperty("--_fill-b", pct(upper));
-  }
-
-  function syncOutput(field) {
-    const output = field.querySelector(".slider-field__value");
-    if (!output) return;
-    const values = [...field.querySelectorAll(".slider")].map((s) => s.value);
-    output.textContent = values.join(" – ");
-  }
-
-  for (const field of document.querySelectorAll(".slider-field")) {
-    for (const input of field.querySelectorAll(".slider")) {
-      paintSingle(input);
-    }
-    const range = field.querySelector(".slider-range");
-    if (range) paintRange(range);
-    syncOutput(field);
-  }
-
-  document.addEventListener("input", (event) => {
-    const input = event.target.closest(".slider");
-    if (!input) return;
-    const field = input.closest(".slider-field");
-    const range = input.closest(".slider-range");
-    if (range) {
-      const [lower, upper] = range.querySelectorAll(".slider");
-      if (input === lower && +lower.value > +upper.value) lower.value = upper.value;
-      if (input === upper && +upper.value < +lower.value) upper.value = lower.value;
-      paintRange(range);
-    } else {
-      paintSingle(input);
-    }
-    if (field) syncOutput(field);
-  });
-</script>
-
-</body>
+      for (const input of document.querySelectorAll(".slider")) {
+        paintSingle(input);
+        input.addEventListener("input", () => {
+          const range = input.closest(".slider-range");
+          if (range) paintRange(range);
+          else paintSingle(input);
+        });
+      }
+      for (const range of document.querySelectorAll(".slider-range")) paintRange(range);
+    </script>
+  </body>
 </html>

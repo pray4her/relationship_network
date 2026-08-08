@@ -1,192 +1,330 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
-<head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Textarea — Component Showcase</title>
-<link rel="stylesheet" href="../src/styles/tokens.css">
-<link rel="stylesheet" href="../src/styles/typography.css">
-<link rel="stylesheet" href="../src/styles/separator.css">
-<link rel="stylesheet" href="../src/styles/form-field.css">
-<link rel="stylesheet" href="../src/styles/textarea.css">
-<style>
-  /* Page chrome — tokens only, no component values. */
-  *, *::before, *::after { box-sizing: border-box; }
-  body {
-    margin: 0;
-    background: var(--background);
-    color: var(--foreground);
-    font-family: var(--font-sans);
-    -webkit-font-smoothing: antialiased;
-  }
-  .container { max-width: var(--doc-container-max); margin: 0 auto; padding: 0 var(--space-6); }
-  .page-head { padding: var(--space-16) 0 var(--space-8); border-bottom: var(--border-width) solid var(--border); }
-  .page-head .text--overline { color: var(--primary); display: block; margin-bottom: var(--space-3); }
-  .page-head p { margin: var(--space-4) 0 0; max-width: 64ch; }
-  .demo-block { padding: var(--space-8) 0; }
-  .demo-block > .text--h5 { margin-bottom: var(--space-6); }
-  .demo-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(var(--doc-grid-min-card), 1fr)); gap: var(--space-8); }
-  .demo-note { margin-top: var(--space-4); max-width: 72ch; color: var(--muted-foreground); }
-  .demo-caption { margin-bottom: var(--space-2); color: var(--caption-foreground); }
-</style>
-</head>
-<body>
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Textarea — Component Showcase</title>
+    <link rel="stylesheet" href="../src/styles/tokens.css" />
+    <link rel="stylesheet" href="../src/styles/typography.css" />
+    <link rel="stylesheet" href="../src/styles/form-field.css" />
+    <link rel="stylesheet" href="../src/styles/textarea.css" />
+    <style>
+      *,
+      *::before,
+      *::after {
+        box-sizing: border-box;
+      }
 
-<header class="page-head">
-  <div class="container">
-    <span class="text text--overline">Component</span>
-    <h1 class="text text--h1">Textarea</h1>
-    <p class="text text--body-md">
-      The multi-line member of the Input family — same semantic field tokens for
-      background, border, focus ring, and validation; the only structural
-      difference is block padding and a token-derived minimum height. Sizes pair
-      with a default <code class="text text--code">rows</code> contract (3 / 5 / 8),
-      labels and validation come from FormField, and resize defaults to vertical.
-    </p>
-  </div>
-</header>
+      body {
+        margin: unset;
+        background: var(--background);
+        color: var(--foreground);
+        font-family: var(--font-sans);
+        -webkit-font-smoothing: antialiased;
+      }
 
-<main class="container">
+      .container {
+        max-width: var(--doc-container-max);
+        margin-inline: auto;
+        padding-inline: var(--space-6);
+      }
 
-  <!-- ===================== Sizes ===================== -->
-  <section class="demo-block" aria-labelledby="sizes-heading">
-    <h2 class="text text--h5" id="sizes-heading">Sizes — rows contract + token minimum height</h2>
-    <div class="demo-grid">
-      <div class="field">
-        <div class="field__header"><label class="field__label" for="ta-sm">Internal note</label></div>
-        <div class="field__control">
-          <textarea class="textarea textarea--sm" id="ta-sm" rows="3"
-                    placeholder="Short context for the team…"></textarea>
-        </div>
-        <p class="field__description">sm — rows=3, min-height --space-16, --text-body-sm.</p>
-      </div>
-      <div class="field">
-        <div class="field__header"><label class="field__label" for="ta-md">Job description</label></div>
-        <div class="field__control">
-          <textarea class="textarea" id="ta-md" rows="5"
-                    placeholder="What will this person own in their first quarter?"></textarea>
-        </div>
-        <p class="field__description">md — rows=5, min-height --space-24, --text-body-md.</p>
-      </div>
-      <div class="field">
-        <div class="field__header"><label class="field__label" for="ta-lg">Company story</label></div>
-        <div class="field__control">
-          <textarea class="textarea textarea--lg" id="ta-lg" rows="8"
-                    placeholder="The long-form version for your public profile…"></textarea>
-        </div>
-        <p class="field__description">lg — rows=8, min-height --textarea-min-height-lg.</p>
-      </div>
-    </div>
-  </section>
+      .page-head {
+        padding-block: var(--space-16) var(--space-8);
+        border-bottom: var(--border-width) solid var(--border);
+      }
 
-  <hr class="separator separator--horizontal separator--subtle" role="presentation">
+      .page-head .text--overline {
+        display: block;
+        margin-bottom: var(--space-3);
+        color: var(--primary);
+      }
 
-  <!-- ===================== Content & states ===================== -->
-  <section class="demo-block" aria-labelledby="states-heading">
-    <h2 class="text text--h5" id="states-heading">Content &amp; states</h2>
-    <div class="demo-grid">
-      <div class="field">
-        <div class="field__header"><label class="field__label" for="ta-short">Rejection reason</label></div>
-        <div class="field__control">
-          <textarea class="textarea textarea--sm" id="ta-short" rows="3">Role filled internally.</textarea>
-        </div>
-        <p class="field__description">short content — single line in an sm field.</p>
-      </div>
+      .page-head p {
+        max-width: var(--doc-table-min-width);
+        margin-block: var(--space-4) unset;
+      }
 
-      <div class="field">
-        <div class="field__header"><label class="field__label" for="ta-multi">Interview feedback</label></div>
-        <div class="field__control">
-          <textarea class="textarea" id="ta-multi" rows="5">Strong systems-design round — decomposed the matching problem cleanly and reasoned about consistency trade-offs without prompting.
+      .showcase-section {
+        padding-block: var(--space-8);
+        border-bottom: var(--border-width) solid var(--border-soft);
+      }
 
-Concerns: deployment experience is thin; pair with a platform mentor for the first two months.
+      .section-heading {
+        margin-bottom: var(--space-2);
+      }
 
-Recommend: hire, level P5.</textarea>
-        </div>
-        <p class="field__description">multiline — paragraphs keep the --text-body-md line-height rhythm.</p>
-      </div>
+      .section-intro {
+        max-width: var(--doc-table-min-width);
+        margin-block: unset var(--space-6);
+      }
 
-      <div class="field field--error">
-        <div class="field__header">
-          <label class="field__label" for="ta-error">Offer terms <span class="field__required" aria-hidden="true">*</span></label>
-        </div>
-        <div class="field__control">
-          <textarea class="textarea" id="ta-error" rows="3"
-                    aria-invalid="true" aria-describedby="ta-error-desc ta-error-error">TBD</textarea>
-        </div>
-        <p class="field__description" id="ta-error-desc">Visible to the candidate.</p>
-        <p class="field__error" id="ta-error-error" role="alert">
-          Terms are required before the offer can be sent. Border via
-          <code class="text text--code">aria-invalid</code> alone — no error class on the textarea.
+      .state-stack {
+        display: grid;
+        gap: var(--space-4);
+        max-width: var(--doc-table-min-width);
+      }
+
+      .state-card,
+      .mapping-card {
+        padding: var(--space-6);
+        border: var(--border-width) solid var(--border);
+        border-radius: var(--radius-lg);
+        background: var(--card);
+      }
+
+      .state-card__name {
+        display: block;
+        margin-bottom: var(--space-4);
+        color: var(--primary);
+      }
+
+      .mapping-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(var(--doc-grid-min-card), 1fr));
+        gap: var(--space-4);
+      }
+
+      .mapping-card p {
+        margin: unset;
+      }
+
+      .token-stack {
+        display: grid;
+        gap: var(--space-1);
+        margin-top: var(--space-2);
+        color: var(--muted-foreground);
+      }
+    </style>
+  </head>
+  <body>
+    <header class="page-head">
+      <div class="container">
+        <span class="text text--overline">Component</span>
+        <h1 class="text text--h1">Textarea</h1>
+        <p class="text text--body-md">
+          Eight explicit states using the same semantic field language as Input. Every specimen
+          includes its label and helper; validation, count, resize, disabled, and read-only
+          behavior stay native and accessible.
         </p>
       </div>
+    </header>
 
-      <div class="field">
-               <div class="field__header"><label class="field__label" for="ta-disabled">Termination note</label></div>
-        <div class="field__control">
-          <textarea class="textarea" id="ta-disabled" rows="3"
-                    disabled aria-describedby="ta-disabled-desc">Workspace suspended — contact the platform admin.</textarea>
-        </div>
-        <p class="field__description" id="ta-disabled-desc">
-          disabled — --opacity-disabled, resize off; the field's label dims itself via :has().
+    <main class="container">
+      <section class="showcase-section" aria-labelledby="states-heading">
+        <h2 class="text text--h4 section-heading" id="states-heading">Complete state matrix</h2>
+        <p class="text text--body-sm text--muted section-intro">
+          Hover and focus-visible use deterministic documentation mirrors while the same native selectors
+          remain active. The lower-right native handle demonstrates the default vertical resize
+          affordance.
         </p>
-      </div>
 
-      <div class="field">
-        <div class="field__header"><label class="field__label" for="ta-readonly">Audit summary</label></div>
-        <div class="field__control">
-          <textarea class="textarea" id="ta-readonly" rows="3"
-                    readonly aria-describedby="ta-readonly-desc">12 ledger entries · 3 invites · 1 suspension — generated 12 Mar 2026.</textarea>
+        <div class="state-stack">
+          <article class="state-card">
+            <span class="state-card__name text text--overline">Default · placeholder · resize</span>
+            <div class="field">
+              <div class="field__header">
+                <label class="field__label" for="textarea-default">Internal note</label>
+              </div>
+              <div class="field__control">
+                <textarea
+                  class="textarea"
+                  id="textarea-default"
+                  placeholder="Add context for the team…"
+                  aria-describedby="textarea-default-help"
+                ></textarea>
+              </div>
+              <p class="field__description" id="textarea-default-help">
+                Optional context. Resize vertically when more room is useful.
+              </p>
+            </div>
+          </article>
+
+          <article class="state-card">
+            <span class="state-card__name text text--overline">Hover</span>
+            <div class="field">
+              <div class="field__header">
+                <label class="field__label" for="textarea-hover">Role summary</label>
+              </div>
+              <div class="field__control">
+                <textarea
+                  class="textarea is-hover"
+                  id="textarea-hover"
+                  placeholder="Summarize the opportunity…"
+                  aria-describedby="textarea-hover-help"
+                ></textarea>
+              </div>
+              <p class="field__description" id="textarea-hover-help">
+                Hover strengthens the shared Input-family border.
+              </p>
+            </div>
+          </article>
+
+          <article class="state-card">
+            <span class="state-card__name text text--overline">Focus-visible</span>
+            <div class="field field--focused">
+              <div class="field__header">
+                <label class="field__label" for="textarea-focus">Interview feedback</label>
+                <span class="field__count" id="textarea-focus-count" aria-live="polite">59 / 280</span>
+              </div>
+              <div class="field__control">
+                <textarea
+                  class="textarea is-focus-visible"
+                  id="textarea-focus"
+                  maxlength="280"
+                  aria-describedby="textarea-focus-help textarea-focus-count"
+                >Strong systems thinking and clear communication throughout.</textarea>
+              </div>
+              <p class="field__description" id="textarea-focus-help">
+                Focus matches Input through the shared primary border and semantic focus ring.
+              </p>
+            </div>
+          </article>
+
+          <article class="state-card">
+            <span class="state-card__name text text--overline">Filled · character count</span>
+            <div class="field field--filled">
+              <div class="field__header">
+                <label class="field__label" for="textarea-filled">Candidate pitch</label>
+                <span class="field__count" id="textarea-filled-count" aria-live="polite">121 / 280</span>
+              </div>
+              <div class="field__control">
+                <textarea
+                  class="textarea"
+                  id="textarea-filled"
+                  maxlength="280"
+                  aria-describedby="textarea-filled-help textarea-filled-count"
+                >Platform engineer experienced in reliable data systems, careful migrations, and small senior teams. Open to remote roles.</textarea>
+              </div>
+              <p class="field__description" id="textarea-filled-help">
+                Entered text uses the primary foreground; the polite-live count occupies the header slot.
+              </p>
+            </div>
+          </article>
+
+          <article class="state-card">
+            <span class="state-card__name text text--overline">Error</span>
+            <div class="field field--error">
+              <div class="field__header">
+                <label class="field__label" for="textarea-error">
+                  Offer terms <span class="field__required" aria-hidden="true">*</span>
+                </label>
+              </div>
+              <div class="field__control">
+                <textarea
+                  class="textarea"
+                  id="textarea-error"
+                  required
+                  aria-invalid="true"
+                  aria-describedby="textarea-error-help textarea-error-message"
+                >TBD</textarea>
+              </div>
+              <p class="field__description" id="textarea-error-help">
+                These terms are visible to the candidate.
+              </p>
+              <p class="field__error" id="textarea-error-message" role="alert">
+                Add complete offer terms before sending.
+              </p>
+            </div>
+          </article>
+
+          <article class="state-card">
+            <span class="state-card__name text text--overline">Success</span>
+            <div class="field field--success field--filled">
+              <div class="field__header">
+                <label class="field__label" for="textarea-success">Candidate summary</label>
+              </div>
+              <div class="field__control">
+                <textarea
+                  class="textarea textarea--success"
+                  id="textarea-success"
+                  aria-describedby="textarea-success-message"
+                >Senior platform engineer with verified availability and location preferences.</textarea>
+              </div>
+              <p class="field__success" id="textarea-success-message" role="status">
+                <span aria-hidden="true">✓</span> Summary is ready to publish.
+              </p>
+            </div>
+          </article>
+
+          <article class="state-card">
+            <span class="state-card__name text text--overline">Disabled</span>
+            <div class="field">
+              <div class="field__header">
+                <label class="field__label" for="textarea-disabled">Suspension note</label>
+              </div>
+              <div class="field__control">
+                <textarea
+                  class="textarea"
+                  id="textarea-disabled"
+                  disabled
+                  aria-describedby="textarea-disabled-help"
+                >Workspace suspended — contact the platform administrator.</textarea>
+              </div>
+              <p class="field__description" id="textarea-disabled-help">
+                Disabled treatment uses the system opacity and removes resizing.
+              </p>
+            </div>
+          </article>
+
+          <article class="state-card">
+            <span class="state-card__name text text--overline">Read-only</span>
+            <div class="field">
+              <div class="field__header">
+                <label class="field__label" for="textarea-readonly">Audit summary</label>
+              </div>
+              <div class="field__control">
+                <textarea
+                  class="textarea textarea--resize-none"
+                  id="textarea-readonly"
+                  readonly
+                  aria-describedby="textarea-readonly-help"
+                >12 ledger entries · 3 invitations · 1 suspension.</textarea>
+              </div>
+              <p class="field__description" id="textarea-readonly-help">
+                Read-only content stays focusable and copyable on the shared muted surface.
+              </p>
+            </div>
+          </article>
         </div>
-        <p class="field__description" id="ta-readonly-desc">
-          readonly — bg --muted, still focusable and copyable; no opacity.
-        </p>
-      </div>
+      </section>
 
-      <div class="field">
-        <div class="field__header">
-          <label class="field__label" for="ta-limit">Candidate pitch</label>
-          <span class="field__count" id="ta-limit-count" aria-live="polite">276 / 280</span>
+      <section class="showcase-section" aria-labelledby="mapping-heading">
+        <h2 class="text text--h4 section-heading" id="mapping-heading">Token map</h2>
+        <div class="mapping-grid">
+          <article class="mapping-card">
+            <p class="text text--label">Surface and border</p>
+            <p class="text text--caption token-stack">
+              <code class="text text--code">--background / --muted</code>
+              <code class="text text--code">--input / --border-strong</code>
+              <code class="text text--code">--border-width / --radius-md</code>
+            </p>
+          </article>
+          <article class="mapping-card">
+            <p class="text text--label">Focus and error</p>
+            <p class="text text--caption token-stack">
+              <code class="text text--code">--primary / --ring-focus</code>
+              <code class="text text--code">--ring-width</code>
+              <code class="text text--code">--destructive / --ring-destructive</code>
+            </p>
+          </article>
+          <article class="mapping-card">
+            <p class="text text--label">Dimensions and spacing</p>
+            <p class="text text--caption token-stack">
+              <code class="text text--code">--textarea-min-height-md</code>
+              <code class="text text--code">--input-padding-block / --input-padding-inline</code>
+            </p>
+          </article>
+          <article class="mapping-card">
+            <p class="text text--label">Text, disabled, motion</p>
+            <p class="text text--caption token-stack">
+              <code class="text text--code">--foreground / --caption-foreground</code>
+              <code class="text text--code">--opacity-disabled</code>
+              <code class="text text--code">--duration-fast / --ease-standard</code>
+            </p>
+          </article>
         </div>
-        <div class="field__control">
-          <textarea class="textarea" id="ta-limit" rows="5" maxlength="280"
-                    aria-describedby="ta-limit-desc ta-limit-count">Platform engineer with nine years across payments infrastructure and developer tooling. Led the ledger rewrite at a Series-B fintech — zero-downtime migration, audit-grade idempotency. Looking for a staff-level role on a small, senior team where reliability work is valued as product work, not overhead. Open to remote, EU timezones.</textarea>
-        </div>
-        <p class="field__description" id="ta-limit-desc">
-          near-limit — the count lives in FormField's header slot, polite-live;
-          <code class="text text--code">maxlength</code> enforces the cap natively.
-        </p>
-      </div>
-    </div>
-  </section>
-
-  <hr class="separator separator--horizontal separator--subtle" role="presentation">
-
-  <!-- ===================== Resize behavior ===================== -->
-  <section class="demo-block" aria-labelledby="resize-heading">
-    <h2 class="text text--h5" id="resize-heading">Resize behavior</h2>
-    <div class="demo-grid">
-      <div>
-        <p class="text text--caption demo-caption">default — vertical only</p>
-        <textarea class="textarea textarea--sm" rows="3" aria-label="Default resize demo">Drag the corner: height grows, width stays with the layout.</textarea>
-      </div>
-      <div>
-        <p class="text text--caption demo-caption">.textarea--resize-none</p>
-        <textarea class="textarea textarea--sm textarea--resize-none" rows="3" aria-label="Resize disabled demo">Fixed box — scrolling takes over when content overflows.</textarea>
-      </div>
-      <div>
-        <p class="text text--caption demo-caption">.textarea--resize-both — min-height still guards the size's intent</p>
-        <textarea class="textarea textarea--resize-both" rows="5" aria-label="Free resize demo">Free-form: drag horizontally or vertically. The token minimum height keeps it from collapsing below the md footprint.</textarea>
-      </div>
-    </div>
-    <p class="text text--caption demo-note">
-      Hover and focus are live in this page: hover any field for the
-      <code class="text text--code">--border-strong</code> border, tab into one for the
-      <code class="text text--code">--primary</code> border with the coral
-      <code class="text text--code">--ring-focus</code> ring.
-    </p>
-  </section>
-
-</main>
-
-</body>
+      </section>
+    </main>
+  </body>
 </html>

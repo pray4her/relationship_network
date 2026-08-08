@@ -52,16 +52,14 @@
                     Switch thumb-travel precedent); background-color
                     --duration-fast --ease-standard
    INDETERMINATE SWEEP
-     segment width  --space-16 (64px — a token, not a raw length)
+     segment width  --progress-indeterminate-size (aliases --space-16)
      loop           keyframes travel from calc(-1 · --space-16) to 100%
                     (the track-relative end; the start offset reuses the
                     same token so the segment exits and enters fully
                     off-track)
-     duration       calc(var(--duration-slow) * 4) — derived from the
-                    existing motion token (×4 structural multiplier, same
-                    status as Switch's 2·track-h ratio), keeping the
-                    house three-duration doctrine; easing
-                    --ease-standard, the only curve
+     duration       --progress-animation-duration
+                    (= --duration-loading); easing
+                    --progress-animation-easing (= --ease-standard)
    FIELD ASSEMBLY (mirrors slider-field)
      rows gap       --space-2
      head           flex space-between, baseline, gap --space-4
@@ -77,9 +75,8 @@
    REPORTED TOKEN GAPS (not silently invented — flagged for tokens.css):
    ‡  RESOLVED — tokens.css now ships --progress-height-sm/md/lg (4/8/12,
       equal to --space-1/2/3); the existing slider/switch track scales are
-      component-named and were not borrowed. The sweep duration is derived
-      via calc() from --duration-slow rather than a new token, so the
-      motion block's three durations stay canonical.
+      component-named and were not borrowed. Track, indicator, segment size,
+      duration, and easing are public Progress recipe aliases in tokens.css.
    ========================================================================== */
 
 .progress,
@@ -87,7 +84,7 @@
   /* Component-local aliases — every referenced value is a tokens.css
      token. Defaults: md · default (primary) variant. */
   --_height: var(--progress-height-md);
-  --_fill-color: var(--primary);
+  --_fill-color: var(--progress-indicator);
 
   display: block;
   width: 100%;
@@ -126,7 +123,7 @@
   overflow: hidden;
   height: var(--_height);
   border-radius: var(--radius-full);
-  background: var(--surface-cream-strong);
+  background: var(--progress-track);
 }
 
 .progress__indicator {
@@ -147,13 +144,14 @@
 
 .progress--indeterminate .progress__indicator,
 .progress-field--indeterminate .progress__indicator {
-  width: var(--space-16);
-  animation: progress-sweep calc(var(--duration-slow) * 4) var(--ease-standard) infinite;
+  width: var(--progress-indeterminate-size);
+  animation: progress-sweep var(--progress-animation-duration)
+    var(--progress-animation-easing) infinite;
 }
 
 @keyframes progress-sweep {
   from {
-    inset-inline-start: calc(-1 * var(--space-16));
+    inset-inline-start: calc(-1 * var(--progress-indeterminate-size));
   }
   to {
     inset-inline-start: 100%;

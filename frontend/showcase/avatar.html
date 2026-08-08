@@ -30,6 +30,26 @@
   .demo-cell { display: grid; gap: var(--space-3); justify-items: start; }
   .demo-row { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-4); }
   .demo-member { display: inline-flex; align-items: center; gap: var(--space-3); color: var(--foreground); text-decoration: none; }
+  .avatar-matrix {
+    display: grid;
+    grid-template-columns: var(--doc-demo-label-width) repeat(5, minmax(0, 1fr));
+    border: var(--border-width) solid var(--border);
+    border-radius: var(--radius-lg);
+    overflow: hidden;
+    margin-bottom: var(--space-6);
+  }
+  .avatar-matrix--states { grid-template-columns: var(--doc-demo-label-width) repeat(5, minmax(0, 1fr)); }
+  .avatar-matrix__cell {
+    display: flex;
+    align-items: center;
+    gap: var(--space-3);
+    min-width: 0;
+    padding: var(--space-4);
+    border-inline-end: var(--border-width) solid var(--border-soft);
+    border-block-end: var(--border-width) solid var(--border-soft);
+  }
+  .avatar-matrix__cell--head { background: var(--surface-soft); }
+  .avatar-matrix__cell--label { background: var(--card); }
 </style>
 </head>
 <body>
@@ -46,6 +66,7 @@
       <code class="text text--code">&lt;button&gt;</code> root into a profile link or
       picker target with native keyboard support. Static state classes
       (<code class="text text--code">.is-hover</code>,
+      <code class="text text--code">.is-active</code>,
       <code class="text text--code">.is-focus-visible</code>) mirror the real
       pseudo-classes so this page can render them without interaction. Every value
       is a <code class="text text--code">tokens.css</code> reference.
@@ -128,7 +149,8 @@
 
   <!-- ===================== Status ===================== -->
   <section class="demo-block" aria-labelledby="status-heading">
-    <h2 class="text text--h5" id="status-heading">Status</h2>
+    <h2 class="text text--h5" id="status-heading">Full status matrix — status × size</h2>
+    <div class="avatar-matrix" id="avatar-status-matrix"></div>
     <div class="demo-grid">
       <div class="demo-cell">
         <p class="text text--caption demo-caption">presence (md) — dot + canvas separator ring, announced in the label ‡</p>
@@ -193,15 +215,19 @@
 
   <!-- ===================== Interactive states ===================== -->
   <section class="demo-block" aria-labelledby="states-heading">
-    <h2 class="text text--h5" id="states-heading">Interactive states</h2>
+    <h2 class="text text--h5" id="states-heading">Interactive state matrix — content × state</h2>
+    <div class="avatar-matrix avatar-matrix--states" id="avatar-interaction-matrix"></div>
     <div class="demo-grid">
       <div class="demo-cell">
-        <p class="text text--caption demo-caption">profile link — default / hover / focus-visible</p>
+        <p class="text text--caption demo-caption">profile link — default / hover / active / focus-visible</p>
         <div class="demo-row">
           <a class="avatar avatar--lg avatar--interactive" href="#member-ada" aria-label="View Ada Lovelace's profile">
             <img class="avatar__image" src="data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'><rect width='64' height='64' fill='%23cc785c'/><circle cx='32' cy='25' r='11' fill='%23faf9f5'/><path d='M10 64c2-16 12-24 22-24s20 8 22 24Z' fill='%23faf9f5'/></svg>" alt="">
           </a>
           <a class="avatar avatar--lg avatar--interactive is-hover" href="#member-ada" aria-label="View Ada Lovelace's profile">
+            <img class="avatar__image" src="data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'><rect width='64' height='64' fill='%23cc785c'/><circle cx='32' cy='25' r='11' fill='%23faf9f5'/><path d='M10 64c2-16 12-24 22-24s20 8 22 24Z' fill='%23faf9f5'/></svg>" alt="">
+          </a>
+          <a class="avatar avatar--lg avatar--interactive is-active" href="#member-ada" aria-label="View Ada Lovelace's profile, active" tabindex="-1">
             <img class="avatar__image" src="data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'><rect width='64' height='64' fill='%23cc785c'/><circle cx='32' cy='25' r='11' fill='%23faf9f5'/><path d='M10 64c2-16 12-24 22-24s20 8 22 24Z' fill='%23faf9f5'/></svg>" alt="">
           </a>
           <a class="avatar avatar--lg avatar--interactive is-focus-visible" href="#member-ada" aria-label="View Ada Lovelace's profile">
@@ -210,7 +236,7 @@
         </div>
       </div>
       <div class="demo-cell">
-        <p class="text text--caption demo-caption">picker button — same classes on a &lt;button&gt; root, with status</p>
+        <p class="text text--caption demo-caption">picker button — default / hover / active / focus-visible / disabled</p>
         <div class="demo-row">
           <button class="avatar avatar--lg avatar--initials avatar--interactive" type="button" aria-label="Assign to Grace Hopper, online">
             <span class="avatar__initials">GH</span>
@@ -220,7 +246,15 @@
             <span class="avatar__initials">GH</span>
             <span class="avatar__status avatar__status--online" aria-hidden="true"></span>
           </button>
+          <button class="avatar avatar--lg avatar--initials avatar--interactive is-active" type="button" aria-label="Assign to Grace Hopper, online, active" tabindex="-1">
+            <span class="avatar__initials">GH</span>
+            <span class="avatar__status avatar__status--online" aria-hidden="true"></span>
+          </button>
           <button class="avatar avatar--lg avatar--initials avatar--interactive is-focus-visible" type="button" aria-label="Assign to Grace Hopper, online">
+            <span class="avatar__initials">GH</span>
+            <span class="avatar__status avatar__status--online" aria-hidden="true"></span>
+          </button>
+          <button class="avatar avatar--lg avatar--initials avatar--interactive" type="button" aria-label="Assign to Grace Hopper, online, disabled" disabled>
             <span class="avatar__initials">GH</span>
             <span class="avatar__status avatar__status--online" aria-hidden="true"></span>
           </button>
@@ -231,7 +265,9 @@
       Keyboard is native to the chosen root — Tab focuses, Enter (and Space on
       <code class="text text--code">&lt;button&gt;</code>) activates; the component adds
       no JS. Hover lifts with the one sanctioned shadow
-      (<code class="text text--code">--shadow-subtle</code>), focus-visible paints the
+      (<code class="text text--code">--shadow-subtle</code>), active adds the
+      <code class="text text--code">--selected-border</code> inset edge, disabled uses
+      <code class="text text--code">--opacity-disabled</code>, and focus-visible paints the
       shared <code class="text text--code">--ring-focus</code> ring at
       <code class="text text--code">--ring-width</code>, and the transition is
       <code class="text text--code">--duration-fast --ease-standard</code>, killed under
@@ -294,6 +330,35 @@
   </section>
 
 </main>
+
+<script>
+  const avatarSizes = ["xs", "sm", "md", "lg", "xl"];
+  const avatarStatuses = ["online", "offline", "busy", "away"];
+  const avatarStates = ["default", "hover", "active", "focus-visible", "disabled"];
+  const avatarPhoto = "data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'><rect width='64' height='64' fill='%23cc785c'/><circle cx='32' cy='25' r='11' fill='%23faf9f5'/><path d='M10 64c2-16 12-24 22-24s20 8 22 24Z' fill='%23faf9f5'/></svg>";
+  const avatarPerson = `<svg class="avatar__icon" viewBox="0 0 24 24" fill="none" aria-hidden="true"><circle cx="12" cy="8" r="4.2" stroke="currentColor"/><path d="M4.5 20.5c1.5-3.8 4.3-5.8 7.5-5.8s6 2 7.5 5.8" stroke="currentColor" stroke-linecap="round"/></svg>`;
+  const avatarCell = (content, classes = "") => `<div class="avatar-matrix__cell ${classes}">${content}</div>`;
+  const sizeClass = (size) => size === "md" ? "" : ` avatar--${size}`;
+  const avatarMarkup = (content, size, state = "default", status = "") => {
+    const stateClass = state === "default" ? "" : ` is-${state}`;
+    const statusMarkup = status ? `<span class="avatar__status avatar__status--${status}" aria-hidden="true"></span>` : "";
+    if (content === "image") return `<button class="avatar${sizeClass(size)} avatar--interactive${stateClass}" type="button" aria-label="Ada Lovelace${status ? `, ${status}` : ""}"><img class="avatar__image" src="${avatarPhoto}" alt="">${statusMarkup}</button>`;
+    if (content === "initials") return `<button class="avatar${sizeClass(size)} avatar--initials avatar--interactive${stateClass}" type="button" aria-label="Grace Hopper${status ? `, ${status}` : ""}"><span class="avatar__initials">GH</span>${statusMarkup}</button>`;
+    return `<button class="avatar${sizeClass(size)} avatar--generic avatar--interactive${stateClass}" type="button" aria-label="Unassigned${status ? `, ${status}` : ""}">${avatarPerson}${statusMarkup}</button>`;
+  };
+
+  const statusMatrix = document.querySelector("#avatar-status-matrix");
+  statusMatrix.innerHTML = avatarCell("<span class='text text--overline'>Status</span>", "avatar-matrix__cell--head") +
+    avatarSizes.map((size) => avatarCell(`<span class="text text--overline">${size}</span>`, "avatar-matrix__cell--head")).join("") +
+    avatarStatuses.map((status) => avatarCell(`<strong class="text text--body-sm">${status}</strong>`, "avatar-matrix__cell--label") +
+      avatarSizes.map((size) => avatarCell(avatarMarkup("initials", size, "default", status))).join("")).join("");
+
+  const interactionMatrix = document.querySelector("#avatar-interaction-matrix");
+  interactionMatrix.innerHTML = avatarCell("<span class='text text--overline'>Content</span>", "avatar-matrix__cell--head") +
+    avatarStates.map((state) => avatarCell(`<span class="text text--overline">${state}</span>`, "avatar-matrix__cell--head")).join("") +
+    ["image", "initials", "generic"].map((content) => avatarCell(`<strong class="text text--body-sm">${content}</strong>`, "avatar-matrix__cell--label") +
+      avatarStates.map((state) => avatarCell(avatarMarkup(content, "lg", state, "online"))).join("")).join("");
+</script>
 
 </body>
 </html>

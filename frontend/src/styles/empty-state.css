@@ -1,0 +1,206 @@
+/* ==========================================================================
+   EmptyState
+   Token mapping — every value below references tokens.css, nothing else.
+
+   Content-driven placeholder for vacant regions: the place where a list,
+   a table, or a result set would be when there is nothing to show yet.
+   Four semantic variants — first-use (nothing exists yet, invite the
+   first action), no-results (a query matched nothing), no-data (the
+   source has nothing to display), and error/recovery (loading failed,
+   offer a retry). The layout is a centered vertical stack whose measure
+   is capped so descriptions wrap pleasantly; everything else is content.
+
+   Actions are NEVER restyled here: the primary action is a real .btn
+   (button.css) and the optional secondary action is a second .btn or a
+   .link (link.css), dropped into .empty-state__actions unmodified. Focus,
+   hover, disabled, and loading all come from those components.
+
+   Anatomy (markup contract):
+     .empty-state                 wrapper <div>; variant modifier
+                                  --first-use / --no-results / --no-data
+                                  / --error
+     .empty-state__icon           OPTIONAL circular chip wrapping one SVG
+                                  glyph; currentColor, stroke-based
+     .empty-state__illustration   OPTIONAL author-provided illustration in
+                                  place of the icon chip; the slot is
+                                  content-driven — the asset carries its
+                                  own dimensions, the slot only centers it
+                                  and tints it with the variant color
+     .empty-state__title          heading element (<h2>, <h3>…); margin
+                                  reset only, semantics from the element
+     .empty-state__description    <p>; the cap on the stack's measure
+     .empty-state__actions        flex row; unmodified .btn / .link
+                                  children. Omit the node entirely when
+                                  there is no action.
+
+   The component has no interactive parts of its own, so it defines no
+   focus, disabled, or transition styles — those belong to the composed
+   Button / Link (each ships its own reduced-motion handling).
+
+   PROPERTY → TOKEN
+   ─────────────────────────────────────────────────────────────────────────
+   CONTAINER
+     layout          display grid; justify-items center; text-align center;
+                     row gap --space-3 between media / title / description
+                     (spacing scale)
+     width           max-width calc(var(--space-24) * 5) — 480px composed
+                     from the spacing scale, the same calc-from-spacing
+                     precedent tokens.css uses for --sidebar-width and
+                     --menu-max-height; margin-inline auto so the block
+                     centers in whatever region it fills
+     padding         block --space-12, inline --space-6 (section rhythm
+                     inside the region, breathing room on narrow screens);
+                     ≤768px block padding drops to --space-8†
+   ICON CHIP (.empty-state__icon)
+     container       --avatar-size-xl square (64px, the largest avatar rung
+                     — the empty-state chip is a hero element), radius
+                     --radius-full, background var(--_chip-bg)
+     glyph           --icon-size-lg; stroke-width --stroke-width-icon;
+                     color var(--_icon) via currentColor
+   ILLUSTRATION (.empty-state__illustration)
+     treatment       content-driven: no width/height is set — the asset's
+                     intrinsic size rules. color var(--_icon) so the
+                     variant tint flows through currentColor
+   TITLE (.empty-state__title)
+     typography      --text-title-lg (+ --line-height), weight
+                     --font-weight-medium, family --font-sans — one rung
+                     above the alert title because an empty state owns the
+                     whole region, not a row
+     color           --foreground (the region's headline)
+   DESCRIPTION (.empty-state__description)
+     typography      --text-body-md (+ --line-height), weight
+                     --font-weight-regular, family --font-sans
+     color           --muted-foreground (sub-head role) — the title stays
+                     the loudest voice in the stack
+   ACTIONS (.empty-state__actions)
+     layout          display flex; wrap; justify-content center;
+                     align-items center; gap --space-3 between controls
+                     (button.css pairs icons at --space-2, so --space-3
+                     reads as between-control spacing)
+     offset          margin-block-start --space-3 on top of the root's
+                     --space-3 row gap = --space-6 total separation from
+                     the description — two spacing rungs composed, no
+                     invented value
+     controls        reused .btn / .link, zero local overrides
+   VARIANT COLOR SYSTEM (alert.css's private-custom-property pattern)
+     first-use       --_chip-bg --info-soft      --_icon --info
+                     (a friendly "start here", the guidance hue)
+     no-results      --_chip-bg --surface-soft   --_icon --muted-foreground
+                     (quiet neutral — the query simply missed)
+     no-data         --_chip-bg --card           --_icon --muted-foreground
+                     (one card tone deeper than no-results so the two
+                     neutrals stay distinguishable side by side)
+     error           --_chip-bg --destructive-soft  --_icon --destructive
+                     (recovery: the danger tint + color, never a new red)
+   REDUCED MOTION    nothing to remove — the component declares no
+                     transitions; composed Button / Link handle their own.
+
+   TOKEN NOTES: no new tokens were needed — every role mapped to an
+   existing token. Documented compositions: the 480px measure is
+   calc(--space-24 × 5) (spacing-scale composition, --sidebar-width
+   precedent), and the description→actions separation is two --space-3
+   steps (root gap + margin). The illustration slot is deliberately
+   size-free so assets stay content-driven.
+   †  breakpoint: 768px stays literal — @media cannot consume var() in
+      plain CSS (typography.css precedent).
+   ========================================================================== */
+
+.empty-state {
+  display: grid;
+  justify-items: center;
+  gap: var(--space-3);
+  max-width: calc(var(--space-24) * 5);
+  margin-inline: auto;
+  padding-block: var(--space-12);
+  padding-inline: var(--space-6);
+  text-align: center;
+}
+
+/* ===== Variant color system ===== */
+
+.empty-state--first-use {
+  --_chip-bg: var(--info-soft);
+  --_icon: var(--info);
+}
+
+.empty-state--no-results {
+  --_chip-bg: var(--surface-soft);
+  --_icon: var(--muted-foreground);
+}
+
+.empty-state--no-data {
+  --_chip-bg: var(--card);
+  --_icon: var(--muted-foreground);
+}
+
+.empty-state--error {
+  --_chip-bg: var(--destructive-soft);
+  --_icon: var(--destructive);
+}
+
+/* ===== Media: icon chip or illustration ===== */
+
+.empty-state__icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: none;
+  width: var(--avatar-size-xl);
+  height: var(--avatar-size-xl);
+  border-radius: var(--radius-full);
+  background: var(--_chip-bg);
+  color: var(--_icon);
+}
+
+.empty-state__icon svg {
+  width: var(--icon-size-lg);
+  height: var(--icon-size-lg);
+  stroke-width: var(--stroke-width-icon);
+}
+
+/* Content-driven: the asset carries its own dimensions; the slot only
+   centers it and passes the variant tint through currentColor. */
+.empty-state__illustration {
+  display: block;
+  color: var(--_icon);
+}
+
+/* ===== Copy ===== */
+
+.empty-state__title {
+  margin: 0;
+  font-family: var(--font-sans);
+  font-size: var(--text-title-lg);
+  font-weight: var(--font-weight-medium);
+  line-height: var(--text-title-lg--line-height);
+  color: var(--foreground);
+}
+
+.empty-state__description {
+  margin: 0;
+  font-family: var(--font-sans);
+  font-size: var(--text-body-md);
+  font-weight: var(--font-weight-regular);
+  line-height: var(--text-body-md--line-height);
+  color: var(--muted-foreground);
+}
+
+/* ===== Actions (composed .btn / .link — never restyled) ===== */
+
+.empty-state__actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  align-items: center;
+  gap: var(--space-3);
+  margin-block-start: var(--space-3);
+}
+
+/* ===== Responsive =====
+   768px stays literal: @media cannot consume var() in plain CSS
+   (typography.css precedent). */
+@media (max-width: 768px) {
+  .empty-state {
+    padding-block: var(--space-8);
+  }
+}

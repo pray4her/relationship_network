@@ -1,0 +1,383 @@
+/* ============================================================================
+   Drawer / Sheet
+   Token mapping — every visual value below references tokens.css, nothing else.
+
+   A modal edge panel built on native <dialog>. Open with showModal(), never by
+   adding `open` directly: the browser top layer then prevents background
+   interaction. The behaviour layer traps focus, chooses initial focus, handles
+   Escape through the native `cancel` event, and restores focus to the opener.
+   Set data-escape-close="false" only when dismissal would be inappropriate;
+   set data-overlay-close="false" when an explicit decision is required.
+
+   Anatomy (markup contract):
+     .drawer                 native <dialog>; placement + size + lifecycle class
+     .drawer__overlay        full-viewport scrim; aria-hidden="true"
+     .drawer__panel          edge-anchored surface; tabindex="-1" fallback focus
+     .drawer__header         heading cluster + composed IconButton close control
+     .drawer__heading        title / description stack
+     .drawer__title          heading referenced by aria-labelledby
+     .drawer__description    supporting copy referenced by aria-describedby
+     .drawer__content        scrollable content region
+     .drawer__footer         action row containing composed Button components
+     .drawer__close          alignment hook only; also data-drawer-close
+
+   PLACEMENT
+     .drawer--left           panel anchored inline-start; entry/exit travels on X
+     .drawer--right          panel anchored inline-end; entry/exit travels on X
+     .drawer--bottom         panel anchored block-end; entry/exit travels on Y;
+                             use when the task is compact enough for a sheet
+
+   PROPERTY → TOKEN
+   ───────────────────────────────────────────────────────────────────────────
+   MODAL HOST
+     viewport         fixed inset 0, full width/height; placement uses flex
+                      alignment mechanics rather than component-local offsets
+     layering         --z-popover (tokens.css overlay rung, above dropdowns);
+                      showModal() additionally places the host in the top layer
+   OVERLAY
+     fill             --scrim (system-approved overlay alpha)
+     motion           opacity over --duration-normal --ease-standard;
+                      closing switches to --duration-fast
+   PANEL
+     background       --popover; text --popover-foreground
+     border           --border-width solid --border
+     shadow           --shadow-lift
+     radius           exposed corners --radius-xl; viewport-edge corners reset
+                      to zero as geometry, not a visual magnitude
+     maximum          side drawers max-width calc(100% - --space-6); bottom
+                      drawers max-height calc(100% - --space-6), preserving a
+                      tokenized glimpse of the blocked page
+   SIDE SIZE → WIDTH
+     sm               --sidebar-width = calc(--space-16 × 4)
+     md               calc(--space-16 × 6) (Toast width precedent)
+     lg               calc(--space-16 × 8) (Popover max precedent)
+   BOTTOM SIZE → HEIGHT
+     sm               calc(--space-16 × 3)
+     md               calc(--space-16 × 5)
+     lg               calc(--space-16 × 7)
+   SIZE → SPACING / TEXT
+     sm               header/content padding --space-4; footer block --space-3,
+                      inline --space-4; title --text-title-md; content
+                      --text-body-sm
+     md (default)     header/content padding --space-6; footer block --space-4,
+                      inline --space-6; title --text-title-lg; content
+                      --text-body-md
+     lg               header/content padding --space-8; footer block --space-6,
+                      inline --space-8; title --text-title-lg; content
+                      --text-body-md
+   HEADER
+     layout gap       --space-4 between heading cluster and close control
+     heading gap      --space-2 between title and description
+     divider          --border-width solid --border-soft
+   TEXT
+     title            --font-sans; size from the selected size; weight
+                      --font-weight-medium; color --foreground
+     description      --font-sans; --text-body-sm (+ line-height); weight
+                      --font-weight-regular; color --muted-foreground
+     content          --font-sans; size from selected size; weight
+                      --font-weight-regular; color --foreground-body
+   CONTENT
+     content gap      --space-4; overflow-y auto; min-height 0 keeps the header
+                      and footer fixed while long content scrolls
+   FOOTER
+     action gap       --space-3; flex-wrap provides responsive reflow
+     background       --surface-soft
+     divider          --border-width solid --border-soft
+     buttons          existing .btn component; Drawer adds no button visuals
+   CLOSE CONTROL
+     existing .icon-btn + .icon--muted + .icon--sm; .drawer__close only
+     supplies flex alignment, leaving focus/hover/disabled IconButton-owned
+   FOCUS
+     controls         Button / IconButton keep --ring-width / --ring-focus
+     panel fallback   --shadow-lift plus --ring-width / --ring-focus at the
+                      placement's existing radius when no child can receive focus
+   LIFECYCLE
+     .drawer--closed  native <dialog> without [open] is absent from rendering,
+                      accessibility tree, and tab order
+     .drawer--opening overlay + panel opacity --opacity-disabled; panel starts
+                      --space-4 toward its off-canvas placement edge
+     .drawer--open    full opacity; panel translate 0
+     .drawer--closing half-opacity and --space-4 retreat toward its edge over
+                      --duration-fast before native close() removes the host
+   MOTION
+     panel            opacity + translate over --duration-normal
+                      --ease-standard; closing uses --duration-fast
+     reduced motion   overlay/panel transitions removed and transforms reset;
+                      controller closes immediately.
+
+   TOKEN NOTES: no new tokens were required. Widths and heights are composed
+   from --space-16, with --sidebar-width reused for the small side drawer.
+   --z-popover is the existing overlay layer; native top-layer placement keeps
+   a modal Drawer above ordinary anchored content.
+   ============================================================================ */
+
+.drawer {
+  box-sizing: border-box;
+  position: fixed;
+  inset: 0;
+  z-index: var(--z-popover);
+  width: 100%;
+  height: 100%;
+  max-width: none;
+  max-height: none;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--popover-foreground);
+  overflow: hidden;
+}
+
+.drawer[open] {
+  display: flex;
+}
+
+.drawer::backdrop {
+  background: transparent;
+}
+
+.drawer--left {
+  align-items: stretch;
+  justify-content: flex-start;
+}
+
+.drawer--right {
+  align-items: stretch;
+  justify-content: flex-end;
+}
+
+.drawer--bottom {
+  align-items: flex-end;
+  justify-content: center;
+}
+
+.drawer__overlay {
+  position: absolute;
+  inset: 0;
+  background: var(--scrim);
+  opacity: 0;
+  transition: opacity var(--duration-normal) var(--ease-standard);
+}
+
+.drawer__panel {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  width: calc(var(--space-16) * 6);
+  max-width: calc(100% - var(--space-6));
+  height: 100%;
+  min-width: 0;
+  min-height: 0;
+  overflow: hidden;
+  border: var(--border-width) solid var(--border);
+  background: var(--popover);
+  color: var(--popover-foreground);
+  box-shadow: var(--shadow-lift);
+  opacity: 0;
+  transition:
+    opacity var(--duration-normal) var(--ease-standard),
+    translate var(--duration-normal) var(--ease-standard),
+    box-shadow var(--duration-fast) var(--ease-standard);
+}
+
+.drawer--left .drawer__panel {
+  border-radius: 0 var(--radius-xl) var(--radius-xl) 0;
+  translate: calc(-1 * var(--space-4)) 0;
+}
+
+.drawer--right .drawer__panel {
+  border-radius: var(--radius-xl) 0 0 var(--radius-xl);
+  translate: var(--space-4) 0;
+}
+
+.drawer--bottom .drawer__panel {
+  width: 100%;
+  max-width: none;
+  height: calc(var(--space-16) * 5);
+  max-height: calc(100% - var(--space-6));
+  border-radius: var(--radius-xl) var(--radius-xl) 0 0;
+  translate: 0 var(--space-4);
+}
+
+/* ===== Dimensions ===== */
+
+.drawer--left.drawer--sm .drawer__panel,
+.drawer--right.drawer--sm .drawer__panel {
+  width: var(--sidebar-width);
+}
+
+.drawer--left.drawer--md .drawer__panel,
+.drawer--right.drawer--md .drawer__panel {
+  width: calc(var(--space-16) * 6);
+}
+
+.drawer--left.drawer--lg .drawer__panel,
+.drawer--right.drawer--lg .drawer__panel {
+  width: calc(var(--space-16) * 8);
+}
+
+.drawer--bottom.drawer--sm .drawer__panel {
+  height: calc(var(--space-16) * 3);
+}
+
+.drawer--bottom.drawer--md .drawer__panel {
+  height: calc(var(--space-16) * 5);
+}
+
+.drawer--bottom.drawer--lg .drawer__panel {
+  height: calc(var(--space-16) * 7);
+}
+
+/* ===== Anatomy ===== */
+
+.drawer__header {
+  display: flex;
+  flex: none;
+  align-items: flex-start;
+  gap: var(--space-4);
+  padding: var(--space-6);
+  border-bottom: var(--border-width) solid var(--border-soft);
+}
+
+.drawer__heading {
+  display: grid;
+  flex: 1 1 auto;
+  gap: var(--space-2);
+  min-width: 0;
+}
+
+.drawer__title {
+  margin: 0;
+  font-family: var(--font-sans);
+  font-size: var(--text-title-lg);
+  font-weight: var(--font-weight-medium);
+  line-height: var(--text-title-lg--line-height);
+  color: var(--foreground);
+}
+
+.drawer__description {
+  margin: 0;
+  font-family: var(--font-sans);
+  font-size: var(--text-body-sm);
+  font-weight: var(--font-weight-regular);
+  line-height: var(--text-body-sm--line-height);
+  color: var(--muted-foreground);
+}
+
+.drawer__close {
+  flex: none;
+  margin-inline-start: auto;
+}
+
+.drawer__content {
+  display: grid;
+  flex: 1 1 auto;
+  gap: var(--space-4);
+  min-height: 0;
+  padding: var(--space-6);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  font-family: var(--font-sans);
+  font-size: var(--text-body-md);
+  font-weight: var(--font-weight-regular);
+  line-height: var(--text-body-md--line-height);
+  color: var(--foreground-body);
+}
+
+.drawer__content > * {
+  margin: 0;
+}
+
+.drawer__footer {
+  display: flex;
+  flex: none;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: var(--space-3);
+  padding-block: var(--space-4);
+  padding-inline: var(--space-6);
+  border-top: var(--border-width) solid var(--border-soft);
+  background: var(--surface-soft);
+}
+
+/* ===== Size-specific spacing and type ===== */
+
+.drawer--sm .drawer__header,
+.drawer--sm .drawer__content {
+  padding: var(--space-4);
+}
+
+.drawer--sm .drawer__footer {
+  padding-block: var(--space-3);
+  padding-inline: var(--space-4);
+}
+
+.drawer--sm .drawer__title {
+  font-size: var(--text-title-md);
+  line-height: var(--text-title-md--line-height);
+}
+
+.drawer--sm .drawer__content {
+  font-size: var(--text-body-sm);
+  line-height: var(--text-body-sm--line-height);
+}
+
+.drawer--lg .drawer__header,
+.drawer--lg .drawer__content {
+  padding: var(--space-8);
+}
+
+.drawer--lg .drawer__footer {
+  padding-block: var(--space-6);
+  padding-inline: var(--space-8);
+}
+
+/* ===== Focus fallback ===== */
+
+.drawer__panel:focus-visible,
+.drawer__panel.is-focus-visible {
+  outline: none;
+  box-shadow:
+    var(--shadow-lift),
+    0 0 0 var(--ring-width) var(--ring-focus);
+}
+
+/* ===== Lifecycle ===== */
+
+.drawer--opening .drawer__overlay,
+.drawer--closing .drawer__overlay {
+  opacity: var(--opacity-disabled);
+}
+
+.drawer--opening .drawer__panel,
+.drawer--closing .drawer__panel {
+  opacity: var(--opacity-disabled);
+}
+
+.drawer--open .drawer__overlay {
+  opacity: 1;
+}
+
+.drawer--open .drawer__panel {
+  opacity: 1;
+  translate: 0;
+}
+
+.drawer--closing .drawer__overlay,
+.drawer--closing .drawer__panel {
+  transition-duration: var(--duration-fast);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .drawer__overlay,
+  .drawer__panel {
+    transition: none;
+  }
+
+  .drawer__panel,
+  .drawer--opening .drawer__panel,
+  .drawer--closing .drawer__panel,
+  .drawer--open .drawer__panel {
+    translate: 0;
+  }
+}

@@ -1,163 +1,359 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
-<head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Separator — Component Showcase</title>
-<link rel="stylesheet" href="../src/styles/tokens.css">
-<link rel="stylesheet" href="../src/styles/typography.css">
-<link rel="stylesheet" href="../src/styles/separator.css">
-<style>
-  /* Page chrome — tokens only, no component values. */
-  *, *::before, *::after { box-sizing: border-box; }
-  body {
-    margin: 0;
-    background: var(--background);
-    color: var(--foreground);
-    font-family: var(--font-sans);
-    -webkit-font-smoothing: antialiased;
-  }
-  .container { max-width: var(--doc-container-max); margin: 0 auto; padding: 0 var(--space-6); }
-  .page-head { padding: var(--space-16) 0 var(--space-8); border-bottom: var(--border-width) solid var(--border); }
-  .page-head .text--overline { color: var(--primary); display: block; margin-bottom: var(--space-3); }
-  .page-head p { margin: var(--space-4) 0 0; max-width: 64ch; }
-  .demo-block { padding: var(--space-8) 0; border-bottom: var(--border-width) solid var(--border-soft); }
-  .demo-block > .text--h5 { margin-bottom: var(--space-6); }
-  .demo-note { margin-top: var(--space-4); max-width: 72ch; }
-  .stack { max-width: 72ch; }
-  .stack p { margin: 0; }
-  /* vertical demos need a row context; height comes from the content */
-  .h-row { display: flex; align-items: center; }
-  .meta-row { display: flex; align-items: center; color: var(--muted-foreground); }
-  .toolbar { display: flex; align-items: center; border: var(--border-width) solid var(--border); border-radius: var(--radius-md); padding: var(--space-2) var(--space-3); }
-  .toolbar button {
-    border: 0; background: transparent; cursor: pointer; padding: var(--space-1) var(--space-2);
-    font-family: var(--font-sans); font-size: var(--text-body-sm); color: var(--foreground);
-    border-radius: var(--radius-sm);
-  }
-  .toolbar button:focus-visible { outline: none; box-shadow: 0 0 0 var(--ring-width) var(--ring-focus); }
-  /* On dark band, separators keep token colors — shown for honesty, not a variant */
-  .dark-band { background: var(--surface-dark); color: var(--on-dark); border-radius: var(--radius-lg); padding: var(--space-8); }
-</style>
-</head>
-<body>
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Separator — Component Showcase</title>
+    <link rel="stylesheet" href="../src/styles/tokens.css" />
+    <link rel="stylesheet" href="../src/styles/typography.css" />
+    <link rel="stylesheet" href="../src/styles/separator.css" />
+    <style>
+      /* Showcase layout uses tokens.css only. */
+      *,
+      *::before,
+      *::after {
+        box-sizing: border-box;
+      }
 
-<header class="page-head">
-  <div class="container">
-    <span class="text text--overline">Component</span>
-    <h1 class="text text--h1">Separator</h1>
-    <p class="text text--body-md">
-      Three color variants — <code class="text text--code">subtle</code>,
-      <code class="text text--code">default</code>, <code class="text text--code">strong</code> —
-      in two orientations. Thickness is always the <code class="text text--code">--border-width</code>
-      hairline; variants differ by color token only. Decorative separators hide from
-      assistive tech; real content boundaries keep <code class="text text--code">role="separator"</code>.
-    </p>
-  </div>
-</header>
+      body {
+        margin: unset;
+        background: var(--background);
+        color: var(--foreground);
+        font-family: var(--font-sans);
+        -webkit-font-smoothing: antialiased;
+      }
 
-<main class="container">
+      .container {
+        max-width: var(--doc-container-max);
+        margin-inline: auto;
+        padding-inline: var(--space-6);
+      }
 
-  <!-- ===================== Horizontal ===================== -->
-  <section class="demo-block" aria-labelledby="h-heading">
-    <h2 class="text text--h5" id="h-heading">Horizontal</h2>
+      .page-head {
+        padding-block: var(--space-16) var(--space-8);
+        border-bottom: var(--border-width) solid var(--border);
+      }
 
-    <div class="stack">
-      <p class="text text--caption">subtle → --border-soft (quiet dividers)</p>
-      <p class="text text--body-md">Members can edit company documents until the subscription lapses.</p>
-      <hr class="separator separator--horizontal separator--subtle">
-      <p class="text text--body-md">After that the tenant turns read-only and the write gate explains why.</p>
-    </div>
+      .page-head .text--overline {
+        display: block;
+        margin-bottom: var(--space-3);
+        color: var(--primary);
+      }
 
-    <div class="stack" style="margin-top: var(--space-8);">
-      <p class="text text--caption">default → --border (hairline)</p>
-      <p class="text text--body-md">Every billable action lands in the usage ledger under an idempotency key.</p>
-      <hr class="separator separator--horizontal separator--default">
-      <p class="text text--body-md">A retry with the same key and different parameters returns 409.</p>
-    </div>
+      .page-head p {
+        max-width: var(--doc-table-min-width);
+        margin-block: var(--space-4) unset;
+      }
 
-    <div class="stack" style="margin-top: var(--space-8);">
-      <p class="text text--caption">strong → --border-strong, --border-width-strong (2px)</p>
-      <p class="text text--body-md">Platform administrators authenticate with TOTP two-step verification.</p>
-      <hr class="separator separator--horizontal separator--strong">
-      <p class="text text--body-md">Their authority comes from an environment variable, never from tenant roles.</p>
-    </div>
+      .showcase-section {
+        padding-block: var(--space-8);
+        border-bottom: var(--border-width) solid var(--border-soft);
+      }
 
-    <p class="text text--caption demo-note">
-      Rendered as semantic <code class="text text--code">&lt;hr&gt;</code> elements: these divide
-      genuinely distinct content, so they keep the implicit
-      <code class="text text--code">role="separator"</code>.
-    </p>
-  </section>
+      .section-heading {
+        margin-bottom: var(--space-2);
+      }
 
-  <!-- ===================== Vertical ===================== -->
-  <section class="demo-block" aria-labelledby="v-heading">
-    <h2 class="text text--h5" id="v-heading">Vertical</h2>
+      .section-intro {
+        max-width: var(--doc-table-min-width);
+        margin-block: unset var(--space-6);
+      }
 
-    <p class="text text--caption" style="margin-bottom: var(--space-3);">subtle → --border-soft</p>
-    <div class="meta-row text text--body-sm">
-      <span>Updated 12 Mar 2026</span>
-      <span class="separator separator--vertical separator--subtle" role="presentation"></span>
-      <span>2.4 MB</span>
-      <span class="separator separator--vertical separator--subtle" role="presentation"></span>
-      <span>Members only</span>
-    </div>
+      .matrix-wrap {
+        overflow-x: auto;
+        border: var(--border-width) solid var(--border);
+        border-radius: var(--radius-lg);
+        background: var(--popover);
+        box-shadow: var(--shadow-subtle);
+      }
 
-    <p class="text text--caption" style="margin: var(--space-6) 0 var(--space-3);">default → --border</p>
-    <div class="meta-row text text--body-sm">
-      <span>Claude Opus</span>
-      <span class="separator separator--vertical separator--default" role="presentation"></span>
-      <span>Deep reasoning</span>
-      <span class="separator separator--vertical separator--default" role="presentation"></span>
-      <span>Available</span>
-    </div>
+      .matrix {
+        width: 100%;
+        min-width: var(--doc-table-min-width);
+        border-collapse: collapse;
+      }
 
-    <p class="text text--caption" style="margin: var(--space-6) 0 var(--space-3);">strong → --border-strong, 2px</p>
-    <div class="toolbar" role="toolbar" aria-label="Document actions">
-      <button type="button">Edit</button>
-      <button type="button">Share</button>
-      <span class="separator separator--vertical separator--strong" role="separator" aria-orientation="vertical"></span>
-      <button type="button">Delete</button>
-    </div>
+      .matrix th,
+      .matrix td {
+        padding: var(--space-4);
+        border-right: var(--border-width) solid var(--border-soft);
+        border-bottom: var(--border-width) solid var(--border-soft);
+        text-align: left;
+        vertical-align: top;
+      }
 
-    <p class="text text--caption demo-note">
-      Meta rows use decorative separators (<code class="text text--code">role="presentation"</code>) —
-      the text reads fine without them. The toolbar divider marks a real boundary between
-      safe and destructive actions, so it keeps
-      <code class="text text--code">role="separator" aria-orientation="vertical"</code>.
-    </p>
-  </section>
+      .matrix tr > :last-child {
+        border-right: none;
+      }
 
-  <!-- ===================== Decorative vs semantic ===================== -->
-  <section class="demo-block" aria-labelledby="sem-heading" style="border-bottom: 0;">
-    <h2 class="text text--h5" id="sem-heading">Decorative vs semantic</h2>
+      .matrix tbody tr:last-child > * {
+        border-bottom: none;
+      }
 
-    <div class="stack">
-      <p class="text text--body-md">
-        <strong>Decorative:</strong> the divider below only groups visually — a screen reader
-        skips it entirely.
-      </p>
-      <div class="separator separator--horizontal separator--subtle" role="presentation"></div>
-      <p class="text text--body-md">
-        <strong>Semantic:</strong> the divider below separates two independent announcements —
-        it is a real content boundary, announced as a separator.
-      </p>
-      <hr class="separator separator--horizontal separator--default">
-      <p class="text text--body-md">
-        Scheduled maintenance on Sunday, 03:00–04:00 UTC. Invites sent during the window
-        are queued and delivered after.
-      </p>
-    </div>
+      .matrix thead th {
+        background: var(--surface-soft);
+      }
 
-    <p class="text text--caption demo-note">
-      Rule of thumb: if removing the divider changes what the content <em>means</em>,
-      it is semantic — use <code class="text text--code">&lt;hr&gt;</code> (horizontal) or
-      <code class="text text--code">role="separator" aria-orientation="vertical"</code> (vertical).
-      Otherwise mark it <code class="text text--code">role="presentation"</code>.
-    </p>
-  </section>
+      .matrix tbody th {
+        background: var(--card);
+      }
 
-</main>
+      .token-list {
+        display: grid;
+        gap: var(--space-1);
+        margin-top: var(--space-3);
+        color: var(--muted-foreground);
+      }
 
-</body>
+      .horizontal-specimen {
+        padding-block: var(--space-2);
+      }
+
+      .horizontal-specimen p {
+        margin: unset;
+      }
+
+      .vertical-specimen {
+        display: flex;
+        align-items: stretch;
+        min-height: var(--control-height-lg);
+        color: var(--foreground-body);
+      }
+
+      .vertical-specimen span:not(.separator) {
+        display: flex;
+        align-items: center;
+      }
+
+      .context-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(var(--doc-grid-min-card), 1fr));
+        gap: var(--space-4);
+      }
+
+      .context-card {
+        padding: var(--space-6);
+        border: var(--border-width) solid var(--border);
+        border-radius: var(--radius-lg);
+        background: var(--card);
+      }
+
+      .context-card h3,
+      .context-card p {
+        margin: unset;
+      }
+
+      .context-card p {
+        margin-top: var(--space-2);
+      }
+
+      .context-card--inverse {
+        border-color: var(--surface-dark-elevated);
+        background: var(--surface-dark);
+        color: var(--on-dark);
+      }
+
+      .context-card--inverse h3 {
+        color: var(--on-dark);
+      }
+
+      .context-card--inverse p,
+      .context-card--inverse code {
+        color: var(--on-dark-soft);
+      }
+
+      .mapping-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(var(--doc-grid-min-card), 1fr));
+        gap: var(--space-3);
+      }
+
+      .mapping-item {
+        padding: var(--space-4);
+        border: var(--border-width) solid var(--border-soft);
+        border-radius: var(--radius-md);
+        background: var(--surface-soft);
+      }
+
+      .mapping-item p {
+        margin: unset;
+      }
+    </style>
+  </head>
+  <body>
+    <header class="page-head">
+      <div class="container">
+        <span class="text text--overline">Component</span>
+        <h1 class="text text--h1">Separator</h1>
+        <p class="text text--body-md">
+          The complete style and orientation matrix. Hierarchy comes from semantic border color
+          and thickness tokens; spacing is identical across styles for a stable content rhythm.
+        </p>
+      </div>
+    </header>
+
+    <main class="container">
+      <section class="showcase-section" aria-labelledby="matrix-heading">
+        <h2 class="text text--h4 section-heading" id="matrix-heading">Applicable state matrix — style × orientation</h2>
+        <p class="text text--body-sm text--muted section-intro">
+          All six supported combinations are shown at the same scale for direct contrast and
+          hierarchy comparison.
+        </p>
+
+        <div class="matrix-wrap">
+          <table class="matrix">
+            <thead>
+              <tr>
+                <th class="text text--label" scope="col">Style</th>
+                <th class="text text--label" scope="col">Horizontal</th>
+                <th class="text text--label" scope="col">Vertical</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <th scope="row">
+                  <span class="text text--h6">Subtle</span>
+                  <span class="text text--caption token-list">
+                    <code class="text text--code">--border-soft</code>
+                    <code class="text text--code">--border-width</code>
+                  </span>
+                </th>
+                <td>
+                  <div class="horizontal-specimen">
+                    <p class="text text--body-sm">Related supporting content</p>
+                    <hr class="separator separator--horizontal separator--subtle" />
+                    <p class="text text--body-sm">Low-emphasis continuation</p>
+                  </div>
+                </td>
+                <td>
+                  <div class="vertical-specimen text text--body-sm">
+                    <span>Metadata</span>
+                    <span
+                      class="separator separator--vertical separator--subtle"
+                      aria-hidden="true"
+                    ></span>
+                    <span>Supporting detail</span>
+                  </div>
+                </td>
+              </tr>
+              <tr>
+                <th scope="row">
+                  <span class="text text--h6">Default</span>
+                  <span class="text text--caption token-list">
+                    <code class="text text--code">--border</code>
+                    <code class="text text--code">--border-width</code>
+                  </span>
+                </th>
+                <td>
+                  <div class="horizontal-specimen">
+                    <p class="text text--body-sm">Independent content group</p>
+                    <hr class="separator separator--horizontal separator--default" />
+                    <p class="text text--body-sm">Next content group</p>
+                  </div>
+                </td>
+                <td>
+                  <div class="vertical-specimen text text--body-sm">
+                    <span>Primary group</span>
+                    <hr
+                      class="separator separator--vertical separator--default"
+                      aria-orientation="vertical"
+                    />
+                    <span>Secondary group</span>
+                  </div>
+                </td>
+              </tr>
+              <tr>
+                <th scope="row">
+                  <span class="text text--h6">Strong</span>
+                  <span class="text text--caption token-list">
+                    <code class="text text--code">--border-strong</code>
+                    <code class="text text--code">--border-width-strong</code>
+                  </span>
+                </th>
+                <td>
+                  <div class="horizontal-specimen">
+                    <p class="text text--body-sm">Major content region</p>
+                    <hr class="separator separator--horizontal separator--strong" />
+                    <p class="text text--body-sm">Distinct major region</p>
+                  </div>
+                </td>
+                <td>
+                  <div class="vertical-specimen text text--body-sm">
+                    <span>Safe actions</span>
+                    <hr
+                      class="separator separator--vertical separator--strong"
+                      aria-orientation="vertical"
+                    />
+                    <span>Critical actions</span>
+                  </div>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <section class="showcase-section" aria-labelledby="contexts-heading">
+        <h2 class="text text--h4 section-heading" id="contexts-heading">Surface contexts</h2>
+        <p class="text text--body-sm text--muted section-intro">
+          Context behavior follows semantic capability in the current Token set.
+        </p>
+        <div class="context-grid">
+          <article class="context-card">
+            <h3 class="text text--h6">Disabled — not applicable</h3>
+            <p class="text text--body-sm text--muted">
+              A Separator is structural and non-interactive, so it has no disabled state.
+              <code class="text text--code">--opacity-disabled</code> remains reserved for
+              disabled controls and is not applied here.
+            </p>
+          </article>
+          <article class="context-card context-card--inverse">
+            <h3 class="text text--h6">Inverse — Token gap</h3>
+            <p class="text text--body-sm">
+              No inverse border or separator token exists. Text roles
+              <code class="text text--code">--on-dark</code> and
+              <code class="text text--code">--on-dark-soft</code> are not repurposed as line
+              colors, so an inverse Separator is intentionally not rendered.
+            </p>
+          </article>
+        </div>
+      </section>
+
+      <section class="showcase-section" aria-labelledby="mapping-heading">
+        <h2 class="text text--h4 section-heading" id="mapping-heading">Token map</h2>
+        <p class="text text--body-sm text--muted section-intro">
+          No raw color, thickness, opacity, or spacing values are used by the component.
+        </p>
+        <div class="mapping-grid">
+          <article class="mapping-item">
+            <p class="text text--label">Color</p>
+            <p class="text text--caption text--muted">
+              <code class="text text--code">--border-soft</code> ·
+              <code class="text text--code">--border</code> ·
+              <code class="text text--code">--border-strong</code>
+            </p>
+          </article>
+          <article class="mapping-item">
+            <p class="text text--label">Thickness</p>
+            <p class="text text--caption text--muted">
+              <code class="text text--code">--border-width</code> ·
+              <code class="text text--code">--border-width-strong</code>
+            </p>
+          </article>
+          <article class="mapping-item">
+            <p class="text text--label">Surrounding spacing</p>
+            <p class="text text--caption text--muted">
+              <code class="text text--code">--space-4</code> on the orientation axis
+            </p>
+          </article>
+          <article class="mapping-item">
+            <p class="text text--label">Opacity</p>
+            <p class="text text--caption text--muted">
+              No opacity applied; semantic border colors define contrast
+            </p>
+          </article>
+        </div>
+      </section>
+    </main>
+  </body>
 </html>

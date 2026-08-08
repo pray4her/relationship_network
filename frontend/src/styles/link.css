@@ -2,16 +2,16 @@
    Link
    Token mapping — every value below references tokens.css, nothing else.
 
-   Links are real <a> elements with an href — navigation is never faked
-   with buttons. The class pair is element-agnostic in theory, but the
-   markup contract requires an anchor.
+   Navigable links are real <a> elements with an href — navigation is never
+   faked with buttons. A disabled representation is intentionally not a
+   link and uses inert text markup with aria-disabled="true".
 
    VARIANT → TOKEN
    ─────────────────────────────────────────────────────────────────────────
    default (inline)
      color --primary                 decoration underline, always on
      hover  --primary-hover          active --primary-active
-     visited --link-visited
+     visited --link-visited (:visited / .is-visited)
    subtle (inline, quiet contexts)
      color --muted-foreground        decoration underline, always on
      hover  --foreground             active --primary-active
@@ -21,7 +21,7 @@
      color --primary                 decoration none at rest,
                                      underline on hover/focus/active
      hover  --primary-hover          active --primary-active
-     visited --link-visited
+     visited --link-visited (:visited / .is-visited)
    destructive
      color --destructive             decoration underline, always on
      hover  --destructive-hover      active --destructive-active
@@ -34,15 +34,16 @@
      visited        --link-visited on the primary-hue variants (default,
                     standalone); subtle and destructive keep their variant
                     color — see VARIANT above
-     disabled       .is-disabled + aria-disabled="true", NO href, NO
-                    tabindex: opacity --opacity-disabled, pointer-events
-                    off, cursor not-allowed. Without an href the anchor
-                    is inert — keyboard and programmatic activation are
-                    impossible, which is what "disabled link" means here.
+     disabled       inert element + .is-disabled + aria-disabled="true",
+                    NO href, NO tabindex: opacity --opacity-disabled,
+                    pointer-events off, cursor not-allowed. Keyboard and
+                    programmatic navigation are impossible.
 
    PROPERTY → TOKEN
    ─────────────────────────────────────────────────────────────────────────
    text color          per variant above (all --*-foreground / state tokens)
+   underline color     currentColor, therefore always the active semantic
+                       text-color token for the variant/state
    decoration          underline (inline variants) / none-then-underline
                        (standalone); thickness --border-width (the 1px
                        hairline token doubles as the underline weight)
@@ -68,6 +69,7 @@
 .link {
   color: var(--primary);
   text-decoration-line: underline;
+  text-decoration-color: currentColor;
   text-decoration-thickness: var(--border-width);
   text-underline-offset: var(--link-underline-offset);
   border-radius: var(--radius-xs);
@@ -92,7 +94,8 @@
 .link--default.is-active {
   color: var(--primary-active);
 }
-.link--default:visited {
+.link--default:visited,
+.link--default.is-visited {
   color: var(--link-visited);
 }
 
@@ -131,7 +134,8 @@
 .link--standalone.is-active {
   color: var(--primary-active);
 }
-.link--standalone:visited {
+.link--standalone:visited,
+.link--standalone.is-visited {
   color: var(--link-visited);
 }
 
@@ -185,8 +189,8 @@
   box-shadow: 0 0 0 var(--ring-width) var(--ring-focus);
 }
 
-/* Disabled: markup contract is aria-disabled="true" and NO href — the
-   anchor is already inert; these styles only communicate it visually. */
+/* Disabled: markup contract is an inert element with aria-disabled="true"
+   and no href; these styles only communicate it visually. */
 .link.is-disabled,
 .link[aria-disabled="true"] {
   opacity: var(--opacity-disabled);

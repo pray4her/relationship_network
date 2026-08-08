@@ -20,7 +20,7 @@
      .table__cell--actions  row-actions cell (flex row of icon buttons)
      .table__actions        flex row, gap --space-1
 
-   Row states (pseudo-classes; .is-hover / .is-selected / .is-focus /
+   Row states (pseudo-classes; .is-hover / .is-selected / .is-focus-visible /
    .is-disabled mirror them for static showcases — precedent: button.css):
      default        bg --background
      hover          bg --surface-soft (the "soft section bands" surface)
@@ -196,11 +196,13 @@
 }
 
 .table tbody tr:focus-within,
+.table tbody tr.is-focus-visible,
 .table tbody tr.is-focus {
   box-shadow: inset 0 0 0 var(--ring-width) var(--ring-focus);
 }
 
 .table tbody tr.is-selected:focus-within,
+.table tbody tr.is-selected.is-focus-visible,
 .table tbody tr.is-selected.is-focus {
   box-shadow:
     inset var(--border-width-strong) 0 0 var(--selected-border),
@@ -233,6 +235,7 @@
   color: var(--muted-foreground-hover);
 }
 .table__sort:focus-visible,
+.table__sort.is-focus-visible,
 .table__sort.is-focus {
   outline: none;
   box-shadow: 0 0 0 var(--ring-width) var(--ring-focus);

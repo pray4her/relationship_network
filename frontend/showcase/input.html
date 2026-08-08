@@ -1,308 +1,436 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
-<head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Input — Component Showcase</title>
-<link rel="stylesheet" href="../src/styles/tokens.css">
-<link rel="stylesheet" href="../src/styles/typography.css">
-<link rel="stylesheet" href="../src/styles/separator.css">
-<link rel="stylesheet" href="../src/styles/form-field.css">
-<link rel="stylesheet" href="../src/styles/input.css">
-<style>
-  /* Page chrome — tokens only, no component values. */
-  *, *::before, *::after { box-sizing: border-box; }
-  body {
-    margin: 0;
-    background: var(--background);
-    color: var(--foreground);
-    font-family: var(--font-sans);
-    -webkit-font-smoothing: antialiased;
-  }
-  .container { max-width: var(--doc-container-max); margin: 0 auto; padding: 0 var(--space-6); }
-  .page-head { padding: var(--space-16) 0 var(--space-8); border-bottom: var(--border-width) solid var(--border); }
-  .page-head .text--overline { color: var(--primary); display: block; margin-bottom: var(--space-3); }
-  .page-head p { margin: var(--space-4) 0 0; max-width: 64ch; }
-  .demo-block { padding: var(--space-8) 0; }
-  .demo-block > .text--h5 { margin-bottom: var(--space-6); }
-  .demo-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(var(--doc-grid-min-card), 1fr)); gap: var(--space-8); }
-  .demo-stack { display: grid; gap: var(--space-4); max-width: var(--doc-field-max-width); }
-  .demo-note { margin-top: var(--space-4); max-width: 72ch; color: var(--muted-foreground); }
-  .demo-caption { margin-bottom: var(--space-2); color: var(--caption-foreground); }
-</style>
-</head>
-<body>
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Input — Component Showcase</title>
+    <link rel="stylesheet" href="../src/styles/tokens.css" />
+    <link rel="stylesheet" href="../src/styles/typography.css" />
+    <link rel="stylesheet" href="../src/styles/form-field.css" />
+    <link rel="stylesheet" href="../src/styles/input.css" />
+    <style>
+      *,
+      *::before,
+      *::after {
+        box-sizing: border-box;
+      }
 
-<header class="page-head">
-  <div class="container">
-    <span class="text text--overline">Component</span>
-    <h1 class="text text--h1">Input</h1>
-    <p class="text text--body-md">
-      The field chrome lives on <code class="text text--code">.input-wrap</code> — a flex
-      frame that owns border, ring, and every state — while the native
-      <code class="text text--code">.input</code> stays borderless inside it. That is what lets
-      icons, prefix/suffix text, and a clear button sit inside the frame.
-      All examples are paired with the FormField component for labels,
-      helpers, and validation messaging.
-    </p>
-  </div>
-</header>
+      body {
+        margin: unset;
+        background: var(--background);
+        color: var(--foreground);
+        font-family: var(--font-sans);
+        -webkit-font-smoothing: antialiased;
+      }
 
-<main class="container">
+      .container {
+        max-width: var(--doc-container-max);
+        margin-inline: auto;
+        padding-inline: var(--space-6);
+      }
 
-  <!-- ===================== Types ===================== -->
-  <section class="demo-block" aria-labelledby="types-heading">
-    <h2 class="text text--h5" id="types-heading">Types</h2>
-    <div class="demo-grid">
-      <div class="field">
-        <div class="field__header"><label class="field__label" for="in-text">Full name</label></div>
-        <div class="field__control">
-          <div class="input-wrap">
-            <input class="input" id="in-text" type="text" placeholder="Ada Lovelace">
-          </div>
-        </div>
-      </div>
-      <div class="field">
-        <div class="field__header"><label class="field__label" for="in-email">Work email</label></div>
-        <div class="field__control">
-          <div class="input-wrap">
-            <input class="input" id="in-email" type="email" placeholder="you@company.com">
-          </div>
-        </div>
-      </div>
-      <div class="field">
-        <div class="field__header"><label class="field__label" for="in-password">Password</label></div>
-        <div class="field__control">
-          <div class="input-wrap">
-            <input class="input" id="in-password" type="password" value="correct horse battery" aria-describedby="in-password-desc">
-          </div>
-        </div>
-        <p class="field__description" id="in-password-desc">Minimum 12 characters.</p>
-      </div>
-      <div class="field">
-        <div class="field__header"><label class="field__label" for="in-number">Team size</label></div>
-        <div class="field__control">
-          <div class="input-wrap">
-            <input class="input" id="in-number" type="number" min="1" max="500" placeholder="25">
-          </div>
-        </div>
-      </div>
-    </div>
-  </section>
+      .page-head {
+        padding-block: var(--space-16) var(--space-8);
+        border-bottom: var(--border-width) solid var(--border);
+      }
 
-  <hr class="separator separator--horizontal separator--subtle" role="presentation">
+      .page-head .text--overline {
+        display: block;
+        margin-bottom: var(--space-3);
+        color: var(--primary);
+      }
 
-  <!-- ===================== Sizes ===================== -->
-  <section class="demo-block" aria-labelledby="sizes-heading">
-    <h2 class="text text--h5" id="sizes-heading">Sizes</h2>
-    <div class="demo-stack">
-      <div>
-        <p class="text text--caption demo-caption">sm — --control-height-sm, --text-body-sm</p>
-        <div class="input-wrap input-wrap--sm">
-          <input class="input" type="text" placeholder="Compact filter" aria-label="Compact filter">
-        </div>
-      </div>
-      <div>
-        <p class="text text--caption demo-caption">md — --control-height, --text-body-md</p>
-        <div class="input-wrap">
-          <input class="input" type="text" placeholder="Standard field" aria-label="Standard field">
-        </div>
-      </div>
-      <div>
-        <p class="text text--caption demo-caption">lg — --control-height-lg, --text-body-md</p>
-        <div class="input-wrap input-wrap--lg">
-          <input class="input" type="text" placeholder="Prominent search" aria-label="Prominent search">
-        </div>
-      </div>
-    </div>
-  </section>
+      .page-head p {
+        max-width: var(--doc-table-min-width);
+        margin-block: var(--space-4) unset;
+      }
 
-  <hr class="separator separator--horizontal separator--subtle" role="presentation">
+      .showcase-section {
+        padding-block: var(--space-8);
+        border-bottom: var(--border-width) solid var(--border-soft);
+      }
 
-  <!-- ===================== States ===================== -->
-  <section class="demo-block" aria-labelledby="states-heading">
-    <h2 class="text text--h5" id="states-heading">States</h2>
-    <div class="demo-grid">
-      <div>
-        <p class="text text--caption demo-caption">default + placeholder</p>
-        <div class="input-wrap">
-          <input class="input" type="text" placeholder="Job title" aria-label="Job title, default">
-        </div>
-      </div>
-      <div>
-        <p class="text text--caption demo-caption">filled — text already --foreground</p>
-        <div class="input-wrap">
-          <input class="input" type="text" value="Staff Engineer" aria-label="Job title, filled">
-        </div>
-      </div>
-      <div>
-        <p class="text text--caption demo-caption">hover / focus — interact: hover border --border-strong, focus ring coral</p>
-        <div class="input-wrap">
-          <input class="input" type="text" placeholder="Tab or hover here" aria-label="Interactive state demo">
-        </div>
-      </div>
-      <div>
-        <p class="text text--caption demo-caption">disabled — whole wrap at --opacity-disabled</p>
-        <div class="input-wrap">
-          <input class="input" type="text" value="northwind" disabled aria-label="Tenant slug, disabled">
-        </div>
-      </div>
-      <div>
-        <p class="text text--caption demo-caption">readonly — bg --muted, still focusable &amp; copyable</p>
-        <div class="input-wrap">
-          <input class="input" type="text" value="https://app.example.com/northwind" readonly aria-label="Workspace URL, readonly">
-        </div>
-      </div>
-      <div>
-        <p class="text text--caption demo-caption">error — border --destructive</p>
-        <div class="input-wrap input-wrap--error">
-          <input class="input" type="email" value="ada@lovelace" aria-invalid="true" aria-label="Email, error">
-        </div>
-      </div>
-      <div>
-        <p class="text text--caption demo-caption">success — border --success</p>
-        <div class="input-wrap input-wrap--success">
-          <input class="input" type="text" value="NWT-2026-8841" aria-label="Invite code, success">
-        </div>
-      </div>
-    </div>
-    <p class="text text--caption demo-note">
-      Focus-within drives the ring, so keyboard and mouse focus both announce.
-      Error can also be driven purely by markup:
-      <code class="text text--code">:has(.input[aria-invalid="true"])</code> applies the same
-      border without the <code class="text text--code">.input-wrap--error</code> class.
-    </p>
-  </section>
+      .section-heading {
+        margin-bottom: var(--space-2);
+      }
 
-  <hr class="separator separator--horizontal separator--subtle" role="presentation">
+      .section-intro {
+        max-width: var(--doc-table-min-width);
+        margin-block: unset var(--space-6);
+      }
 
-  <!-- ===================== Icons / affixes / clear ===================== -->
-  <section class="demo-block" aria-labelledby="slots-heading">
-    <h2 class="text text--h5" id="slots-heading">Icons, affixes &amp; clear</h2>
-    <div class="demo-grid">
-      <div>
-        <p class="text text--caption demo-caption">leading icon</p>
-        <div class="input-wrap">
-          <svg class="input__icon" viewBox="0 0 16 16" fill="none" aria-hidden="true">
-            <circle cx="7" cy="7" r="4.5" stroke="currentColor"/>
-            <path d="m10.5 10.5 3 3" stroke="currentColor" stroke-linecap="round"/>
-          </svg>
-          <input class="input" type="text" placeholder="Search members" aria-label="Search members">
-        </div>
-      </div>
-      <div>
-        <p class="text text--caption demo-caption">trailing icon</p>
-        <div class="input-wrap">
-          <input class="input" type="email" placeholder="you@company.com" aria-label="Email with trailing icon">
-          <svg class="input__icon" viewBox="0 0 16 16" fill="none" aria-hidden="true">
-            <rect x="2" y="4" width="12" height="9" rx="2" stroke="currentColor"/>
-            <path d="m2.5 5 5.5 4 5.5-4" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"/>
-          </svg>
-        </div>
-      </div>
-      <div>
-        <p class="text text--caption demo-caption">prefix</p>
-        <div class="input-wrap">
-          <span class="input__prefix">app.example.com/</span>
-          <input class="input" type="text" placeholder="workspace" aria-label="Workspace slug with prefix">
-        </div>
-      </div>
-      <div>
-        <p class="text text--caption demo-caption">suffix</p>
-        <div class="input-wrap">
-          <input class="input" type="number" min="0" placeholder="50" aria-label="Hourly rate with suffix">
-          <span class="input__suffix">USD / hr</span>
-        </div>
-      </div>
-      <div>
-        <p class="text text--caption demo-caption">clear action — hidden while empty (:placeholder-shown)</p>
-        <div class="input-wrap">
-          <input class="input" type="text" value="Berlin" placeholder="City" aria-label="City with clear action">
-          <button class="input__clear" type="button" aria-label="Clear city">
-            <svg viewBox="0 0 16 16" fill="none" aria-hidden="true">
-              <path d="m4 4 8 8M12 4l-8 8" stroke="currentColor" stroke-linecap="round"/>
-            </svg>
-          </button>
-        </div>
-      </div>
-      <div>
-        <p class="text text--caption demo-caption">leading icon + clear</p>
-        <div class="input-wrap">
-          <svg class="input__icon" viewBox="0 0 16 16" fill="none" aria-hidden="true">
-            <circle cx="7" cy="7" r="4.5" stroke="currentColor"/>
-            <path d="m10.5 10.5 3 3" stroke="currentColor" stroke-linecap="round"/>
-          </svg>
-          <input class="input" type="text" value="data engineer" placeholder="Search jobs" aria-label="Search jobs with clear">
-          <button class="input__clear" type="button" aria-label="Clear search">
-            <svg viewBox="0 0 16 16" fill="none" aria-hidden="true">
-              <path d="m4 4 8 8M12 4l-8 8" stroke="currentColor" stroke-linecap="round"/>
-            </svg>
-          </button>
-        </div>
-      </div>
-    </div>
-  </section>
+      .state-stack {
+        display: grid;
+        gap: var(--space-4);
+        max-width: var(--doc-table-min-width);
+      }
 
-  <hr class="separator separator--horizontal separator--subtle" role="presentation">
+      .state-card,
+      .composition-card,
+      .mapping-card {
+        padding: var(--space-6);
+        border: var(--border-width) solid var(--border);
+        border-radius: var(--radius-lg);
+        background: var(--card);
+      }
 
-  <!-- ===================== Paired with FormField ===================== -->
-  <section class="demo-block" aria-labelledby="paired-heading">
-    <h2 class="text text--h5" id="paired-heading">Paired with FormField — validation messaging</h2>
-    <div class="demo-grid">
-      <div class="field field--error">
-        <div class="field__header">
-          <label class="field__label" for="paired-email">
-            Work email <span class="field__required" aria-hidden="true">*</span>
-          </label>
-        </div>
-        <div class="field__control">
-          <div class="input-wrap">
-            <input class="input" id="paired-email" type="email" required value="ada@lovelace"
-                   aria-invalid="true" aria-describedby="paired-email-desc paired-email-error">
-          </div>
-        </div>
-        <p class="field__description" id="paired-email-desc">Invites go here.</p>
-        <p class="field__error" id="paired-email-error" role="alert">
-          Enter a complete email address, including a domain.
+      .state-card__name {
+        display: block;
+        margin-bottom: var(--space-4);
+        color: var(--primary);
+      }
+
+      .composition-grid,
+      .mapping-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(var(--doc-grid-min-card), 1fr));
+        gap: var(--space-4);
+      }
+
+      .composition-card {
+        display: grid;
+        align-content: start;
+        gap: var(--space-3);
+      }
+
+      .composition-card h3,
+      .mapping-card p {
+        margin: unset;
+      }
+
+      .token-stack {
+        display: grid;
+        gap: var(--space-1);
+        margin-top: var(--space-2);
+        color: var(--muted-foreground);
+      }
+    </style>
+  </head>
+  <body>
+    <header class="page-head">
+      <div class="container">
+        <span class="text text--overline">Component</span>
+        <h1 class="text text--h1">Input</h1>
+        <p class="text text--body-md">
+          Eight explicit states using native inputs inside token-driven field chrome. Labels,
+          placeholders, entered values, helper text, and validation messaging are composed with
+          FormField while Input retains ownership of border, focus, disabled, and read-only visuals.
         </p>
       </div>
+    </header>
 
-      <div class="field field--success">
-        <div class="field__header">
-          <label class="field__label" for="paired-code">Invite code</label>
-        </div>
-        <div class="field__control">
-          <div class="input-wrap input-wrap--success">
-            <input class="input" id="paired-code" type="text" value="NWT-2026-8841"
-                   aria-describedby="paired-code-desc">
-          </div>
-        </div>
-        <p class="field__description" id="paired-code-desc">
-          Code accepted — note the wrap has no error class:
-          <code class="text text--code">aria-invalid</code> alone drives the red border above.
+    <main class="container">
+      <section class="showcase-section" aria-labelledby="states-heading">
+        <h2 class="text text--h4 section-heading" id="states-heading">Complete state matrix</h2>
+        <p class="text text--body-sm text--muted section-intro">
+          Static hover and focus mirrors are used only for visual comparison; the same selectors
+          respond to native interaction.
         </p>
-      </div>
+        <div class="state-stack">
+          <article class="state-card">
+            <span class="state-card__name text text--overline">Default</span>
+            <div class="field">
+              <div class="field__header">
+                <label class="field__label" for="input-default">
+                  Work email <span class="field__required" aria-hidden="true">*</span>
+                </label>
+              </div>
+              <div class="field__control">
+                <div class="input-wrap">
+                  <input
+                    class="input"
+                    id="input-default"
+                    type="email"
+                    placeholder="you@company.com"
+                    required
+                    aria-describedby="input-default-help"
+                  />
+                </div>
+              </div>
+              <p class="field__description" id="input-default-help">
+                Used for invitations and security notices.
+              </p>
+            </div>
+          </article>
 
-      <div class="field">
-        <div class="field__header">
-          <label class="field__label" for="paired-disabled">Tenant slug</label>
+          <article class="state-card">
+            <span class="state-card__name text text--overline">Hover</span>
+            <div class="field">
+              <div class="field__header">
+                <label class="field__label" for="input-hover">
+                  Job title <span class="field__required" aria-hidden="true">*</span>
+                </label>
+              </div>
+              <div class="field__control">
+                <div class="input-wrap is-hover">
+                  <input
+                    class="input"
+                    id="input-hover"
+                    type="text"
+                    placeholder="Staff Engineer"
+                    required
+                    aria-describedby="input-hover-help"
+                  />
+                </div>
+              </div>
+              <p class="field__description" id="input-hover-help">
+                Hover uses the shared strong border Token.
+              </p>
+            </div>
+          </article>
+
+          <article class="state-card">
+            <span class="state-card__name text text--overline">Focus-visible</span>
+            <div class="field field--focused">
+              <div class="field__header">
+                <label class="field__label" for="input-focus">
+                  Company name <span class="field__required" aria-hidden="true">*</span>
+                </label>
+              </div>
+              <div class="field__control">
+                <div class="input-wrap is-focus-visible">
+                  <input
+                    class="input"
+                    id="input-focus"
+                    type="text"
+                    placeholder="Northwind Labs"
+                    required
+                    aria-describedby="input-focus-help"
+                  />
+                </div>
+              </div>
+              <p class="field__description" id="input-focus-help">
+                Focus-visible uses the shared semantic ring and primary border Tokens.
+              </p>
+            </div>
+          </article>
+
+          <article class="state-card">
+            <span class="state-card__name text text--overline">Filled</span>
+            <div class="field field--filled">
+              <div class="field__header">
+                <label class="field__label" for="input-filled">
+                  Full name <span class="field__required" aria-hidden="true">*</span>
+                </label>
+              </div>
+              <div class="field__control">
+                <div class="input-wrap">
+                  <input
+                    class="input"
+                    id="input-filled"
+                    type="text"
+                    value="Ada Lovelace"
+                    required
+                    aria-describedby="input-filled-help"
+                  />
+                </div>
+              </div>
+              <p class="field__description" id="input-filled-help">
+                Entered values use the primary foreground text Token.
+              </p>
+            </div>
+          </article>
+
+          <article class="state-card">
+            <span class="state-card__name text text--overline">Error</span>
+            <div class="field field--error">
+              <div class="field__header">
+                <label class="field__label" for="input-error">
+                  Work email <span class="field__required" aria-hidden="true">*</span>
+                </label>
+              </div>
+              <div class="field__control">
+                <div class="input-wrap input-wrap--error">
+                  <input
+                    class="input"
+                    id="input-error"
+                    type="email"
+                    value="ada@lovelace"
+                    required
+                    aria-invalid="true"
+                    aria-describedby="input-error-help input-error-message"
+                  />
+                </div>
+              </div>
+              <p class="field__description" id="input-error-help">
+                Use the address associated with your organization.
+              </p>
+              <p class="field__error" id="input-error-message" role="alert">
+                Enter a complete email address, including a domain.
+              </p>
+            </div>
+          </article>
+
+          <article class="state-card">
+            <span class="state-card__name text text--overline">Success</span>
+            <div class="field field--success field--filled">
+              <div class="field__header">
+                <label class="field__label" for="input-success">
+                  Work email <span class="field__required" aria-hidden="true">*</span>
+                </label>
+              </div>
+              <div class="field__control">
+                <div class="input-wrap input-wrap--success">
+                  <input
+                    class="input"
+                    id="input-success"
+                    type="email"
+                    value="ada@lovelace.example"
+                    required
+                    aria-describedby="input-success-message"
+                  />
+                </div>
+              </div>
+              <p class="field__success" id="input-success-message" role="status">
+                <span aria-hidden="true">✓</span> Email address verified.
+              </p>
+            </div>
+          </article>
+
+          <article class="state-card">
+            <span class="state-card__name text text--overline">Disabled</span>
+            <div class="field">
+              <div class="field__header">
+                <label class="field__label" for="input-disabled">
+                  Tenant slug <span class="field__required" aria-hidden="true">*</span>
+                </label>
+              </div>
+              <div class="field__control">
+                <div class="input-wrap">
+                  <input
+                    class="input"
+                    id="input-disabled"
+                    type="text"
+                    value="northwind"
+                    disabled
+                    required
+                    aria-describedby="input-disabled-help"
+                  />
+                </div>
+              </div>
+              <p class="field__description" id="input-disabled-help">
+                Locked after tenant creation.
+              </p>
+            </div>
+          </article>
+
+          <article class="state-card">
+            <span class="state-card__name text text--overline">Read-only</span>
+            <div class="field">
+              <div class="field__header">
+                <label class="field__label" for="input-readonly">
+                  Workspace URL <span class="field__required" aria-hidden="true">*</span>
+                </label>
+              </div>
+              <div class="field__control">
+                <div class="input-wrap">
+                  <input
+                    class="input"
+                    id="input-readonly"
+                    type="text"
+                    value="https://app.example.com/northwind"
+                    readonly
+                    required
+                    aria-describedby="input-readonly-help"
+                  />
+                </div>
+              </div>
+              <p class="field__description" id="input-readonly-help">
+                Read-only content remains focusable, selectable, and copyable.
+              </p>
+            </div>
+          </article>
         </div>
-        <div class="field__control">
-          <div class="input-wrap">
-            <span class="input__prefix">app.example.com/</span>
-            <input class="input" id="paired-disabled" type="text" value="northwind"
-                   disabled aria-describedby="paired-disabled-desc">
-          </div>
-        </div>
-        <p class="field__description" id="paired-disabled-desc">
-          Locked after creation — the field's label dims itself via
-          <code class="text text--code">:has(:disabled)</code>, the wrap via its own rule.
+      </section>
+
+      <section class="showcase-section" aria-labelledby="slots-heading">
+        <h2 class="text text--h4 section-heading" id="slots-heading">Content slots</h2>
+        <p class="text text--body-sm text--muted section-intro">
+          Icons and affixes stay inside the same field frame without changing control semantics.
         </p>
-      </div>
-    </div>
-  </section>
+        <div class="composition-grid">
+          <article class="composition-card">
+            <h3 class="text text--h6">Plain text</h3>
+            <div class="input-wrap">
+              <input class="input" type="text" placeholder="Company name" aria-label="Company name" />
+            </div>
+          </article>
+          <article class="composition-card">
+            <h3 class="text text--h6">Leading icon</h3>
+            <div class="input-wrap">
+              <svg class="input__icon" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+                <circle cx="7" cy="7" r="4.5" stroke="currentColor" />
+                <path d="m10.5 10.5 3 3" stroke="currentColor" stroke-linecap="round" />
+              </svg>
+              <input class="input" type="text" placeholder="Search members" aria-label="Search members" />
+            </div>
+          </article>
+          <article class="composition-card">
+            <h3 class="text text--h6">Trailing icon</h3>
+            <div class="input-wrap">
+              <input class="input" type="email" placeholder="you@company.com" aria-label="Email" />
+              <svg class="input__icon" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+                <rect x="2" y="4" width="12" height="9" rx="2" stroke="currentColor" />
+                <path
+                  d="m2.5 5 5.5 4 5.5-4"
+                  stroke="currentColor"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                />
+              </svg>
+            </div>
+          </article>
+          <article class="composition-card">
+            <h3 class="text text--h6">Prefix and suffix</h3>
+            <div class="input-wrap">
+              <span class="input__prefix">$</span>
+              <input class="input" type="number" placeholder="120" aria-label="Hourly rate" />
+              <span class="input__suffix">USD / hr</span>
+            </div>
+          </article>
+        </div>
+      </section>
 
-</main>
-
-</body>
+      <section class="showcase-section" aria-labelledby="mapping-heading">
+        <h2 class="text text--h4 section-heading" id="mapping-heading">Token map</h2>
+        <div class="mapping-grid">
+          <article class="mapping-card">
+            <p class="text text--label">Focus-visible</p>
+            <p class="text text--caption token-stack">
+              <code class="text text--code">--primary</code>
+              <code class="text text--code">--ring-width</code>
+              <code class="text text--code">--ring-focus</code>
+            </p>
+          </article>
+          <article class="mapping-card">
+            <p class="text text--label">Error</p>
+            <p class="text text--caption token-stack">
+              <code class="text text--code">--destructive</code>
+              <code class="text text--code">--ring-destructive</code>
+            </p>
+          </article>
+          <article class="mapping-card">
+            <p class="text text--label">Disabled</p>
+            <p class="text text--caption token-stack">
+              <code class="text text--code">--opacity-disabled</code>
+            </p>
+          </article>
+          <article class="mapping-card">
+            <p class="text text--label">Read-only</p>
+            <p class="text text--caption token-stack">
+              <code class="text text--code">--muted</code>
+            </p>
+          </article>
+          <article class="mapping-card">
+            <p class="text text--label">Chrome</p>
+            <p class="text text--caption token-stack">
+              <code class="text text--code">--input</code>
+              <code class="text text--code">--border-width</code>
+              <code class="text text--code">--radius-md</code>
+            </p>
+          </article>
+        </div>
+      </section>
+    </main>
+  </body>
 </html>

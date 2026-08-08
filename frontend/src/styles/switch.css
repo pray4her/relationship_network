@@ -56,7 +56,9 @@
                    "same colors, reduced opacity") + cursor not-allowed;
                    applies to both off and on
    loading         spinner ring --primary on the constant --primary-foreground
-                   thumb; ring thickness --space-0-5 (Button precedent)
+                   thumb; ring thickness --space-0-5; rotation uses
+                   --duration-loading --ease-linear and
+                   --motion-rotation-full (Button precedent)
    radius          --radius-full (track and thumb — the pill geometry
                    defines the component)
    label text      --font-sans --text-body-md (+ --line-height),
@@ -67,7 +69,7 @@
    motion          colors/border/ring --duration-fast --ease-standard;
                    thumb translate --duration-normal --ease-standard (the
                    travel is the one motion meant to be perceived);
-                   spinner spin --duration-slow linear infinite;
+                   spinner spin --duration-loading --ease-linear infinite;
                    all killed under prefers-reduced-motion
 
    REPORTED TOKEN GAPS (not silently invented — flagged for tokens.css):
@@ -172,7 +174,7 @@
   cursor: progress;
 }
 .switch.is-loading:disabled {
-  opacity: 1;
+  opacity: initial;
 }
 
 .switch__spinner {
@@ -181,7 +183,7 @@
   border: var(--space-0-5) solid var(--primary);
   border-top-color: transparent;
   border-radius: var(--radius-full);
-  animation: switch-spin var(--duration-slow) linear infinite;
+  animation: switch-spin var(--duration-loading) var(--ease-linear) infinite;
 }
 /* Hidden until loading — never occupies layout space (Button precedent). */
 .switch:not(.is-loading) .switch__spinner {
@@ -190,7 +192,7 @@
 
 @keyframes switch-spin {
   to {
-    rotate: 360deg;
+    rotate: var(--motion-rotation-full);
   }
 }
 
@@ -216,9 +218,6 @@
 .switch-field:has(.switch:disabled:not(.is-loading)) {
   cursor: not-allowed;
 }
-.switch-field:has(.switch:disabled:not(.is-loading)) .switch-field__text {
-  opacity: var(--opacity-disabled);
-}
 
 .switch-field__text {
   display: grid;
@@ -228,7 +227,7 @@
 .switch-field__label {
   font-family: var(--font-sans);
   font-size: var(--text-body-md);
-  font-weight: 400;
+  font-weight: var(--font-weight-regular);
   line-height: var(--text-body-md--line-height);
   color: var(--foreground-strong);
 }
@@ -237,6 +236,9 @@
   font-size: var(--text-body-sm);
   line-height: var(--text-body-sm--line-height);
   color: var(--muted-foreground);
+}
+.switch-field:has(.switch:disabled:not(.is-loading)) .switch-field__text {
+  opacity: var(--opacity-disabled);
 }
 
 /* sm assembly scales the text down with the track */

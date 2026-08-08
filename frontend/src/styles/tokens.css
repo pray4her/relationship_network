@@ -174,7 +174,10 @@
   --duration-fast: 100ms;
   --duration-normal: 200ms;
   --duration-slow: 300ms;
+  --duration-loading: 800ms; /* continuous progress indicators */
   --ease-standard: cubic-bezier(0.2, 0, 0, 1);
+  --ease-linear: linear; /* constant-speed progress rotation */
+  --motion-rotation-full: 1turn; /* one complete progress-indicator cycle */
 
   /* ===== Control dimensions (component-spec, off spacing scale) ===== */
   --control-height-sm: 32px;     /* = --space-8 */
@@ -221,6 +224,24 @@
   --progress-height-sm: 0.25rem;  /* 4px = --space-1 (added with Progress) */
   --progress-height-md: 0.5rem;   /* 8px = --space-2 (added with Progress) */
   --progress-height-lg: 0.75rem;  /* 12px = --space-3 (added with Progress) */
+
+  /* Data-display component recipes. These aliases keep the public
+     component CSS semantic and prevent showcase-only palette choices. */
+  --progress-track: var(--surface-cream-strong);
+  --progress-indicator: var(--primary);
+  --progress-indeterminate-size: var(--space-16);
+  --progress-animation-duration: var(--duration-loading);
+  --progress-animation-easing: var(--ease-standard);
+
+  --skeleton-surface: var(--card);
+  --skeleton-highlight: var(--background);
+  --skeleton-highlight-opacity: var(--opacity-disabled);
+  --skeleton-radius-rectangle: var(--radius-md);
+  --skeleton-radius-text: var(--radius-sm);
+  --skeleton-radius-circle: var(--radius-full);
+  --skeleton-highlight-size: var(--space-24);
+  --skeleton-animation-duration: var(--duration-loading);
+  --skeleton-animation-easing: var(--ease-standard);
   --textarea-min-height-sm: 4rem;   /* 64px = --space-16 */
   --textarea-min-height-md: 6rem;   /* 96px = --space-24 */
   --textarea-min-height-lg: 8rem;   /* 128px = --space-24 + --space-8 */

@@ -1,210 +1,365 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
-<head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Link — Component Showcase</title>
-<link rel="stylesheet" href="../src/styles/tokens.css">
-<link rel="stylesheet" href="../src/styles/typography.css">
-<link rel="stylesheet" href="../src/styles/separator.css">
-<link rel="stylesheet" href="../src/styles/link.css">
-<style>
-  /* Page chrome — tokens only, no component values. */
-  *, *::before, *::after { box-sizing: border-box; }
-  body {
-    margin: 0;
-    background: var(--background);
-    color: var(--foreground);
-    font-family: var(--font-sans);
-    -webkit-font-smoothing: antialiased;
-  }
-  .container { max-width: var(--doc-container-max); margin: 0 auto; padding: 0 var(--space-6); }
-  .page-head { padding: var(--space-16) 0 var(--space-8); border-bottom: var(--border-width) solid var(--border); }
-  .page-head .text--overline { color: var(--primary); display: block; margin-bottom: var(--space-3); }
-  .page-head p { margin: var(--space-4) 0 0; max-width: 64ch; }
-  .demo-block { padding: var(--space-8) 0; }
-  .demo-block > .text--h5 { margin-bottom: var(--space-6); }
-  .demo-row { display: flex; flex-wrap: wrap; align-items: baseline; gap: var(--space-4); }
-  .demo-row + .demo-row { margin-top: var(--space-4); }
-  .demo-label { width: var(--doc-demo-label-width); flex: none; color: var(--caption-foreground); }
-  .demo-note { margin-top: var(--space-4); max-width: 72ch; color: var(--muted-foreground); }
-  /* Visually-hidden, screen-reader-only announcement (standard a11y pattern). */
-  .sr-only {
-    position: absolute; width: 1px; height: 1px; margin: -1px;
-    clip-path: inset(50%); overflow: hidden; white-space: nowrap;
-  }
-  .demo-para { max-width: 64ch; margin: 0; }
-  .demo-para + .demo-para { margin-top: var(--space-3); }
-  .state-grid { display: grid; grid-template-columns: var(--doc-demo-label-width) repeat(5, auto); gap: var(--space-4); align-items: baseline; }
-</style>
-</head>
-<body>
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Link — Component Showcase</title>
+    <link rel="stylesheet" href="../src/styles/tokens.css" />
+    <link rel="stylesheet" href="../src/styles/typography.css" />
+    <link rel="stylesheet" href="../src/styles/link.css" />
+    <style>
+      *,
+      *::before,
+      *::after {
+        box-sizing: border-box;
+      }
 
-<header class="page-head">
-  <div class="container">
-    <span class="text text--overline">Component</span>
-    <h1 class="text text--h1">Link</h1>
-    <p class="text text--body-md">
-      Four variants, three sizes, six states — always a real
-      <code class="text text--code">&lt;a href&gt;</code>, never a button pretending to
-      navigate. Static state classes (<code class="text text--code">.is-hover</code>,
-      <code class="text text--code">.is-active</code>,
-      <code class="text text--code">.is-focus-visible</code>) mirror the pseudo-classes so
-      this page can render them without interaction. Disabled links drop the
-      <code class="text text--code">href</code> entirely: an anchor without one is inert.
-    </p>
-  </div>
-</header>
+      body {
+        margin: unset;
+        background: var(--background);
+        color: var(--foreground);
+        font-family: var(--font-sans);
+        -webkit-font-smoothing: antialiased;
+      }
 
-<main class="container">
+      .container {
+        max-width: var(--doc-container-max);
+        margin-inline: auto;
+        padding-inline: var(--space-6);
+      }
 
-  <!-- ===================== Variants × states ===================== -->
-  <section class="demo-block" aria-labelledby="matrix-heading">
-    <h2 class="text text--h5" id="matrix-heading">Variants × states</h2>
-    <div class="state-grid text text--body-md">
-      <span></span>
-      <span class="text text--caption">default</span>
-      <span class="text text--caption">hover</span>
-      <span class="text text--caption">active</span>
-      <span class="text text--caption">focus-visible</span>
-      <span class="text text--caption">disabled</span>
+      .page-head {
+        padding-block: var(--space-16) var(--space-8);
+        border-bottom: var(--border-width) solid var(--border);
+      }
 
-      <span class="text text--caption demo-label">default</span>
-      <a class="link link--default" href="#matrix-heading">Billing policy</a>
-      <a class="link link--default is-hover" href="#matrix-heading">Billing policy</a>
-      <a class="link link--default is-active" href="#matrix-heading">Billing policy</a>
-      <a class="link link--default is-focus-visible" href="#matrix-heading">Billing policy</a>
-      <a class="link link--default is-disabled" aria-disabled="true">Billing policy</a>
+      .page-head .text--overline {
+        display: block;
+        margin-bottom: var(--space-3);
+        color: var(--primary);
+      }
 
-      <span class="text text--caption demo-label">subtle</span>
-      <a class="link link--subtle" href="#matrix-heading">Version history</a>
-      <a class="link link--subtle is-hover" href="#matrix-heading">Version history</a>
-      <a class="link link--subtle is-active" href="#matrix-heading">Version history</a>
-      <a class="link link--subtle is-focus-visible" href="#matrix-heading">Version history</a>
-      <a class="link link--subtle is-disabled" aria-disabled="true">Version history</a>
+      .page-head p {
+        max-width: var(--doc-table-min-width);
+        margin-block: var(--space-4) unset;
+      }
 
-      <span class="text text--caption demo-label">standalone</span>
-      <a class="link link--standalone" href="#matrix-heading">Compare plans</a>
-      <a class="link link--standalone is-hover" href="#matrix-heading">Compare plans</a>
-      <a class="link link--standalone is-active" href="#matrix-heading">Compare plans</a>
-      <a class="link link--standalone is-focus-visible" href="#matrix-heading">Compare plans</a>
-      <a class="link link--standalone is-disabled" aria-disabled="true">Compare plans</a>
+      .showcase-section {
+        padding-block: var(--space-8);
+        border-bottom: var(--border-width) solid var(--border-soft);
+      }
 
-      <span class="text text--caption demo-label">destructive</span>
-      <a class="link link--destructive" href="#matrix-heading">Delete document</a>
-      <a class="link link--destructive is-hover" href="#matrix-heading">Delete document</a>
-      <a class="link link--destructive is-active" href="#matrix-heading">Delete document</a>
-      <a class="link link--destructive is-focus-visible" href="#matrix-heading">Delete document</a>
-      <a class="link link--destructive is-disabled" aria-disabled="true">Delete document</a>
-    </div>
-    <p class="text text--caption demo-note">
-      The disabled cells have no <code class="text text--code">href</code> — keyboard focus
-      and activation are impossible, not merely styled away. Visited keeps the variant
-      color: no visited token exists yet (see the gap report in
-      <code class="text text--code">link.css</code>).
-    </p>
-  </section>
+      .section-heading {
+        margin-bottom: var(--space-2);
+      }
 
-  <hr class="separator separator--horizontal separator--subtle" role="presentation">
+      .section-intro {
+        max-width: var(--doc-table-min-width);
+        margin-block: unset var(--space-6);
+      }
 
-  <!-- ===================== Inline links ===================== -->
-  <section class="demo-block" aria-labelledby="inline-heading">
-    <h2 class="text text--h5" id="inline-heading">Inline links</h2>
-    <p class="demo-para text text--body-md">
-      When a subscription lapses the tenant turns read-only and the
-      <a class="link link--default" href="#inline-heading">write gate</a> explains why instead
-      of failing silently. Every billable action lands in the
-      <a class="link link--default" href="#inline-heading">usage ledger</a> under an
-      idempotency key — see the <a class="link link--subtle" href="#inline-heading">audit
-      trail</a> for the append-only record. Removing a member is permanent; read the
-      <a class="link link--destructive" href="#inline-heading">data-retention policy</a>
-      before you confirm.
-    </p>
-    <p class="text text--caption demo-note">
-      Inline links inherit the surrounding text metrics — the md size is the base and
-      never sets its own font size, so a link inside body-md, body-sm, or a heading
-      always matches its context.
-    </p>
-  </section>
+      .matrix-wrap {
+        overflow-x: auto;
+        border: var(--border-width) solid var(--border);
+        border-radius: var(--radius-lg);
+        background: var(--popover);
+        box-shadow: var(--shadow-subtle);
+      }
 
-  <hr class="separator separator--horizontal separator--subtle" role="presentation">
+      .matrix {
+        width: 100%;
+        min-width: var(--doc-container-max);
+        border-collapse: collapse;
+      }
 
-  <!-- ===================== Sizes ===================== -->
-  <section class="demo-block" aria-labelledby="sizes-heading">
-    <h2 class="text text--h5" id="sizes-heading">Sizes</h2>
-    <div class="demo-row">
-      <span class="demo-label text text--caption">sm — --text-body-sm</span>
-      <a class="link link--default link--sm" href="#sizes-heading">Download invoice</a>
-      <a class="link link--standalone link--sm" href="#sizes-heading">View usage</a>
-    </div>
-    <div class="demo-row">
-      <span class="demo-label text text--caption">md — inherits context</span>
-      <span class="text text--body-md">
-        <a class="link link--default" href="#sizes-heading">Download invoice</a>
-        <a class="link link--standalone" href="#sizes-heading" style="margin-left: var(--space-4);">View usage</a>
-      </span>
-    </div>
-    <div class="demo-row">
-      <span class="demo-label text text--caption">lg — --text-body-lg</span>
-      <a class="link link--default link--lg" href="#sizes-heading">Download invoice</a>
-      <a class="link link--standalone link--lg" href="#sizes-heading" style="margin-left: var(--space-4);">View usage</a>
-    </div>
-    <p class="text text--caption demo-note">
-      lg uses <code class="text text--code">--text-body-lg</code> — the token this
-      component and Typography reported as missing; tokens.css now ships it
-      (with its own <code class="text text--code">--line-height</code> companion).
-    </p>
-  </section>
+      .matrix th,
+      .matrix td {
+        padding: var(--space-4);
+        border-right: var(--border-width) solid var(--border-soft);
+        border-bottom: var(--border-width) solid var(--border-soft);
+        text-align: left;
+        vertical-align: middle;
+      }
 
-  <hr class="separator separator--horizontal separator--subtle" role="presentation">
+      .matrix tr > :last-child {
+        border-right: none;
+      }
 
-  <!-- ===================== Standalone, external, icons ===================== -->
-  <section class="demo-block" aria-labelledby="actions-heading">
-    <h2 class="text text--h5" id="actions-heading">Standalone, external &amp; icon links</h2>
-    <div class="demo-row">
-      <span class="demo-label text text--caption">standalone action</span>
-      <a class="link link--standalone" href="#actions-heading">Read the migration guide</a>
-    </div>
-    <div class="demo-row">
-      <span class="demo-label text text--caption">external + icon</span>
-      <a class="link link--standalone" href="https://example.com/docs" target="_blank" rel="noopener noreferrer">
-        Platform status
-        <svg class="link__icon" viewBox="0 0 16 16" fill="none" aria-hidden="true">
-          <path d="M6 4h6v6M12 4 5 11" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"/>
-        </svg>
-        <span class="sr-only">(opens in a new tab)</span>
-      </a>
-    </div>
-    <div class="demo-row">
-      <span class="demo-label text text--caption">leading icon</span>
-      <a class="link link--default" href="#actions-heading">
-        <svg class="link__icon" viewBox="0 0 16 16" fill="none" aria-hidden="true">
-          <path d="M8 2v9M4 7l4 4 4-4M3 14h10" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"/>
-        </svg>
-        Download company profile
-      </a>
-    </div>
-    <div class="demo-row">
-      <span class="demo-label text text--caption">trailing icon</span>
-      <a class="link link--default" href="#actions-heading">
-        Continue to members
-        <svg class="link__icon" viewBox="0 0 16 16" fill="none" aria-hidden="true">
-          <path d="M3 8h10M9 4l4 4-4 4" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"/>
-        </svg>
-      </a>
-    </div>
-    <p class="text text--caption demo-note">
-      External links pair <code class="text text--code">target="_blank"
-      rel="noopener noreferrer"</code> with a trailing icon and a visually-hidden
-      "(opens in a new tab)" announcement. Icons use
-      <code class="text text--code">--icon-size-sm</code> /
-      <code class="text text--code">--stroke-width-icon</code> with a
-      <code class="text text--code">--space-1</code> gap, and are decorative
-      (<code class="text text--code">aria-hidden</code>) — the link text carries the meaning.
-    </p>
-  </section>
+      .matrix tbody tr:last-child > * {
+        border-bottom: none;
+      }
 
-</main>
+      .matrix thead th {
+        background: var(--surface-soft);
+      }
 
-</body>
+      .matrix tbody th {
+        background: var(--card);
+      }
+
+      .composition-grid,
+      .mapping-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(var(--doc-grid-min-card), 1fr));
+        gap: var(--space-4);
+      }
+
+      .composition-card,
+      .mapping-card {
+        padding: var(--space-6);
+        border: var(--border-width) solid var(--border);
+        border-radius: var(--radius-lg);
+        background: var(--card);
+      }
+
+      .composition-card {
+        display: grid;
+        align-content: start;
+        justify-items: start;
+        gap: var(--space-4);
+      }
+
+      .composition-card h3,
+      .composition-card p,
+      .mapping-card p {
+        margin: unset;
+      }
+
+      .composition-card p,
+      .mapping-card p + p {
+        color: var(--muted-foreground);
+      }
+
+      .token-stack {
+        display: grid;
+        gap: var(--space-1);
+        margin-top: var(--space-2);
+      }
+    </style>
+  </head>
+  <body>
+    <header class="page-head">
+      <div class="container">
+        <span class="text text--overline">Component</span>
+        <h1 class="text text--h1">Link</h1>
+        <p class="text text--body-md">
+          Four semantic variants across default, hover, active, focus-visible, visited, and
+          disabled states. Text, underline, focus, icons, disabled opacity, and motion all resolve
+          through <code class="text text--code">tokens.css</code>.
+        </p>
+      </div>
+    </header>
+
+    <main class="container">
+      <section class="showcase-section" aria-labelledby="link-matrix">
+        <h2 class="text text--h4 section-heading" id="link-matrix">Full state matrix</h2>
+        <p class="text text--body-sm text--muted section-intro">
+          Visited changes color only for primary-hue variants. Subtle and destructive links retain
+          their semantic colors so history never changes their meaning.
+        </p>
+        <div class="matrix-wrap">
+          <table class="matrix text text--body-md">
+            <thead>
+              <tr>
+                <th class="text text--label" scope="col">Variant</th>
+                <th class="text text--label" scope="col">Default</th>
+                <th class="text text--label" scope="col">Hover</th>
+                <th class="text text--label" scope="col">Active</th>
+                <th class="text text--label" scope="col">Focus-visible</th>
+                <th class="text text--label" scope="col">Visited</th>
+                <th class="text text--label" scope="col">Disabled</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <th class="text text--label" scope="row">Default</th>
+                <td><a class="link link--default" href="#link-matrix">Policy</a></td>
+                <td><a class="link link--default is-hover" href="#link-matrix">Policy</a></td>
+                <td><a class="link link--default is-active" href="#link-matrix">Policy</a></td>
+                <td>
+                  <a class="link link--default is-focus-visible" href="#link-matrix">Policy</a>
+                </td>
+                <td>
+                  <a class="link link--default is-visited" href="#link-matrix">Policy</a>
+                </td>
+                <td>
+                  <span class="link link--default is-disabled" aria-disabled="true">Policy</span>
+                </td>
+              </tr>
+              <tr>
+                <th class="text text--label" scope="row">Subtle</th>
+                <td><a class="link link--subtle" href="#link-matrix">History</a></td>
+                <td><a class="link link--subtle is-hover" href="#link-matrix">History</a></td>
+                <td><a class="link link--subtle is-active" href="#link-matrix">History</a></td>
+                <td>
+                  <a class="link link--subtle is-focus-visible" href="#link-matrix">History</a>
+                </td>
+                <td><a class="link link--subtle is-visited" href="#link-matrix">Preserved</a></td>
+                <td>
+                  <span class="link link--subtle is-disabled" aria-disabled="true">History</span>
+                </td>
+              </tr>
+              <tr>
+                <th class="text text--label" scope="row">Standalone</th>
+                <td><a class="link link--standalone" href="#link-matrix">Compare</a></td>
+                <td>
+                  <a class="link link--standalone is-hover" href="#link-matrix">Compare</a>
+                </td>
+                <td>
+                  <a class="link link--standalone is-active" href="#link-matrix">Compare</a>
+                </td>
+                <td>
+                  <a class="link link--standalone is-focus-visible" href="#link-matrix">
+                    Compare
+                  </a>
+                </td>
+                <td>
+                  <a class="link link--standalone is-visited" href="#link-matrix">Compare</a>
+                </td>
+                <td>
+                  <span class="link link--standalone is-disabled" aria-disabled="true">Compare</span>
+                </td>
+              </tr>
+              <tr>
+                <th class="text text--label" scope="row">Destructive</th>
+                <td><a class="link link--destructive" href="#link-matrix">Delete</a></td>
+                <td>
+                  <a class="link link--destructive is-hover" href="#link-matrix">Delete</a>
+                </td>
+                <td>
+                  <a class="link link--destructive is-active" href="#link-matrix">Delete</a>
+                </td>
+                <td>
+                  <a class="link link--destructive is-focus-visible" href="#link-matrix">
+                    Delete
+                  </a>
+                </td>
+                <td>
+                  <a class="link link--destructive is-visited" href="#link-matrix">Preserved</a>
+                </td>
+                <td>
+                  <span class="link link--destructive is-disabled" aria-disabled="true">Delete</span>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <section class="showcase-section" aria-labelledby="composition-heading">
+        <h2 class="text text--h4 section-heading" id="composition-heading">
+          Content configurations
+        </h2>
+        <p class="text text--body-sm text--muted section-intro">
+          Icons inherit the active link color through
+          <code class="text text--code">currentColor</code> and remain decorative.
+        </p>
+        <div class="composition-grid">
+          <article class="composition-card">
+            <h3 class="text text--h6">Inline text link</h3>
+            <p class="text text--body-md">
+              Review the <a class="link link--default" href="#composition-heading">billing policy</a>
+              before checkout.
+            </p>
+          </article>
+          <article class="composition-card">
+            <h3 class="text text--h6">Standalone action</h3>
+            <a class="link link--standalone" href="#composition-heading">Compare plans</a>
+            <p class="text text--caption">No underline until interaction</p>
+          </article>
+          <article class="composition-card">
+            <h3 class="text text--h6">External link</h3>
+            <a
+              class="link link--standalone"
+              href="https://example.com"
+              target="_blank"
+              rel="noopener noreferrer"
+              aria-label="Platform status, opens in a new tab"
+            >
+              Platform status
+              <svg class="link__icon" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+                <path
+                  d="M6 4h6v6M12 4 5 11"
+                  stroke="currentColor"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                />
+              </svg>
+            </a>
+          </article>
+          <article class="composition-card">
+            <h3 class="text text--h6">Leading icon</h3>
+            <a class="link link--default" href="#composition-heading">
+              <svg class="link__icon" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+                <path
+                  d="M8 2v9M4 7l4 4 4-4M3 14h10"
+                  stroke="currentColor"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                />
+              </svg>
+              Download profile
+            </a>
+          </article>
+          <article class="composition-card">
+            <h3 class="text text--h6">Trailing icon</h3>
+            <a class="link link--default" href="#composition-heading">
+              Continue to members
+              <svg class="link__icon" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+                <path
+                  d="M3 8h10M9 4l4 4-4 4"
+                  stroke="currentColor"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                />
+              </svg>
+            </a>
+          </article>
+        </div>
+      </section>
+
+      <section class="showcase-section" aria-labelledby="mapping-heading">
+        <h2 class="text text--h4 section-heading" id="mapping-heading">Token map</h2>
+        <div class="mapping-grid">
+          <article class="mapping-card">
+            <p class="text text--label">Underline</p>
+            <p class="text text--caption token-stack">
+              <code class="text text--code">currentColor</code>
+              <code class="text text--code">--border-width</code>
+              <code class="text text--code">--link-underline-offset</code>
+            </p>
+          </article>
+          <article class="mapping-card">
+            <p class="text text--label">Focus</p>
+            <p class="text text--caption token-stack">
+              <code class="text text--code">--ring-width</code>
+              <code class="text text--code">--ring-focus</code>
+            </p>
+          </article>
+          <article class="mapping-card">
+            <p class="text text--label">Disabled</p>
+            <p class="text text--caption token-stack">
+              <code class="text text--code">--opacity-disabled</code>
+            </p>
+          </article>
+          <article class="mapping-card">
+            <p class="text text--label">Icon</p>
+            <p class="text text--caption token-stack">
+              <code class="text text--code">--icon-size-sm</code>
+              <code class="text text--code">--stroke-width-icon</code>
+              <code class="text text--code">--space-1</code>
+            </p>
+          </article>
+          <article class="mapping-card">
+            <p class="text text--label">Destructive</p>
+            <p class="text text--caption token-stack">
+              <code class="text text--code">--destructive</code>
+              <code class="text text--code">--destructive-hover</code>
+              <code class="text text--code">--destructive-active</code>
+            </p>
+          </article>
+        </div>
+      </section>
+    </main>
+  </body>
 </html>

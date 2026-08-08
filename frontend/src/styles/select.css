@@ -4,17 +4,18 @@
 
    Anatomy (markup contract — WAI-ARIA listbox pattern):
      .select                 root, positioning context
-     .select__trigger        <button aria-haspopup="listbox"
+     .select__trigger        <button role="combobox" aria-haspopup="listbox"
                              aria-expanded aria-activedescendant>
                              shares the Input family's field chrome
      .select__leading        optional leading icon (aria-hidden)
      .select__value          selected text; .is-placeholder until a real
                              value is chosen
      .select__chevron        disclosure icon, rotates when open
-     .select__menu           <ul role="listbox">, [hidden] until open
-     .select__group          <li role="group"> wrapping an option group
+     .select__menu           <div role="listbox" tabindex=-1>, [hidden]
+                             until open
+     .select__group          <div role="group"> wrapping an option group
      .select__group-label    group heading (presentational)
-     .select__option         <li role="option" aria-selected>
+     .select__option         <div role="option" tabindex=-1 aria-selected>
      .select__check          selected checkmark (aria-hidden)
      .select__option[aria-disabled="true"]   disabled option
 
@@ -43,7 +44,8 @@
    typography        --font-sans; md/lg --text-body-md, sm --text-body-sm
                      (+ --line-height companions)
    chevron           --icon-size-sm, color --caption-foreground, stroke
-                     --stroke-width-icon; rotates 180° when open over
+                     --stroke-width-icon; rotates half of
+                     --motion-rotation-full when open over
                      --duration-fast --ease-standard (rotation is a
                      behavior cue, not a color/dimension value)
    leading icon      --icon-size-sm, color --caption-foreground
@@ -68,6 +70,9 @@
                      color --muted-foreground, padding --space-2 --space-3
    motion            hover/selection color over --duration-fast
                      --ease-standard
+
+   SHOWCASE STATE MIRRORS: .is-hover / .is-focus-visible reproduce native trigger
+   states for deterministic documentation without replacing behavior.
 
    TOKEN NOTES — none open. Resolved: hover border → --border-strong;
    error focus ring → --ring-destructive; menu layer → --z-dropdown;
@@ -101,10 +106,13 @@
     border-color var(--duration-fast) var(--ease-standard),
     box-shadow var(--duration-fast) var(--ease-standard);
 }
-.select__trigger:hover {
+.select__trigger:not(:disabled):hover,
+.select__trigger.is-hover {
   border-color: var(--border-strong);
 }
 .select__trigger:focus-visible,
+.select__trigger.is-focus-visible,
+.select__trigger.is-focus,
 .select__trigger[aria-expanded="true"] {
   outline: none;
   border-color: var(--primary);
@@ -119,8 +127,12 @@
   border-color: var(--destructive);
 }
 .select--error .select__trigger:focus-visible,
+.select--error .select__trigger.is-focus-visible,
+.select--error .select__trigger.is-focus,
 .select--error .select__trigger[aria-expanded="true"],
 .select__trigger[aria-invalid="true"]:focus-visible,
+.select__trigger[aria-invalid="true"].is-focus-visible,
+.select__trigger[aria-invalid="true"].is-focus,
 .select__trigger[aria-invalid="true"][aria-expanded="true"] {
   box-shadow: 0 0 0 var(--ring-width) var(--ring-destructive);
 }
@@ -151,7 +163,7 @@
   transition: rotate var(--duration-fast) var(--ease-standard);
 }
 .select__trigger[aria-expanded="true"] .select__chevron {
-  rotate: 180deg;
+  rotate: calc(var(--motion-rotation-full) / 2);
 }
 
 /* ===== Sizes ===== */

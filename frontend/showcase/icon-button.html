@@ -1,0 +1,506 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>IconButton — Component Showcase</title>
+    <link rel="stylesheet" href="../src/styles/tokens.css" />
+    <link rel="stylesheet" href="../src/styles/typography.css" />
+    <link rel="stylesheet" href="../src/styles/icon-button.css" />
+    <style>
+      /* Showcase layout uses tokens.css only. */
+      *,
+      *::before,
+      *::after {
+        box-sizing: border-box;
+      }
+
+      body {
+        margin: unset;
+        background: var(--background);
+        color: var(--foreground);
+        font-family: var(--font-sans);
+        -webkit-font-smoothing: antialiased;
+      }
+
+      .container {
+        max-width: var(--doc-container-max);
+        margin-inline: auto;
+        padding-inline: var(--space-6);
+      }
+
+      .page-head {
+        padding-block: var(--space-16) var(--space-8);
+        border-bottom: var(--border-width) solid var(--border);
+      }
+
+      .page-head .text--overline {
+        display: block;
+        margin-bottom: var(--space-3);
+        color: var(--primary);
+      }
+
+      .page-head p {
+        max-width: var(--doc-table-min-width);
+        margin-block: var(--space-4) unset;
+      }
+
+      .showcase-section {
+        padding-block: var(--space-8);
+        border-bottom: var(--border-width) solid var(--border-soft);
+      }
+
+      .section-heading {
+        margin-bottom: var(--space-2);
+      }
+
+      .section-intro {
+        max-width: var(--doc-table-min-width);
+        margin-block: unset var(--space-6);
+      }
+
+      .matrix-wrap {
+        overflow-x: auto;
+        border: var(--border-width) solid var(--border);
+        border-radius: var(--radius-lg);
+        background: var(--popover);
+        box-shadow: var(--shadow-subtle);
+      }
+
+      .matrix {
+        width: 100%;
+        min-width: var(--doc-table-min-width);
+        border-collapse: collapse;
+      }
+
+      .matrix th,
+      .matrix td {
+        padding: var(--space-3);
+        border-right: var(--border-width) solid var(--border-soft);
+        border-bottom: var(--border-width) solid var(--border-soft);
+        text-align: center;
+        vertical-align: middle;
+      }
+
+      .matrix th:first-child {
+        text-align: left;
+      }
+
+      .matrix tr > :last-child {
+        border-right: none;
+      }
+
+      .matrix tbody tr:last-child > * {
+        border-bottom: none;
+      }
+
+      .matrix thead th {
+        background: var(--surface-soft);
+      }
+
+      .matrix tbody th {
+        background: var(--card);
+      }
+
+      .matrix-row--group-start > * {
+        border-top: var(--border-width-strong) solid var(--border-strong);
+      }
+
+      .row-label {
+        display: grid;
+        gap: var(--space-1);
+      }
+
+      .row-label__meta {
+        color: var(--muted-foreground);
+      }
+
+      .integration-grid,
+      .mapping-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(var(--doc-grid-min-card), 1fr));
+        gap: var(--space-4);
+      }
+
+      .integration-card,
+      .mapping-card {
+        padding: var(--space-6);
+        border: var(--border-width) solid var(--border);
+        border-radius: var(--radius-lg);
+        background: var(--card);
+      }
+
+      .integration-card {
+        display: grid;
+        align-content: start;
+        justify-items: start;
+        gap: var(--space-4);
+      }
+
+      .integration-card h3,
+      .integration-card p,
+      .mapping-card p {
+        margin: unset;
+      }
+
+      .integration-card p,
+      .mapping-card p + p {
+        color: var(--muted-foreground);
+      }
+
+      .target-demo {
+        display: flex;
+        align-items: end;
+        gap: var(--space-6);
+      }
+
+      .target-item {
+        display: grid;
+        justify-items: center;
+        gap: var(--space-2);
+      }
+
+      .tooltip-integration {
+        display: inline-grid;
+        justify-items: center;
+        gap: var(--space-2);
+      }
+
+      .tooltip-sample {
+        padding: var(--space-2) var(--space-3);
+        border-radius: var(--radius-sm);
+        background: var(--surface-dark);
+        color: var(--on-dark);
+        box-shadow: var(--shadow-subtle);
+      }
+
+      .token-stack {
+        display: grid;
+        gap: var(--space-1);
+        margin-top: var(--space-2);
+      }
+    </style>
+  </head>
+  <body>
+    <header class="page-head">
+      <div class="container">
+        <span class="text text--overline">Component</span>
+        <h1 class="text text--h1">IconButton</h1>
+        <p class="text text--body-md">
+          The complete 4 variant × 3 size × 6 state system. Hit areas and visible glyphs scale
+          independently, every control has an accessible name, and tooltip behavior remains an
+          external composition concern.
+        </p>
+      </div>
+    </header>
+
+    <main class="container">
+      <section class="showcase-section" aria-labelledby="matrix-heading">
+        <h2 class="text text--h4 section-heading" id="matrix-heading">
+          Full interaction state matrix
+        </h2>
+        <p class="text text--body-sm text--muted section-intro">
+          All 72 combinations are rendered. Static state classes mirror native hover, active,
+          and focus-visible behavior; disabled and loading use native disabled controls.
+        </p>
+
+        <div class="matrix-wrap">
+          <table class="matrix">
+            <thead>
+              <tr>
+                <th class="text text--label" scope="col">Variant / size</th>
+                <th class="text text--label" scope="col">Default</th>
+                <th class="text text--label" scope="col">Hover</th>
+                <th class="text text--label" scope="col">Active</th>
+                <th class="text text--label" scope="col">Focus-visible</th>
+                <th class="text text--label" scope="col">Disabled</th>
+                <th class="text text--label" scope="col">Loading</th>
+              </tr>
+            </thead>
+            <tbody id="icon-button-matrix"></tbody>
+          </table>
+        </div>
+      </section>
+
+      <section class="showcase-section" aria-labelledby="target-heading">
+        <h2 class="text text--h4 section-heading" id="target-heading">
+          Accessible hit areas
+        </h2>
+        <p class="text text--body-sm text--muted section-intro">
+          The visible glyph can remain visually quiet without shrinking the interactive target.
+          Native buttons preserve Enter and Space activation.
+        </p>
+        <div class="target-demo">
+          <div class="target-item">
+            <button
+              class="icon-button icon-button--secondary icon-button--sm"
+              type="button"
+              aria-label="Open small actions menu"
+            >
+              <svg
+                class="icon-button__icon"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-linecap="round"
+                aria-hidden="true"
+              >
+                <circle cx="5" cy="12" r="1"></circle>
+                <circle cx="12" cy="12" r="1"></circle>
+                <circle cx="19" cy="12" r="1"></circle>
+              </svg>
+            </button>
+            <span class="text text--caption">sm</span>
+          </div>
+          <div class="target-item">
+            <button
+              class="icon-button icon-button--secondary icon-button--md"
+              type="button"
+              aria-label="Open medium actions menu"
+            >
+              <svg
+                class="icon-button__icon"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-linecap="round"
+                aria-hidden="true"
+              >
+                <circle cx="5" cy="12" r="1"></circle>
+                <circle cx="12" cy="12" r="1"></circle>
+                <circle cx="19" cy="12" r="1"></circle>
+              </svg>
+            </button>
+            <span class="text text--caption">md</span>
+          </div>
+          <div class="target-item">
+            <button
+              class="icon-button icon-button--secondary icon-button--lg"
+              type="button"
+              aria-label="Open large actions menu"
+            >
+              <svg
+                class="icon-button__icon"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-linecap="round"
+                aria-hidden="true"
+              >
+                <circle cx="5" cy="12" r="1"></circle>
+                <circle cx="12" cy="12" r="1"></circle>
+                <circle cx="19" cy="12" r="1"></circle>
+              </svg>
+            </button>
+            <span class="text text--caption">lg</span>
+          </div>
+        </div>
+      </section>
+
+      <section class="showcase-section" aria-labelledby="integration-heading">
+        <h2 class="text text--h4 section-heading" id="integration-heading">
+          Accessible name and tooltip integration
+        </h2>
+        <p class="text text--body-sm text--muted section-intro">
+          Tooltip ownership stays outside IconButton. Consumers may connect their tooltip using
+          <code class="text text--code">aria-describedby</code> without changing the button API.
+        </p>
+        <div class="integration-grid">
+          <article class="integration-card">
+            <h3 class="text text--h6">Accessible name</h3>
+            <button
+              class="icon-button icon-button--primary icon-button--md"
+              type="button"
+              aria-label="Add member"
+            >
+              <svg
+                class="icon-button__icon"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-linecap="round"
+                aria-hidden="true"
+              >
+                <path d="M12 5v14M5 12h14"></path>
+              </svg>
+            </button>
+            <p class="text text--caption">
+              <code class="text text--code">aria-label="Add member"</code>
+            </p>
+          </article>
+
+          <article class="integration-card">
+            <h3 class="text text--h6">External tooltip</h3>
+            <div class="tooltip-integration">
+              <button
+                class="icon-button icon-button--ghost icon-button--md"
+                type="button"
+                aria-label="Copy profile link"
+                aria-describedby="copy-link-tooltip"
+              >
+                <svg
+                  class="icon-button__icon"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  aria-hidden="true"
+                >
+                  <path d="M10 13a5 5 0 0 0 7.5.5l2-2a5 5 0 0 0-7-7l-1.1 1"></path>
+                  <path d="M14 11a5 5 0 0 0-7.5-.5l-2 2a5 5 0 0 0 7 7l1.1-1"></path>
+                </svg>
+              </button>
+              <span class="tooltip-sample text text--caption" role="tooltip" id="copy-link-tooltip">
+                Copies a shareable profile link
+              </span>
+            </div>
+            <p class="text text--caption">Tooltip markup is a sibling, never a component child.</p>
+          </article>
+        </div>
+      </section>
+
+      <section class="showcase-section" aria-labelledby="mapping-heading">
+        <h2 class="text text--h4 section-heading" id="mapping-heading">Token map</h2>
+        <p class="text text--body-sm text--muted section-intro">
+          The complete mapping is documented above the component CSS. These groups summarize the
+          geometry and interaction roles.
+        </p>
+        <div class="mapping-grid">
+          <article class="mapping-card">
+            <p class="text text--label">Hit area</p>
+            <p class="text text--caption token-stack">
+              <code class="text text--code">--control-height-sm</code>
+              <code class="text text--code">--icon-button-size</code>
+              <code class="text text--code">--control-height-lg</code>
+            </p>
+          </article>
+          <article class="mapping-card">
+            <p class="text text--label">Visible icon</p>
+            <p class="text text--caption token-stack">
+              <code class="text text--code">--icon-size-xs</code>
+              <code class="text text--code">--icon-size-sm</code>
+              <code class="text text--code">--icon-size-lg</code>
+            </p>
+          </article>
+          <article class="mapping-card">
+            <p class="text text--label">Focus</p>
+            <p class="text text--caption token-stack">
+              <code class="text text--code">--ring-width</code>
+              <code class="text text--code">--ring-focus</code>
+            </p>
+          </article>
+          <article class="mapping-card">
+            <p class="text text--label">Disabled</p>
+            <p class="text text--caption token-stack">
+              <code class="text text--code">--opacity-disabled</code>
+            </p>
+          </article>
+          <article class="mapping-card">
+            <p class="text text--label">Geometry</p>
+            <p class="text text--caption token-stack">
+              <code class="text text--code">--border-width</code>
+              <code class="text text--code">--radius-full</code>
+              <code class="text text--code">--stroke-width-icon</code>
+            </p>
+          </article>
+          <article class="mapping-card">
+            <p class="text text--label">Motion</p>
+            <p class="text text--caption token-stack">
+              <code class="text text--code">--duration-fast</code>
+              <code class="text text--code">--ease-standard</code>
+              <code class="text text--code">--duration-loading</code>
+              <code class="text text--code">--ease-linear</code>
+              <code class="text text--code">--motion-rotation-full</code>
+            </p>
+          </article>
+        </div>
+      </section>
+    </main>
+
+    <template id="matrix-icon-template">
+      <svg
+        class="icon-button__icon"
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        stroke-linecap="round"
+        aria-hidden="true"
+      >
+        <circle cx="5" cy="12" r="1"></circle>
+        <circle cx="12" cy="12" r="1"></circle>
+        <circle cx="19" cy="12" r="1"></circle>
+      </svg>
+    </template>
+
+    <script>
+      const variants = [
+        { name: "Primary", className: "icon-button--primary" },
+        { name: "Secondary", className: "icon-button--secondary" },
+        { name: "Ghost", className: "icon-button--ghost" },
+        { name: "Destructive", className: "icon-button--destructive" },
+      ];
+
+      const sizes = [
+        { name: "sm", className: "icon-button--sm", token: "--control-height-sm" },
+        { name: "md", className: "icon-button--md", token: "--icon-button-size" },
+        { name: "lg", className: "icon-button--lg", token: "--control-height-lg" },
+      ];
+
+      const states = [
+        { name: "default", className: "" },
+        { name: "hover", className: "is-hover" },
+        { name: "active", className: "is-active" },
+        { name: "focus-visible", className: "is-focus-visible" },
+        { name: "disabled", className: "", disabled: true },
+        { name: "loading", className: "is-loading", disabled: true, busy: true },
+      ];
+
+      const matrix = document.querySelector("#icon-button-matrix");
+      const iconTemplate = document.querySelector("#matrix-icon-template");
+
+      for (const [variantIndex, variant] of variants.entries()) {
+        for (const [sizeIndex, size] of sizes.entries()) {
+          const row = document.createElement("tr");
+          if (variantIndex > 0 && sizeIndex === 0) row.className = "matrix-row--group-start";
+
+          const heading = document.createElement("th");
+          heading.scope = "row";
+          heading.innerHTML = `
+            <span class="row-label">
+              <span class="text text--label">${variant.name} · ${size.name}</span>
+              <code class="text text--caption row-label__meta">${size.token}</code>
+            </span>
+          `;
+          row.append(heading);
+
+          for (const state of states) {
+            const cell = document.createElement("td");
+            const button = document.createElement("button");
+            button.type = "button";
+            button.tabIndex = -1;
+            button.className = ["icon-button", variant.className, size.className, state.className]
+              .filter(Boolean)
+              .join(" ");
+            button.setAttribute("aria-label", `${variant.name} ${size.name} ${state.name} menu`);
+            button.append(iconTemplate.content.cloneNode(true));
+
+            if (state.disabled) button.disabled = true;
+            if (state.busy) {
+              button.setAttribute("aria-busy", "true");
+              const loader = document.createElement("span");
+              loader.className = "icon-button__loader";
+              loader.setAttribute("aria-hidden", "true");
+              button.append(loader);
+            }
+
+            cell.append(button);
+            row.append(cell);
+          }
+
+          matrix.append(row);
+        }
+      }
+    </script>
+  </body>
+</html>

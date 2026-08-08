@@ -1,0 +1,257 @@
+/* ==========================================================================
+   Accordion
+   Token mapping — every value below references tokens.css, nothing else.
+
+   Vertically stacked disclosure items with full WAI-ARIA accordion
+   semantics. Each item is a heading-wrapped <button> trigger that toggles
+   a sibling [role="region"] panel. Two behaviour modes, expressed as a
+   data attribute on the root and handled entirely in script — the CSS is
+   mode-agnostic: `data-accordion="single"` (opening one collapses the
+   rest) and `data-accordion="multiple"` (each item toggles on its own).
+   Selection / open state is styled from the trigger's `aria-expanded`
+   attribute — never a parallel class (the Tabs precedent). Disabled items
+   are native `<button disabled>`; the keyboard layer skips them.
+
+   Anatomy (markup contract):
+     .accordion               wrapper <div>; data-accordion="single|multiple"
+     .accordion__item         one row; hairline divider between rows
+     .accordion__header       heading element (<h3>); margin reset only
+     .accordion__trigger      <button aria-expanded aria-controls>: optional
+                              leading .accordion__icon + .accordion__title +
+                              trailing .accordion__chevron
+     .accordion__icon         optional leading SVG, currentColor, stroke-based
+     .accordion__title        the label; grows to push the chevron right
+     .accordion__chevron      down-chevron SVG; rotates when expanded
+     .accordion__panel        [role="region" aria-labelledby]; the animating
+                              grid wrapper (0fr ↔ 1fr)
+     .accordion__panel-inner  collapsing grid item (overflow hidden)
+     .accordion__panel-body   content padding so text aligns with the trigger
+     .is-hover / .is-focus-visible   static showcase mirrors of the
+                              pseudo-classes (Tabs / Button precedent)
+
+   PROPERTY → TOKEN
+   ─────────────────────────────────────────────────────────────────────────
+   ITEM DIVIDERS
+     hairlines       .accordion border-top and each .accordion__item
+                     border-bottom: --border-width solid --border (token
+                     note: "every hairline border"). Rows read as a single
+                     ruled list, top and bottom included.
+   TRIGGER CHROME
+     layout          display flex; align-items center; gap --space-3 between
+                     icon / title / chevron; width 100%; text-align left
+     padding         block --space-4, inline --space-3 (spacing scale)
+     radius          --radius-md — the shared control radius, so the hover
+                     fill and focus ring both round the same way
+     background      transparent at rest
+     hover           background --accent (token note: "hover/tab-active bg"),
+                     matching the Tabs contained hover
+     focus-visible   0 0 0 --ring-width --ring-focus (the shared ring recipe)
+     disabled        opacity --opacity-disabled + cursor not-allowed (native
+                     disabled already blocks pointer + keyboard)
+     motion          background-color / box-shadow / color, --duration-fast
+                     --ease-standard
+   EXPANDED (OPEN) TREATMENT — the "selected" system
+     surface         [aria-expanded="true"] background --selected-bg (token
+                     note: "= surface-cream-strong"), one tone deeper than the
+                     collapsed hover (--accent) so open and hover never collide
+     left indicator  inset box-shadow of --border-width-strong (the emphasized
+                     2px line) in --selected-border (token note: "= ring", the
+                     coral). A genuine border change, token-driven
+     expanded hover  background --surface-cream-pressed (the pressed cream, one
+                     step deeper than --selected-bg)
+     expanded focus  the coral ring (0 0 0 --ring-width --ring-focus) stacked on
+                     top of the left indicator via two box-shadows
+   TRIGGER TEXT
+     typography      --text-title-sm (+ --line-height) at --font-weight-medium,
+                     --font-sans, color --foreground — the token's stated role:
+                     "list labels"
+   LEADING ICON (.accordion__icon)
+     sizing          --icon-size-sm; stroke-width --stroke-width-icon;
+                     currentColor inherits the trigger's ink
+   CHEVRON (.accordion__chevron)
+     sizing          --icon-size-sm; stroke-width --stroke-width-icon
+     color           --muted-foreground at rest (a quiet affordance)
+     position        margin-inline-start auto pushes it to the row's end
+     expanded        [aria-expanded="true"] → rotate(180deg); the rotation is
+                     the disclosure mechanic, not a themed value
+     motion          transform, --duration-normal --ease-standard
+   TITLE (.accordion__title)
+     layout          flex 1 1 auto + min-width 0 so long labels wrap instead
+                     of shoving the chevron out
+   PANEL EXPAND / COLLAPSE
+     technique       .accordion__panel is display grid animating
+                     grid-template-rows 0fr → 1fr; the fractional rows are the
+                     animation mechanism, not a hard-coded size — no pixel
+                     height is invented
+     collapsed       grid-template-rows 0fr + visibility hidden (removes the
+                     region from the tab order and the accessibility tree)
+     expanded        :has([aria-expanded="true"]) → grid-template-rows 1fr +
+                     visibility visible
+     motion          grid-template-rows + visibility, --duration-normal
+                     --ease-standard. visibility interpolates discretely:
+                     on open it flips at the start, on close it holds until
+                     the collapse finishes — one transition declaration covers
+                     both directions
+     inner           .accordion__panel-inner overflow hidden + min-height 0
+                     lets the row shrink to zero and clip its content
+     body padding    .accordion__panel-body: inline --space-3 (matches the
+                     trigger's inline padding) and block-end --space-4
+     body text       content uses the typography utilities (body-md)
+   REDUCED MOTION    transitions removed from trigger, chevron, and panel —
+                     expand/collapse becomes instant.
+
+   TOKEN NOTES: no new tokens were needed — every role mapped to an existing
+   token. The two "mechanic" values (the chevron's 180deg rotation and the
+   0fr/1fr grid rows) drive the disclosure interaction and carry no themed
+   magnitude, mirroring how Tabs uses an inset-shadow indicator rather than a
+   bespoke size. Single vs multiple open is behaviour, so it lives in script,
+   not in the stylesheet.
+   ========================================================================== */
+
+.accordion {
+  border-top: var(--border-width) solid var(--border);
+}
+
+.accordion__item {
+  border-bottom: var(--border-width) solid var(--border);
+}
+
+.accordion__header {
+  margin: 0;
+}
+
+.accordion__trigger {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  width: 100%;
+  padding-block: var(--space-4);
+  padding-inline: var(--space-3);
+  border: 0;
+  border-radius: var(--radius-md);
+  background: transparent;
+  cursor: pointer;
+  text-align: left;
+  font-family: var(--font-sans);
+  font-size: var(--text-title-sm);
+  font-weight: var(--font-weight-medium);
+  line-height: var(--text-title-sm--line-height);
+  color: var(--foreground);
+  transition:
+    background-color var(--duration-fast) var(--ease-standard),
+    box-shadow var(--duration-fast) var(--ease-standard),
+    color var(--duration-fast) var(--ease-standard);
+}
+
+.accordion__trigger:hover:not(:disabled),
+.accordion__trigger.is-hover {
+  background: var(--accent);
+}
+
+.accordion__trigger:active:not(:disabled),
+.accordion__trigger.is-active {
+  background: var(--selected-bg);
+}
+
+.accordion__trigger:focus-visible,
+.accordion__trigger.is-focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 var(--ring-width) var(--ring-focus);
+}
+
+.accordion__trigger:disabled {
+  opacity: var(--opacity-disabled);
+  cursor: not-allowed;
+}
+
+/* ===== Trigger contents ===== */
+
+.accordion__icon {
+  width: var(--icon-size-sm);
+  height: var(--icon-size-sm);
+  flex: none;
+  stroke-width: var(--stroke-width-icon);
+}
+
+.accordion__title {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.accordion__chevron {
+  width: var(--icon-size-sm);
+  height: var(--icon-size-sm);
+  flex: none;
+  margin-inline-start: auto;
+  stroke-width: var(--stroke-width-icon);
+  color: var(--muted-foreground);
+  transition: transform var(--duration-normal) var(--ease-standard);
+}
+
+.accordion__trigger[aria-expanded="true"] .accordion__chevron {
+  transform: rotate(180deg);
+}
+
+/* ===== Expanded (open) treatment =====
+   The open row reads as "selected": a deeper cream surface plus a coral left
+   indicator, so the closed and open systems are visually distinct. Every value
+   is a token. */
+
+.accordion__trigger[aria-expanded="true"] {
+  background: var(--selected-bg);
+  box-shadow: inset var(--border-width-strong) 0 0 var(--selected-border);
+}
+
+.accordion__trigger[aria-expanded="true"]:hover:not(:disabled),
+.accordion__trigger[aria-expanded="true"].is-hover {
+  background: var(--surface-cream-pressed);
+}
+
+.accordion__trigger[aria-expanded="true"]:active:not(:disabled),
+.accordion__trigger[aria-expanded="true"].is-active {
+  background: var(--surface-cream-pressed);
+  color: var(--primary-active);
+}
+
+.accordion__trigger[aria-expanded="true"]:focus-visible,
+.accordion__trigger[aria-expanded="true"].is-focus-visible {
+  box-shadow:
+    inset var(--border-width-strong) 0 0 var(--selected-border),
+    0 0 0 var(--ring-width) var(--ring-focus);
+}
+
+/* ===== Panel expand / collapse ===== */
+
+.accordion__panel {
+  display: grid;
+  grid-template-rows: 0fr;
+  visibility: hidden;
+  transition:
+    grid-template-rows var(--duration-normal) var(--ease-standard),
+    visibility var(--duration-normal);
+}
+
+.accordion__item:has(.accordion__trigger[aria-expanded="true"]) .accordion__panel {
+  grid-template-rows: 1fr;
+  visibility: visible;
+}
+
+.accordion__panel-inner {
+  overflow: hidden;
+  min-height: 0;
+}
+
+.accordion__panel-body {
+  padding-inline: var(--space-3);
+  padding-block-end: var(--space-4);
+}
+
+/* ===== Reduced motion ===== */
+
+@media (prefers-reduced-motion: reduce) {
+  .accordion__trigger,
+  .accordion__chevron,
+  .accordion__panel {
+    transition: none;
+  }
+}

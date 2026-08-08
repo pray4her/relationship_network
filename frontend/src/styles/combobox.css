@@ -13,8 +13,11 @@
      .combobox__clear         clear action (clearable mode) — real button,
                               hidden until a value exists
      .combobox__chevron       disclosure icon, rotates when open
-     .combobox__menu          <ul role="listbox">, [hidden] until open
-     .combobox__option        <li role="option" aria-selected>
+     .combobox__menu          <div role="listbox">, [hidden] until open
+     .combobox__group         semantic <fieldset> wrapping related options
+     .combobox__group-label   semantic <legend> group heading
+     .combobox__group-options unstyled option container
+     .combobox__option        <div role="option" aria-selected tabindex=-1>
      .combobox__check         selected checkmark (aria-hidden)
      .combobox__empty         no-results row (aria-live polite, not an
                               option — nothing to commit)
@@ -53,6 +56,10 @@
    layer           --z-dropdown        max-height --menu-max-height
    padding         --space-1           offset from control --space-1
    option padding  --space-2 --space-3, radius --radius-xs, gap --space-2
+   group label     --text-caption-up (+ line-height / letter-spacing),
+                   --font-weight-medium, color --muted-foreground,
+                   padding --space-2 --space-3; groups divide with
+                   --border-width solid --border-soft and --space-1
    highlighted     .is-active (aria-activedescendant) / :hover → --accent
    selected        aria-selected="true" → --surface-cream-strong,
                    check --primary
@@ -61,10 +68,12 @@
                    padding --space-2 --space-3
    loading row     --text-body-sm color --muted-foreground, gap --space-2;
                    spinner --icon-size-sm, ring --space-0-5, color
-                   --muted-foreground, spin --duration-slow linear infinite;
+                   --muted-foreground, spin --duration-loading
+                   --ease-linear infinite through --motion-rotation-full;
                    listbox carries aria-busy="true" while loading
-   chevron         --icon-size-sm, color --caption-foreground, rotates
-                   180° over --duration-fast --ease-standard
+   chevron         --icon-size-sm, color --caption-foreground, rotates half
+                   of --motion-rotation-full over --duration-fast
+                   --ease-standard
    clear control   color --muted-foreground → hover --foreground; focus
                    ring --ring-width --ring-focus, radius --radius-xs
    motion          border-color / box-shadow / colors over
@@ -76,6 +85,9 @@
      Enter         commit highlighted option
      Escape        open → close; closed + clearable → clear value
      Home/End      native caret movement (editable input; APG-conformant)
+
+   SHOWCASE STATE MIRRORS: .is-hover / .is-focus-visible reproduce native control
+   states for deterministic documentation without replacing behavior.
 
    REPORTED TOKEN GAPS (not silently invented — flagged for tokens.css):
    •  None open. Resolved: hover border → --border-strong; error focus
@@ -104,10 +116,13 @@
     border-color var(--duration-fast) var(--ease-standard),
     box-shadow var(--duration-fast) var(--ease-standard);
 }
-.combobox__control:hover {
+.combobox__control:not(:has(.combobox__input:disabled)):hover,
+.combobox__control.is-hover {
   border-color: var(--border-strong);
 }
 .combobox__control:focus-within,
+.combobox__control.is-focus-visible,
+.combobox__control.is-focus,
 .combobox__control:has(.combobox__input[aria-expanded="true"]) {
   border-color: var(--primary);
   box-shadow: 0 0 0 var(--ring-width) var(--ring-focus);
@@ -119,6 +134,8 @@
 
 /* Invalid focus: swap the coral ring for the destructive one. */
 .combobox--error .combobox__control:focus-within,
+.combobox--error .combobox__control.is-focus-visible,
+.combobox--error .combobox__control.is-focus,
 .combobox--error .combobox__control:has(.combobox__input[aria-expanded="true"]),
 .combobox__control:has(.combobox__input[aria-invalid="true"]):focus-within {
   box-shadow: 0 0 0 var(--ring-width) var(--ring-destructive);
@@ -186,7 +203,7 @@
   transition: rotate var(--duration-fast) var(--ease-standard);
 }
 .combobox__control:has(.combobox__input[aria-expanded="true"]) .combobox__chevron {
-  rotate: 180deg;
+  rotate: calc(var(--motion-rotation-full) / 2);
 }
 
 .combobox__clear {
@@ -237,6 +254,33 @@
   box-shadow: var(--shadow-subtle);
   max-height: var(--menu-max-height);
   overflow-y: auto;
+}
+
+.combobox__group {
+  min-inline-size: unset;
+  margin: unset;
+  padding: unset;
+  border: unset;
+}
+.combobox__group + .combobox__group {
+  margin-top: var(--space-1);
+  padding-top: var(--space-1);
+  border-top: var(--border-width) solid var(--border-soft);
+}
+.combobox__group-label {
+  padding: var(--space-2) var(--space-3);
+  font-family: var(--font-sans);
+  font-size: var(--text-caption-up);
+  font-weight: var(--font-weight-medium);
+  line-height: var(--text-caption-up--line-height);
+  letter-spacing: var(--text-caption-up--letter-spacing);
+  text-transform: uppercase;
+  color: var(--muted-foreground);
+}
+.combobox__group-options {
+  margin: 0;
+  padding: 0;
+  list-style: none;
 }
 
 .combobox__option {
@@ -313,12 +357,12 @@
   border: var(--space-0-5) solid var(--muted-foreground);
   border-top-color: transparent;
   border-radius: var(--radius-full);
-  animation: combobox-spin var(--duration-slow) linear infinite;
+  animation: combobox-spin var(--duration-loading) var(--ease-linear) infinite;
 }
 
 @keyframes combobox-spin {
   to {
-    rotate: 360deg;
+    rotate: var(--motion-rotation-full);
   }
 }
 

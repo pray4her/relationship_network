@@ -7,7 +7,7 @@
 <link rel="stylesheet" href="../src/styles/tokens.css">
 <link rel="stylesheet" href="../src/styles/typography.css">
 <style>
-  /* Page chrome — tokens only, no component values. */
+  /* Page chrome and matrix framing — tokens only. */
   *, *::before, *::after { box-sizing: border-box; }
   body {
     margin: 0;
@@ -18,29 +18,43 @@
   }
   .container { max-width: var(--doc-container-max); margin: 0 auto; padding: 0 var(--space-6); }
   .page-head { padding: var(--space-16) 0 var(--space-8); border-bottom: var(--border-width) solid var(--border); }
-  .page-head .text--overline { color: var(--primary); display: block; margin-bottom: var(--space-3); }
-  .page-head p { margin: var(--space-4) 0 0; max-width: 64ch; }
-  .specimen {
-    display: grid;
-    grid-template-columns: var(--doc-specimen-meta-width) 1fr;
-    gap: var(--space-8);
-    padding: var(--space-8) 0;
-    border-bottom: var(--border-width) solid var(--border-soft);
-    align-items: start;
-  }
-  .specimen-meta .name { color: var(--primary-active); }
-  .specimen-meta dl { margin: var(--space-3) 0 0; }
-  .specimen-meta dl div { display: flex; justify-content: space-between; gap: var(--space-4); padding: var(--space-0-75) 0; }
-  .specimen-meta dt { color: var(--caption-foreground); }
-  .specimen-meta dd { margin: 0; color: var(--foreground-strong); }
-  .specimen-sample > * + * { margin-top: var(--space-3); }
+  .page-head .text--overline { display: block; margin-bottom: var(--space-3); color: var(--primary); }
+  .page-head p { max-width: calc(var(--space-24) * 8); margin: var(--space-4) 0 0; }
+  .matrix-head { display: grid; grid-template-columns: var(--doc-specimen-meta-width) 1fr; gap: var(--space-6); padding: var(--space-8) 0 var(--space-4); border-bottom: var(--border-width-strong) solid var(--border-strong); }
+  .matrix-head__contexts { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)) minmax(var(--doc-grid-min-swatch), 2fr); gap: var(--space-2); color: var(--caption-foreground); }
+  .type-matrix { border-bottom: var(--border-width-strong) solid var(--border-strong); }
+  .role-row { display: grid; gap: var(--space-6); padding: var(--space-8) 0; border-bottom: var(--border-width) solid var(--border-soft); }
+  .role-row:last-child { border-bottom: 0; }
+  .role-summary { display: grid; grid-template-columns: var(--doc-specimen-meta-width) 1fr; gap: var(--space-6); align-items: start; }
+  .role-name { display: grid; gap: var(--space-2); }
+  .role-name .text--label { color: var(--primary-active); }
+  .role-note { color: var(--caption-foreground); }
+  .role-example { min-width: 0; overflow-wrap: anywhere; }
+  .token-spec { display: grid; grid-template-columns: repeat(auto-fit, minmax(var(--doc-grid-min-shape), 1fr)); gap: var(--space-2) var(--space-4); padding: var(--space-4); border: var(--border-width) solid var(--border); border-radius: var(--radius-lg); background: var(--surface-soft); }
+  .token-spec div { display: grid; gap: var(--space-1); min-width: 0; }
+  .token-spec dt { color: var(--caption-foreground); }
+  .token-spec dd { margin: 0; color: var(--foreground-strong); overflow-wrap: anywhere; }
+  .context-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)) minmax(var(--doc-grid-min-swatch), 2fr); gap: var(--space-2); align-items: stretch; }
+  .context-card { display: grid; align-content: space-between; gap: var(--space-3); min-width: 0; padding: var(--space-4); overflow: hidden; border: var(--border-width) solid var(--border); border-radius: var(--radius-lg); background: var(--background); }
+  .context-card--inverse { border-color: var(--surface-dark-elevated); background: var(--surface-dark); }
+  .context-label { color: var(--caption-foreground); }
+  .context-card--inverse .context-label { color: var(--on-dark-soft); }
+  .context-sample { min-width: 0; overflow-wrap: anywhere; }
+  .feedback-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--space-2); }
+  .feedback-chip { display: grid; place-items: center; min-width: 0; padding: var(--space-2); overflow: hidden; border: var(--border-width) solid; border-radius: var(--radius-md); }
+  .feedback-chip--success { border-color: var(--success); background: var(--success-soft); }
+  .feedback-chip--warning { border-color: var(--warning); background: var(--warning-soft); }
+  .feedback-chip--destructive { border-color: var(--destructive); background: var(--destructive-soft); }
+  .feedback-chip--info { border-color: var(--info); background: var(--info-soft); }
   .section { padding: var(--space-12) 0; }
   .section > .text--h3 { margin-bottom: var(--space-6); }
-  .as-grid { display: grid; gap: var(--space-6); }
-  .as-cell { border: var(--border-width) solid var(--border); border-radius: var(--radius-lg); padding: var(--space-6); }
-  .as-cell .text--overline { display: block; margin-bottom: var(--space-3); }
+  .support-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(var(--doc-grid-min-card), 1fr)); gap: var(--space-4); }
+  .support-card { padding: var(--space-6); border: var(--border-width) solid var(--border); border-radius: var(--radius-lg); background: var(--card); }
+  .support-card .text--overline { display: block; margin-bottom: var(--space-3); }
   @media (max-width: 768px) {
-    .specimen { grid-template-columns: 1fr; gap: var(--space-4); }
+    .matrix-head { display: none; }
+    .role-summary { grid-template-columns: 1fr; gap: var(--space-4); }
+    .context-grid { grid-template-columns: 1fr; }
   }
 </style>
 </head>
@@ -51,324 +65,282 @@
     <span class="text text--overline">Component</span>
     <h1 class="text text--h1">Typography</h1>
     <p class="text text--body-md">
-      Every style below is composed from <code class="text text--code">tokens.css</code> only —
-      font family, size, line-height, letter-spacing, and color are all token references.
-      Class pairs are element-agnostic: the visual style never dictates the HTML tag.
+      Fourteen explicit text roles, each shown with its exact family, size, weight,
+      line-height, letter-spacing, and normal semantic color Token. Every row repeats the
+      same context sequence—normal, muted, inverse, disabled, and semantic feedback—so
+      hierarchy and density can be compared without leaving this preview.
     </p>
   </div>
 </header>
 
 <main class="container">
-
-  <!-- display -->
-  <div class="specimen">
-    <div class="specimen-meta">
-      <span class="text text--label name">.text--display</span>
-      <dl class="text text--caption">
-        <div><dt>family</dt><dd>--font-display</dd></div>
-        <div><dt>size</dt><dd>--text-display-xl</dd></div>
-        <div><dt>line-height</dt><dd>1.05 (token)</dd></div>
-        <div><dt>letter-spacing</dt><dd>token</dd></div>
-        <div><dt>color</dt><dd>--foreground</dd></div>
-        <div><dt>≤768px</dt><dd>--text-display-xl-compact</dd></div>
-      </dl>
-    </div>
-    <div class="specimen-sample">
-      <p class="text text--display">Match the right people to the right teams, everywhere.</p>
+  <div class="matrix-head" aria-hidden="true">
+    <span class="text text--label">Role and exact Token mapping</span>
+    <div class="matrix-head__contexts text text--caption">
+      <span>Normal</span><span>Muted</span><span>Inverse</span><span>Disabled</span><span>Semantic feedback</span>
     </div>
   </div>
 
-  <!-- h1 -->
-  <div class="specimen">
-    <div class="specimen-meta">
-      <span class="text text--label name">.text--h1</span>
-      <dl class="text text--caption">
-        <div><dt>family</dt><dd>--font-display</dd></div>
-        <div><dt>size</dt><dd>--text-display-lg</dd></div>
-        <div><dt>line-height</dt><dd>1.1 (token)</dd></div>
-        <div><dt>letter-spacing</dt><dd>token</dd></div>
-        <div><dt>color</dt><dd>--foreground</dd></div>
-        <div><dt>≤768px</dt><dd>--text-display-lg-compact</dd></div>
-      </dl>
-    </div>
-    <div class="specimen-sample">
-      <h1 class="text text--h1">A talent network built on trust, not keyword roulette</h1>
-    </div>
-  </div>
+  <div class="type-matrix" id="type-matrix"></div>
 
-  <!-- h2 -->
-  <div class="specimen">
-    <div class="specimen-meta">
-      <span class="text text--label name">.text--h2</span>
-      <dl class="text text--caption">
-        <div><dt>family</dt><dd>--font-display</dd></div>
-        <div><dt>size</dt><dd>--text-display-md</dd></div>
-        <div><dt>line-height</dt><dd>1.15 (token)</dd></div>
-        <div><dt>letter-spacing</dt><dd>token</dd></div>
-        <div><dt>color</dt><dd>--foreground</dd></div>
-      </dl>
-    </div>
-    <div class="specimen-sample">
-      <h2 class="text text--h2">Company profiles your whole team can maintain together</h2>
-    </div>
-  </div>
-
-  <!-- h3 -->
-  <div class="specimen">
-    <div class="specimen-meta">
-      <span class="text text--label name">.text--h3</span>
-      <dl class="text text--caption">
-        <div><dt>family</dt><dd>--font-display</dd></div>
-        <div><dt>size</dt><dd>--text-display-sm</dd></div>
-        <div><dt>line-height</dt><dd>1.2 (token)</dd></div>
-        <div><dt>letter-spacing</dt><dd>token</dd></div>
-        <div><dt>color</dt><dd>--foreground</dd></div>
-      </dl>
-    </div>
-    <div class="specimen-sample">
-      <h3 class="text text--h3">Invites, roles, and two-step verification out of the box</h3>
-    </div>
-  </div>
-
-  <!-- h4 -->
-  <div class="specimen">
-    <div class="specimen-meta">
-      <span class="text text--label name">.text--h4</span>
-      <dl class="text text--caption">
-        <div><dt>family</dt><dd>--font-sans</dd></div>
-        <div><dt>size</dt><dd>--text-title-lg</dd></div>
-        <div><dt>line-height</dt><dd>1.3 (token)</dd></div>
-        <div><dt>color</dt><dd>--foreground</dd></div>
-      </dl>
-    </div>
-    <div class="specimen-sample">
-      <h4 class="text text--h4">Usage metering with idempotent ledger entries</h4>
-    </div>
-  </div>
-
-  <!-- h5 -->
-  <div class="specimen">
-    <div class="specimen-meta">
-      <span class="text text--label name">.text--h5</span>
-      <dl class="text text--caption">
-        <div><dt>family</dt><dd>--font-sans</dd></div>
-        <div><dt>size</dt><dd>--text-title-md</dd></div>
-        <div><dt>line-height</dt><dd>1.4 (token)</dd></div>
-        <div><dt>color</dt><dd>--foreground</dd></div>
-      </dl>
-    </div>
-    <div class="specimen-sample">
-      <h5 class="text text--h5">Row-level security keeps every tenant isolated</h5>
-    </div>
-  </div>
-
-  <!-- h6 -->
-  <div class="specimen">
-    <div class="specimen-meta">
-      <span class="text text--label name">.text--h6</span>
-      <dl class="text text--caption">
-        <div><dt>family</dt><dd>--font-sans</dd></div>
-        <div><dt>size</dt><dd>--text-title-sm</dd></div>
-        <div><dt>line-height</dt><dd>1.4 (token)</dd></div>
-        <div><dt>color</dt><dd>--foreground</dd></div>
-      </dl>
-    </div>
-    <div class="specimen-sample">
-      <h6 class="text text--h6">Audit events are append-only by database permission</h6>
-    </div>
-  </div>
-
-  <!-- body-lg -->
-  <div class="specimen">
-    <div class="specimen-meta">
-      <span class="text text--label name">.text--body-lg</span>
-      <dl class="text text--caption">
-        <div><dt>family</dt><dd>--font-sans</dd></div>
-        <div><dt>size</dt><dd>--text-body-lg</dd></div>
-        <div><dt>line-height</dt><dd>body token</dd></div>
-        <div><dt>color</dt><dd>--foreground-strong</dd></div>
-        <div><dt>role</dt><dd>lead paragraphs</dd></div>
-      </dl>
-    </div>
-    <div class="specimen-sample">
-      <p class="text text--body-lg">
-        Relationship Network is a multi-tenant platform where companies maintain rich,
-        living profiles — and where the right specialist is a precise query away, not a
-        week of cold outreach. Every lead paragraph on the marketing surface uses this style.
-      </p>
-    </div>
-  </div>
-
-  <!-- body-md -->
-  <div class="specimen">
-    <div class="specimen-meta">
-      <span class="text text--label name">.text--body-md</span>
-      <dl class="text text--caption">
-        <div><dt>family</dt><dd>--font-sans</dd></div>
-        <div><dt>size</dt><dd>--text-body-md</dd></div>
-        <div><dt>line-height</dt><dd>1.55 (token)</dd></div>
-        <div><dt>color</dt><dd>--foreground-body</dd></div>
-      </dl>
-    </div>
-    <div class="specimen-sample">
-      <p class="text text--body-md">
-        Running text. Members collaborate on company documents, job postings carry their
-        own materials, and every billable action lands in the usage ledger under an
-        idempotency key — retry-safe by construction. When a subscription lapses the
-        tenant turns read-only, and the write gate says so plainly instead of failing
-        silently halfway through a form.
-      </p>
-      <p class="text text--body-md">
-        A second paragraph to show the rhythm: line-height stays at the token value, so
-        long-form pages keep an even vertical cadence without per-page tweaking.
-      </p>
-    </div>
-  </div>
-
-  <!-- body-sm -->
-  <div class="specimen">
-    <div class="specimen-meta">
-      <span class="text text--label name">.text--body-sm</span>
-      <dl class="text text--caption">
-        <div><dt>family</dt><dd>--font-sans</dd></div>
-        <div><dt>size</dt><dd>--text-body-sm</dd></div>
-        <div><dt>line-height</dt><dd>1.55 (token)</dd></div>
-        <div><dt>color</dt><dd>--foreground-body</dd></div>
-      </dl>
-    </div>
-    <div class="specimen-sample">
-      <p class="text text--body-sm">
-        Dense contexts — table cells, settings descriptions, secondary panel copy. Small
-        enough to sit beside controls, still on the body line-height token so mixed-density
-        layouts don't drift apart.
-      </p>
-    </div>
-  </div>
-
-  <!-- label -->
-  <div class="specimen">
-    <div class="specimen-meta">
-      <span class="text text--label name">.text--label</span>
-      <dl class="text text--caption">
-        <div><dt>family</dt><dd>--font-sans</dd></div>
-        <div><dt>size</dt><dd>--text-caption</dd></div>
-        <div><dt>line-height</dt><dd>1.4 (token)</dd></div>
-        <div><dt>color</dt><dd>--foreground-strong</dd></div>
-      </dl>
-    </div>
-    <div class="specimen-sample">
-      <label class="text text--label" for="demo-email">Work email</label>
-      <p class="text text--body-sm">
-        Pairs with form controls via a real <code class="text text--code">&lt;label&gt;</code> —
-        here associated with <code class="text text--code">for="demo-email"</code>.
-      </p>
-    </div>
-  </div>
-
-  <!-- caption -->
-  <div class="specimen">
-    <div class="specimen-meta">
-      <span class="text text--label name">.text--caption</span>
-      <dl class="text text--caption">
-        <div><dt>family</dt><dd>--font-sans</dd></div>
-        <div><dt>size</dt><dd>--text-caption</dd></div>
-        <div><dt>line-height</dt><dd>1.4 (token)</dd></div>
-        <div><dt>color</dt><dd>--caption-foreground</dd></div>
-      </dl>
-    </div>
-    <div class="specimen-sample">
-      <p class="text text--caption">
-        Uploaded 12 Mar 2026 · Visible to workspace members only · 2.4 MB
-      </p>
-      <p class="text text--caption">
-        Fine print: captions carry metadata, timestamps, and helper text — never primary content.
-      </p>
-    </div>
-  </div>
-
-  <!-- overline -->
-  <div class="specimen">
-    <div class="specimen-meta">
-      <span class="text text--label name">.text--overline</span>
-      <dl class="text text--caption">
-        <div><dt>family</dt><dd>--font-sans</dd></div>
-        <div><dt>size</dt><dd>--text-caption-up</dd></div>
-        <div><dt>letter-spacing</dt><dd>token</dd></div>
-        <div><dt>transform</dt><dd>uppercase</dd></div>
-        <div><dt>color</dt><dd>--muted-foreground</dd></div>
-      </dl>
-    </div>
-    <div class="specimen-sample">
-      <span class="text text--overline">Platform health</span>
-      <p class="text text--body-sm" style="margin-top: var(--space-2);">
-        Sits above a heading as a section kicker. Source text stays sentence case;
-        the uppercase rendering comes from the style, not the markup.
-      </p>
-    </div>
-  </div>
-
-  <!-- code -->
-  <div class="specimen">
-    <div class="specimen-meta">
-      <span class="text text--label name">.text--code</span>
-      <dl class="text text--caption">
-        <div><dt>family</dt><dd>--font-mono</dd></div>
-        <div><dt>size</dt><dd>--text-code</dd></div>
-        <div><dt>line-height</dt><dd>1.6 (token)</dd></div>
-        <div><dt>color</dt><dd>--foreground-strong</dd></div>
-      </dl>
-    </div>
-    <div class="specimen-sample">
-      <p class="text text--body-md">
-        Run <code class="text text--code">docker compose up --build -d</code>, then check
-        <code class="text text--code">/health/ready</code>. Tenant isolation is enforced by
-        the <code class="text text--code">app.current_tenant</code> GUC on every connection.
-      </p>
-    </div>
-  </div>
-
-  <!-- Style/semantics independence ("as" prop) -->
-  <section class="section" aria-labelledby="as-heading">
-    <h2 class="text text--h3" id="as-heading">Style ≠ semantics</h2>
-    <div class="as-grid">
-      <div class="as-cell">
-        <span class="text text--overline">visual h4 · semantic p</span>
-        <p class="text text--h4">
-          Looks like a fourth-level heading, reads to assistive tech as a plain paragraph —
-          for card titles that must not enter the document outline.
-        </p>
+  <section class="section" aria-labelledby="composition-heading">
+    <h2 class="text text--h3" id="composition-heading">Applicable state matrix — text roles × context</h2>
+    <div class="support-grid">
+      <div class="support-card">
+        <span class="text text--overline">Normal</span>
+        <p class="text text--body-sm">Each role owns its normal semantic color: headings use <code class="text text--code">--foreground</code>, body roles use their body ink Tokens, and supporting roles use their dedicated muted hierarchy.</p>
       </div>
-      <div class="as-cell">
-        <span class="text text--overline">visual body-md · semantic h2</span>
-        <h2 class="text text--body-md">
-          A real second-level heading in the outline, styled as body text — for long,
-          descriptive section headings.
-        </h2>
+      <div class="support-card">
+        <span class="text text--overline">Muted · inverse · disabled</span>
+        <p class="text text--body-sm"><code class="text text--code">.text--muted</code> uses <code class="text text--code">--muted-foreground</code>; inverse uses <code class="text text--code">--on-dark</code>; disabled preserves the role color and applies <code class="text text--code">--opacity-disabled</code>.</p>
       </div>
-      <div class="as-cell">
-        <span class="text text--overline">visual caption · semantic legend</span>
-        <fieldset style="border: 0; margin: 0; padding: 0;">
-          <legend class="text text--caption">Notification preferences (legend, caption style)</legend>
-        </fieldset>
+      <div class="support-card">
+        <span class="text text--overline">Semantic feedback</span>
+        <p class="text text--body-sm">Success, warning, destructive, and info use their base semantic Tokens on matching soft surfaces. The <code class="text text--code">--*-foreground</code> Tokens remain reserved for ink on solid semantic fills.</p>
       </div>
     </div>
   </section>
 
-  <!-- Responsive note -->
-  <section class="section" aria-labelledby="resp-heading">
-    <h2 class="text text--h3" id="resp-heading">Responsive</h2>
+  <section class="section" aria-labelledby="responsive-heading">
+    <h2 class="text text--h3" id="responsive-heading">Responsive display hierarchy</h2>
     <p class="text text--body-md">
-      Below 768px, <code class="text text--code">.text--display</code> and
-      <code class="text text--code">.text--h1</code> switch to the compact display tokens
-      (<code class="text text--code">--text-display-xl-compact</code> /
-      <code class="text text--code">--text-display-lg-compact</code>). The breakpoint is a
-      literal value — plain CSS media queries cannot consume <code class="text text--code">var()</code> —
-      following the documented precedent in <code class="text text--code">design-system.html</code>.
-      Resize the viewport to see it.
+      Display and h1 switch to their compact font-size Tokens below the existing responsive
+      breakpoint. No raw font size, weight, line-height, letter-spacing, or color is introduced.
+      Roles without a letter-spacing Token leave the property unset so it remains
+      <code class="text text--code">normal</code> rather than inventing a value.
     </p>
   </section>
-
 </main>
+
+<script>
+const roles = [
+  {
+    name: "display",
+    family: "--font-display",
+    size: "--text-display-xl",
+    weight: "--font-weight-regular",
+    lineHeight: "--text-display-xl--line-height",
+    letterSpacing: "--text-display-xl--letter-spacing",
+    color: "--foreground",
+    note: "Compact: --text-display-xl-compact + its letter-spacing Token",
+    sample: "Match people to possibility.",
+    context: "Aa",
+  },
+  {
+    name: "h1",
+    family: "--font-display",
+    size: "--text-display-lg",
+    weight: "--font-weight-regular",
+    lineHeight: "--text-display-lg--line-height",
+    letterSpacing: "--text-display-lg--letter-spacing",
+    color: "--foreground",
+    note: "Compact size: --text-display-lg-compact",
+    sample: "A talent network built on trust",
+    context: "Aa",
+  },
+  {
+    name: "h2",
+    family: "--font-display",
+    size: "--text-display-md",
+    weight: "--font-weight-regular",
+    lineHeight: "--text-display-md--line-height",
+    letterSpacing: "--text-display-md--letter-spacing",
+    color: "--foreground",
+    note: "Section headline",
+    sample: "Company profiles your team maintains together",
+    context: "Aa",
+  },
+  {
+    name: "h3",
+    family: "--font-display",
+    size: "--text-display-sm",
+    weight: "--font-weight-regular",
+    lineHeight: "--text-display-sm--line-height",
+    letterSpacing: "--text-display-sm--letter-spacing",
+    color: "--foreground",
+    note: "Subsection headline",
+    sample: "Invites, roles, and two-step verification",
+    context: "Aa",
+  },
+  {
+    name: "h4",
+    family: "--font-sans",
+    size: "--text-title-lg",
+    weight: "--font-weight-medium",
+    lineHeight: "--text-title-lg--line-height",
+    letterSpacing: "normal · unset; no Token",
+    color: "--foreground",
+    note: "Large interface title",
+    sample: "Usage metering and ledger entries",
+    context: "Aa",
+  },
+  {
+    name: "h5",
+    family: "--font-sans",
+    size: "--text-title-md",
+    weight: "--font-weight-medium",
+    lineHeight: "--text-title-md--line-height",
+    letterSpacing: "normal · unset; no Token",
+    color: "--foreground",
+    note: "Medium interface title",
+    sample: "Tenant isolation by row-level security",
+    context: "Aa",
+  },
+  {
+    name: "h6",
+    family: "--font-sans",
+    size: "--text-title-sm",
+    weight: "--font-weight-medium",
+    lineHeight: "--text-title-sm--line-height",
+    letterSpacing: "normal · unset; no Token",
+    color: "--foreground",
+    note: "Compact interface title",
+    sample: "Append-only audit events",
+    context: "Aa",
+  },
+  {
+    name: "body-lg",
+    family: "--font-sans",
+    size: "--text-body-lg",
+    weight: "--font-weight-regular",
+    lineHeight: "--text-body-lg--line-height",
+    letterSpacing: "normal · unset; no Token",
+    color: "--foreground-strong",
+    note: "Lead paragraph",
+    sample: "Relationship Network connects precise talent needs with trusted company context.",
+    context: "Lead",
+  },
+  {
+    name: "body-md",
+    family: "--font-sans",
+    size: "--text-body-md",
+    weight: "--font-weight-regular",
+    lineHeight: "--text-body-md--line-height",
+    letterSpacing: "normal · unset; no Token",
+    color: "--foreground-body",
+    note: "Default running text",
+    sample: "Members collaborate on company profiles, documents, jobs, and tenant settings.",
+    context: "Body",
+  },
+  {
+    name: "body-sm",
+    family: "--font-sans",
+    size: "--text-body-sm",
+    weight: "--font-weight-regular",
+    lineHeight: "--text-body-sm--line-height",
+    letterSpacing: "normal · unset; no Token",
+    color: "--foreground-body",
+    note: "Dense supporting copy",
+    sample: "Compact copy for tables, settings, panels, and secondary explanations.",
+    context: "Small",
+  },
+  {
+    name: "label",
+    family: "--font-sans",
+    size: "--text-caption",
+    weight: "--font-weight-medium",
+    lineHeight: "--text-caption--line-height",
+    letterSpacing: "normal · unset; no Token",
+    color: "--foreground-strong",
+    note: "Control and field label",
+    sample: "Work email",
+    context: "Label",
+  },
+  {
+    name: "caption",
+    family: "--font-sans",
+    size: "--text-caption",
+    weight: "--font-weight-medium",
+    lineHeight: "--text-caption--line-height",
+    letterSpacing: "normal · unset; no Token",
+    color: "--caption-foreground",
+    note: "Metadata and fine print",
+    sample: "Uploaded today · Tenant members only",
+    context: "Meta",
+  },
+  {
+    name: "overline",
+    family: "--font-sans",
+    size: "--text-caption-up",
+    weight: "--font-weight-medium",
+    lineHeight: "--text-caption-up--line-height",
+    letterSpacing: "--text-caption-up--letter-spacing",
+    color: "--muted-foreground",
+    note: "Uppercase transform · section kicker",
+    sample: "Platform health",
+    context: "Meta",
+  },
+  {
+    name: "code",
+    family: "--font-mono",
+    size: "--text-code",
+    weight: "--font-weight-regular",
+    lineHeight: "--text-code--line-height",
+    letterSpacing: "normal · unset; no Token",
+    color: "--foreground-strong",
+    note: "Inline code and technical identifiers",
+    sample: "docker compose up --build -d",
+    context: "{ }",
+  },
+];
+
+const tokenPair = (label, value) => `
+  <div>
+    <dt class="text text--caption">${label}</dt>
+    <dd class="text text--code">${value}</dd>
+  </div>`;
+
+const roleRow = (role) => {
+  const roleClass = `text--${role.name}`;
+  return `
+    <section class="role-row" aria-labelledby="role-${role.name}">
+      <div class="role-summary">
+        <div class="role-name">
+          <h2 class="text text--label" id="role-${role.name}">.text--${role.name}</h2>
+          <span class="text text--caption role-note">${role.note}</span>
+        </div>
+        <p class="text ${roleClass} role-example">${role.sample}</p>
+      </div>
+      <dl class="token-spec">
+        ${tokenPair("font-family", role.family)}
+        ${tokenPair("font-size", role.size)}
+        ${tokenPair("font-weight", role.weight)}
+        ${tokenPair("line-height", role.lineHeight)}
+        ${tokenPair("letter-spacing", role.letterSpacing)}
+        ${tokenPair("semantic color", role.color)}
+      </dl>
+      <div class="context-grid">
+        <div class="context-card">
+          <span class="text text--caption context-label">Normal · ${role.color}</span>
+          <span class="text ${roleClass} context-sample">${role.context}</span>
+        </div>
+        <div class="context-card">
+          <span class="text text--caption context-label">Muted · --muted-foreground</span>
+          <span class="text ${roleClass} text--muted context-sample">${role.context}</span>
+        </div>
+        <div class="context-card context-card--inverse">
+          <span class="text text--caption context-label">Inverse · --on-dark</span>
+          <span class="text ${roleClass} text--inverse context-sample">${role.context}</span>
+        </div>
+        <div class="context-card">
+          <span class="text text--caption context-label">Disabled · --opacity-disabled</span>
+          <span class="text ${roleClass} text--disabled context-sample" aria-disabled="true">${role.context}</span>
+        </div>
+        <div class="context-card">
+          <span class="text text--caption context-label">Semantic · success / warning / destructive / info</span>
+          <div class="feedback-grid">
+            <span class="feedback-chip feedback-chip--success" aria-label="Success"><span class="text ${roleClass} text--success context-sample">S</span></span>
+            <span class="feedback-chip feedback-chip--warning" aria-label="Warning"><span class="text ${roleClass} text--warning context-sample">W</span></span>
+            <span class="feedback-chip feedback-chip--destructive" aria-label="Destructive"><span class="text ${roleClass} text--destructive context-sample">D</span></span>
+            <span class="feedback-chip feedback-chip--info" aria-label="Information"><span class="text ${roleClass} text--info context-sample">I</span></span>
+          </div>
+        </div>
+      </div>
+    </section>`;
+};
+
+document.getElementById("type-matrix").innerHTML = roles.map(roleRow).join("");
+</script>
 
 </body>
 </html>

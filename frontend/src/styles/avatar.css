@@ -208,10 +208,19 @@
 .avatar--interactive.is-hover {
   box-shadow: var(--shadow-subtle);
 }
+.avatar--interactive:active,
+.avatar--interactive.is-active {
+  box-shadow: inset 0 0 0 var(--border-width-strong) var(--selected-border);
+}
 .avatar--interactive:focus-visible,
 .avatar--interactive.is-focus-visible {
   outline: none;
   box-shadow: 0 0 0 var(--ring-width) var(--ring-focus);
+}
+.avatar--interactive:disabled,
+.avatar--interactive.is-disabled {
+  opacity: var(--opacity-disabled);
+  cursor: not-allowed;
 }
 
 @media (prefers-reduced-motion: reduce) {

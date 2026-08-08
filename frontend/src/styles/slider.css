@@ -111,7 +111,7 @@
   height: var(--_track-h);
   border-radius: var(--radius-full);
   background: linear-gradient(
-    90deg,
+    to right,
     var(--primary) var(--_fill, 50%),
     var(--surface-cream-strong) var(--_fill, 50%)
   );
@@ -120,7 +120,7 @@
   height: var(--_track-h);
   border-radius: var(--radius-full);
   background: linear-gradient(
-    90deg,
+    to right,
     var(--primary) var(--_fill, 50%),
     var(--surface-cream-strong) var(--_fill, 50%)
   );
@@ -234,6 +234,10 @@
 
   position: relative;
   height: var(--control-height);
+  min-inline-size: unset;
+  margin: unset;
+  padding: unset;
+  border: unset;
 }
 .slider-range:has(.slider--sm) {
   --_track-h: var(--slider-track-height-sm);
@@ -258,7 +262,7 @@
   height: var(--_track-h);
   border-radius: var(--radius-full);
   background: linear-gradient(
-    90deg,
+    to right,
     var(--surface-cream-strong) var(--_fill-a, 25%),
     var(--primary) var(--_fill-a, 25%),
     var(--primary) var(--_fill-b, 75%),
@@ -313,7 +317,7 @@
 .slider-field__label {
   font-family: var(--font-sans);
   font-size: var(--text-body-md);
-  font-weight: 400;
+  font-weight: var(--font-weight-regular);
   line-height: var(--text-body-md--line-height);
   color: var(--foreground-strong);
 }

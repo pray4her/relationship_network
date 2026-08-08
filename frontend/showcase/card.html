@@ -31,6 +31,13 @@
   .demo-caption { margin-bottom: var(--space-3); color: var(--caption-foreground); }
   .demo-cell { display: grid; gap: var(--space-3); justify-items: stretch; }
   .demo-cell > .card { height: 100%; }
+  .card-state-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: var(--space-6); }
+  .card-state-item { display: grid; gap: var(--space-3); }
+  .matrix-card { min-height: 100%; }
+  .matrix-card .card__media { display: grid; place-items: center; min-height: var(--space-24); background: var(--surface-dark); }
+  .matrix-card__media-mark { width: var(--space-12); height: var(--space-12); border-radius: var(--radius-full); background: var(--primary); }
+  .matrix-card .card__actions { margin-top: auto; }
+  @media (max-width: 900px) { .card-state-grid { grid-template-columns: 1fr; } }
 </style>
 </head>
 <body>
@@ -59,7 +66,10 @@
 
   <!-- ===================== Variants ===================== -->
   <section class="demo-block" aria-labelledby="variants-heading">
-    <h2 class="text text--h5" id="variants-heading">Variants</h2>
+    <h2 class="text text--h5" id="variants-heading">Full variant matrix — identical content structure</h2>
+    <div class="card-state-grid" id="card-variant-matrix"></div>
+    <p class="text text--caption demo-note">Every card above carries the same media, title, description, body, and actions. Only the documented surface variant changes.</p>
+    <h3 class="text text--title-sm" style="margin-block: var(--space-8) var(--space-4);">Surface-only comparison</h3>
     <div class="demo-grid">
       <div class="demo-cell">
         <p class="text text--caption demo-caption">default — --card fill, no border (feature-card recipe)</p>
@@ -159,7 +169,9 @@
 
   <!-- ===================== Interactive states ===================== -->
   <section class="demo-block" aria-labelledby="states-heading">
-    <h2 class="text text--h5" id="states-heading">Interactive states (pattern A — root is the &lt;a&gt;)</h2>
+    <h2 class="text text--h5" id="states-heading">Full interactive state matrix — identical content structure</h2>
+    <div class="card-state-grid" id="card-interaction-matrix"></div>
+    <h3 class="text text--title-sm" style="margin-block: var(--space-8) var(--space-4);">Compact state comparison</h3>
     <div class="demo-grid">
       <div class="demo-cell">
         <p class="text text--caption demo-caption">default</p>
@@ -197,11 +209,11 @@
         </a>
       </div>
       <div class="demo-cell">
-        <p class="text text--caption demo-caption">disabled — --opacity-disabled, aria-disabled, no href</p>
-        <a class="card card--interactive is-disabled" aria-disabled="true">
+        <p class="text text--caption demo-caption">disabled — --opacity-disabled, native disabled button</p>
+        <button class="card card--interactive is-disabled" type="button" disabled>
           <h3 class="card__title">Senior Backend Engineer</h3>
           <p class="card__description">Platform team · Remote</p>
-        </a>
+        </button>
       </div>
       <div class="demo-cell">
         <p class="text text--caption demo-caption">elevated + hover — lifts to --shadow-lift</p>
@@ -263,6 +275,34 @@
   </section>
 
 </main>
+
+<script>
+  const cardMedia = `<div class="card__media" aria-hidden="true"><span class="matrix-card__media-mark"></span></div>`;
+  const cardContent = (label) => `${cardMedia}<div class="card__header"><div><h3 class="card__title">Senior Backend Engineer</h3><p class="card__description">Platform team · Remote · ${label}</p></div></div><div class="card__body"><p>Own a high-impact hiring workflow and collaborate with a focused global team.</p></div><div class="card__actions" aria-label="Card actions"><span class="btn btn--primary btn--sm">View role</span><span class="btn btn--secondary btn--sm">Save</span></div>`;
+  const cardItem = (label, classes, attributes = "") => `<div class="card-state-item"><span class="text text--caption demo-caption">${label}</span><button class="card matrix-card ${classes}" type="button" ${attributes}>${cardContent(label)}</button></div>`;
+  const cardVariants = [
+    ["default", ""],
+    ["outlined", "card--outlined"],
+    ["elevated", "card--elevated"],
+    ["interactive", "card--interactive"],
+    ["selected", "card--selected"],
+  ];
+  document.querySelector("#card-variant-matrix").innerHTML = cardVariants
+    .map(([label, classes]) => cardItem(label, classes))
+    .join("");
+
+  const cardStates = [
+    ["default", "card--interactive", ""],
+    ["hover", "card--interactive is-hover", ""],
+    ["active", "card--interactive is-active", ""],
+    ["focus-visible", "card--interactive is-focus-visible", ""],
+    ["selected", "card--interactive card--selected", "aria-pressed='true'"],
+    ["disabled", "card--interactive is-disabled", "disabled"],
+  ];
+  document.querySelector("#card-interaction-matrix").innerHTML = cardStates
+    .map(([label, classes, attributes]) => cardItem(label, classes, attributes))
+    .join("");
+</script>
 
 </body>
 </html>

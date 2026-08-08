@@ -69,12 +69,11 @@
      hover           bg --accent (token note: "hover/tab-active bg"),
                      color --accent-foreground
      pressed         bg --surface-cream-strong
-     selected        [aria-selected="true"] → bg --surface-cream-strong
-                     (token note: "active tabs, emphasized bands"), color
-                     --foreground. The spec's static .tab-active used
-                     --card; selection is promoted to --surface-cream-strong
-                     so hover (--accent, same tone as --card) and selected
-                     stay visually distinct
+     selected        [aria-selected="true"] → bg --selected-bg
+                     (semantic selection surface), color --foreground.
+                     The token currently resolves one tone deeper than hover
+                     (--accent), so the states stay visually distinct while
+                     the component retains selection semantics
    BADGE
      composed        a real .badge (badge.css), unmodified; the tab only
                      keeps it from shrinking (flex none)
@@ -192,7 +191,7 @@
 }
 
 .tabs--contained .tabs__tab[aria-selected="true"] {
-  background: var(--surface-cream-strong);
+  background: var(--selected-bg);
   color: var(--foreground);
 }
 

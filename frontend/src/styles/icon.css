@@ -37,8 +37,9 @@
    chrome         padding --space-1   border --border-width solid transparent
                   radius --radius-sm   background transparent
    hover/active   icon color shifts to the *-hover / *-active token above
-                  (.is-hover / .is-active / .is-focus force the state for static
-                  showcase — precedent: .is-active in design-system.html)
+                  (.is-hover / .is-active / .is-focus-visible force the state
+                  for static showcase — precedent: .is-active in
+                  design-system.html; .is-focus remains a compatibility alias)
    focus-visible  box-shadow 0 0 0 --ring-width --ring-focus
    disabled       opacity --opacity-disabled, pointer-events off
 
@@ -116,6 +117,7 @@
   transition:
     color var(--duration-fast) var(--ease-standard),
     background-color var(--duration-fast) var(--ease-standard),
+    opacity var(--duration-fast) var(--ease-standard),
     box-shadow var(--duration-fast) var(--ease-standard);
 }
 
@@ -179,8 +181,10 @@
   color: var(--inverse-active);
 }
 
-/* focus-visible (.is-focus forces it for static showcase) */
+/* focus-visible (.is-focus-visible is the canonical static mirror;
+   .is-focus remains compatible with existing composed showcases) */
 .icon-btn:focus-visible,
+.icon-btn.is-focus-visible,
 .icon-btn.is-focus {
   outline: none;
   box-shadow: 0 0 0 var(--ring-width) var(--ring-focus);

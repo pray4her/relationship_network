@@ -56,8 +56,9 @@
                  --shadow-subtle intentionally not used on buttons.
    icon size     --icon-size-sm; path stroke --stroke-width-icon
    spinner size  --icon-size-sm, ring thickness --space-0-5
-   motion        --duration-fast --ease-standard (color/border/shadow);
-                 spinner spin --duration-slow linear infinite
+   motion        state transitions --duration-fast --ease-standard;
+                 loading rotation --duration-loading --ease-linear,
+                 full cycle --motion-rotation-full
    full-width    .btn--full sets width:100% — layout property, no token
                  needed; height/padding tokens unchanged
 
@@ -155,6 +156,10 @@
   height: var(--control-height-sm);
   padding: 0 var(--button-padding-inline-sm);
 }
+.btn--md {
+  height: var(--control-height);
+  padding: 0 var(--button-padding-inline);
+}
 .btn--lg {
   height: var(--control-height-lg);
   padding: 0 var(--button-padding-inline-lg);
@@ -209,7 +214,7 @@
   visibility: hidden;
 }
 .btn.is-loading:disabled {
-  opacity: 1;
+  opacity: initial;
 }
 
 /* Border color is the variant's foreground token, set explicitly per
@@ -223,7 +228,7 @@
   height: var(--icon-size-sm);
   border: var(--space-0-5) solid transparent;
   border-radius: var(--radius-full);
-  animation: btn-spin var(--duration-slow) linear infinite;
+  animation: btn-loading-spin var(--duration-loading) var(--ease-linear) infinite;
 }
 .btn--primary .btn__spinner {
   border-color: var(--primary-foreground);
@@ -246,9 +251,9 @@
   display: none;
 }
 
-@keyframes btn-spin {
+@keyframes btn-loading-spin {
   to {
-    rotate: 360deg;
+    rotate: var(--motion-rotation-full);
   }
 }
 
@@ -256,6 +261,7 @@
   .btn {
     transition: none;
   }
+
   .btn__spinner {
     animation: none;
   }

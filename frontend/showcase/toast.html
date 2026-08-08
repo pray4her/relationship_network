@@ -203,6 +203,22 @@
 
   <hr class="separator separator--horizontal separator--subtle" role="presentation">
 
+  <section class="demo-block" aria-labelledby="control-states-heading">
+    <h2 class="text text--h5" id="control-states-heading">Close action state matrix</h2>
+    <p class="text text--body-sm demo-lede">
+      Identical Toast geometry with the private close action held in every applicable state.
+    </p>
+    <div class="state-grid">
+      <div class="state-cell"><span class="text text--caption state-caption">default</span><div class="toast toast--neutral toast--visible"><div class="toast__body"><h3 class="toast__title">Default close</h3><p class="toast__description">Resting control.</p></div><button class="toast__close" type="button" aria-label="Dismiss, default"><svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="m7 7 10 10M17 7 7 17" stroke="currentColor" stroke-linecap="round"/></svg></button></div></div>
+      <div class="state-cell"><span class="text text--caption state-caption">hover</span><div class="toast toast--neutral toast--visible"><div class="toast__body"><h3 class="toast__title">Hover close</h3><p class="toast__description">Accent surface.</p></div><button class="toast__close is-hover" type="button" aria-label="Dismiss, hover" tabindex="-1"><svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="m7 7 10 10M17 7 7 17" stroke="currentColor" stroke-linecap="round"/></svg></button></div></div>
+      <div class="state-cell"><span class="text text--caption state-caption">active</span><div class="toast toast--neutral toast--visible"><div class="toast__body"><h3 class="toast__title">Active close</h3><p class="toast__description">Pressed selection surface.</p></div><button class="toast__close is-active" type="button" aria-label="Dismiss, active" tabindex="-1"><svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="m7 7 10 10M17 7 7 17" stroke="currentColor" stroke-linecap="round"/></svg></button></div></div>
+      <div class="state-cell"><span class="text text--caption state-caption">focus-visible</span><div class="toast toast--neutral toast--visible"><div class="toast__body"><h3 class="toast__title">Focused close</h3><p class="toast__description">Shared focus ring.</p></div><button class="toast__close is-focus-visible" type="button" aria-label="Dismiss, focus-visible" tabindex="-1"><svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="m7 7 10 10M17 7 7 17" stroke="currentColor" stroke-linecap="round"/></svg></button></div></div>
+      <div class="state-cell"><span class="text text--caption state-caption">disabled</span><div class="toast toast--neutral toast--visible"><div class="toast__body"><h3 class="toast__title">Disabled close</h3><p class="toast__description">Native disabled + opacity.</p></div><button class="toast__close" type="button" aria-label="Dismiss, disabled" disabled><svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="m7 7 10 10M17 7 7 17" stroke="currentColor" stroke-linecap="round"/></svg></button></div></div>
+    </div>
+  </section>
+
+  <hr class="separator separator--horizontal separator--subtle" role="presentation">
+
   <!-- ===================== Lifecycle states ===================== -->
   <section class="demo-block" aria-labelledby="states-heading">
     <h2 class="text text--h5" id="states-heading">Lifecycle — entering · visible · exiting</h2>

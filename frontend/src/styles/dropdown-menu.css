@@ -1,0 +1,569 @@
+/* ==========================================================================
+   DropdownMenu
+   Token mapping — every value below references tokens.css, nothing else.
+
+   A transient anchored menu of actions, opened by a trigger button
+   (aria-haspopup="menu", aria-expanded, aria-controls → panel id). The
+   panel is role="menu"; every item is a NATIVE <button> carrying its
+   menu role — menuitem, menuitemcheckbox (aria-checked), menuitemradio
+   (aria-checked), or menuitem with aria-haspopup="menu" + aria-expanded
+   for a submenu branch — so native disabled semantics and screen-reader
+   announcements come for free. Groups are role="group" labelled by a
+   non-interactive label row; separators are <hr role="separator">.
+
+   Keyboard contract (behaviour layer, implemented in the showcase
+   script): ArrowDown/ArrowUp move focus through the enabled items of the
+   open panel (wrapping); Home/End jump to the ends; Enter/Space
+   activates — actions run and close the menu, checkbox items toggle and
+   stay open, radio items select within their group and stay open,
+   submenu triggers open their branch; ArrowRight opens a submenu and
+   enters it, ArrowLeft (or Escape inside one) closes it and returns
+   focus to its trigger; Escape closes the root menu and refocuses the
+   trigger; Tab closes; printable characters run type-ahead. The menu
+   role replaces the button semantics on each item, so roving tabindex
+   keeps exactly one item per panel in the tab order.
+
+   Anatomy (markup contract):
+     .dropdown-menu                wrapper <span>; the positioning context
+     (trigger)                     first child: a reused .btn with
+                                   aria-haspopup / aria-expanded /
+                                   aria-controls → panel id
+     .dropdown-menu__panel         role="menu" <div>; tabindex="-1";
+                                   data-open while shown; scrolls past
+                                   --menu-max-height
+     .dropdown-menu__item          <button role="menuitem"> (also the
+                                   checkbox / radio / submenu roles)
+     .dropdown-menu__icon          optional leading SVG; currentColor,
+                                   stroke-based
+     .dropdown-menu__label         the item text; flex 1 + min-width 0 so
+                                   long labels wrap instead of shoving the
+                                   shortcut out
+     .dropdown-menu__shortcut      optional trailing <kbd>
+     .dropdown-menu__indicator     reserved leading slot on checkbox and
+                                   radio items; reserves the column so
+                                   checked and unchecked rows align
+     .dropdown-menu__check         the check / dot glyph inside the slot;
+                                   visibility carries the checked state
+     .dropdown-menu__chevron       right-chevron SVG on submenu triggers;
+                                   rotates 180deg when the branch expands
+     .has-submenu                  a submenu trigger item; the submenu's
+                                   positioning context
+     .dropdown-menu__submenu       nested role="menu" panel anchored to
+                                   its trigger; same lifecycle as the root
+     .dropdown-menu__separator     <hr role="separator">
+     .dropdown-menu__group-label   <p role="presentation"> heading a group
+     .is-open / .is-opening / .is-closing / .is-hover / .is-focus-visible
+                                   static showcase mirrors (.is-hover /
+                                   Tabs precedent)
+
+   Item types:
+     standard          label, optional trailing shortcut
+     icon + label      leading SVG at --icon-size-sm, currentColor
+     checkbox item     reserved indicator slot; aria-checked drives the
+                       check's visibility; toggling keeps the menu open
+     radio item        reserved indicator slot; the checked member of the
+                       group shows a filled dot; selecting keeps the menu
+                       open (multiple choice)
+     submenu trigger   trailing chevron; aria-expanded=true keeps the
+                       trigger row highlighted while its branch is open
+     destructive       the item IS the error affordance — no second icon
+                       slot is consumed; dedicated destructive hover /
+                       active tokens carry the interaction
+     separator         full-bleed hairline between groups
+     group label       uppercase overline row; non-interactive, skipped by
+                       the keyboard layer
+
+   PROPERTY → TOKEN
+   ─────────────────────────────────────────────────────────────────────────
+   MENU SURFACE (root panel and submenu panels alike)
+     background      --popover with --popover-foreground (the tokens' stated
+                     role: floating panel)
+     border          --border-width solid --border
+     radius          --radius-md (the select-menu precedent — anchored
+                     menus take the control radius, not the card rung)
+     shadow          --shadow-lift (the elevated-surface lift; tokens.css
+                     notes shadows are rare — a floating menu qualifies)
+     layering        --z-dropdown (the token's stated role: anchored menus)
+     width           min-width var(--sidebar-width) (256px, the app-rail
+                     rung — a menu never collapses under its longest row);
+                     max-width calc(var(--space-16) * 8) — 512px composed
+                     from the spacing scale (popover.css precedent)
+     height          max-height --menu-max-height (six option rows), then
+                     overflow-y auto scrolls; focus-follows-keyboard lands
+                     items in view because the panel is the scroll
+                     container
+     padding         --space-1 block (the menu's top/bottom gutter); the
+                     inline gutter lives on the items and labels so
+                     separators run full-bleed (select.css precedent)
+   ITEM GEOMETRY
+     layout          flex, center-aligned, width 100%, text-align left;
+                     min-height calc(var(--control-height-sm) + var(
+                     --space-1)) — 36px: the smallest control rung plus
+                     one micro rung, composed, no invented number; the
+                     floor survives label wrap on narrow panels
+     padding         block --space-1, inline-start --space-2,
+                     inline-end --space-3 (items are inset from the
+                     panel's rounded edge, select.css precedent); the
+                     min-height floor keeps single-line rows at 36px and
+                     wrapped labels keep their breathing room
+     radius          --radius-xs (the option-row rounding rung, select.css
+                     precedent)
+     gaps            --space-2 between icon / indicator / label;
+                     --space-3 before the shortcut and the chevron
+   ITEM TEXT
+     typography      --text-nav-link (+ --line-height) at
+                     --font-weight-medium, --font-sans, color
+                     --foreground — the 14px control-label rung
+     motion          background-color / box-shadow / color,
+                     --duration-fast --ease-standard
+   HIGHLIGHTED (hover or keyboard focus)
+     surface         background --accent (the token's stated role:
+                     "hover/tab-active bg"; the select-option highlight)
+     focus ring      outline none + 0 0 0 --ring-width --ring-focus (the
+                     shared ring recipe). The ring rides the :focus
+                     pseudo-class — not :focus-visible — because menu
+                     focus is programmatic (roving); :focus-visible never
+                     matches a scripted .focus() call, and a menu's focus
+                     position must always be visible
+     checked + focus checked items stack the ring ON TOP of the --accent
+                     fill via two box-shadows (the accordion precedent),
+                     so selection and focus never collide
+   SELECTED / CHECKED
+     indicator       the reserved slot's glyph — a check on checkbox
+                     items, a filled dot on radio items; the slot is
+                     --icon-size-sm (--space-2 glyph inside) in
+                     currentColor, so the mark inherits the item's ink in
+                     every state; checked = visibility visible, unchecked
+                     = hidden (the select__check precedent)
+     surface         no fill change — the leading indicator IS the
+                     selected read; hover stays --accent on top of it
+   DESTRUCTIVE ITEM
+     text            --destructive at rest (the item IS the error
+                     affordance)
+     hover           --destructive-hover over the shared --accent fill
+                     (the dedicated destructive interaction tokens)
+     active          --destructive-active
+   SUBMENU TRIGGER
+     chevron         --icon-size-sm, --stroke-width-icon, color
+                     --muted-foreground; margin-inline-start auto pins it
+                     to the row's end; rotate(180deg) when
+                     aria-expanded="true" over --duration-normal
+                     --ease-standard (the accordion-chevron mechanic —
+                     rotation carries no themed magnitude)
+     open trigger    [aria-expanded="true"] background --accent — the
+                     expanded branch keeps its row highlighted while focus
+                     is inside the submenu; hover steps to
+                     --surface-cream-pressed (the accordion-open hover
+                     recipe)
+   DISABLED ITEM
+     treatment       opacity --opacity-disabled + cursor not-allowed (the
+                     house disabled recipe); native <button disabled>
+                     blocks pointer and keyboard; the roving layer skips
+                     disabled items entirely
+   SEPARATOR
+     rule            margin block --space-1 (meets the panel's block
+                     gutter = --space-2 rhythm); border-block-end
+                     --border-width solid --border-soft (the quiet-divider
+                     hairline); full-bleed because the inline gutter lives
+                     on items and labels, not the panel
+   GROUP LABEL
+     typography      --text-caption-up (+ --line-height + tracking),
+                     --font-weight-medium, --font-sans, uppercase, color
+                     --caption-foreground (the fine-print voice)
+     padding         block --space-2, inline-start --space-3,
+                     inline-end --space-2 — one start rung deeper than an
+                     item's gutter, so the heading reads as above its
+                     group, not as a row of it
+   SHORTCUT HINT (.dropdown-menu__shortcut)
+     typography      --font-mono at --text-caption-up (+ --line-height),
+                     --font-weight-regular, color --caption-foreground;
+                     margin-inline-start auto pushes it to the row's end
+                     (the tooltip__kbd recipe, light-surface edition)
+   OPEN / CLOSE MOTION (the tooltip/popover lifecycle, reused verbatim)
+     closed          visibility hidden + opacity 0, parked --space-1
+                     toward the trigger — out of the accessibility tree
+                     and the tab order
+     opening         enter over --duration-normal --ease-standard
+                     (opacity + translate + visibility), travelling the
+                     parked --space-1
+     open            opacity 1, settled at the --space-2 offset below the
+                     trigger
+     closing         exit over --duration-fast, fading as it retreats;
+                     visibility holds until the fade lands
+   SUBMENU PANEL
+     surface         the root's recipe verbatim: --popover /
+                     --popover-foreground, --border-width solid --border,
+                     --radius-md, --shadow-lift, --space-1 block gutter,
+                     --font-sans; layering --z-dropdown; min-width
+                     --sidebar-width, max-width calc(var(--space-16) * 8);
+                     its OWN scroll cap --menu-max-height + overflow-y
+                     auto (a branch scrolls itself)
+     anchor          position absolute (escapes the parent row flow);
+                     left: 100%, margin-left calc(-1 * var(--space-1));
+                     top 50% + translate 0 -50% — the branch overlaps the
+                     parent's edge by --space-1 so the pointer can travel
+                     into it without losing the hover
+     parent scroll   a root panel that owns branches drops the scroll cap
+                     (:has(.dropdown-menu__submenu) → max-height none,
+                     overflow visible) — a scroll container would clip the
+                     escaping branch behind a horizontal scrollbar; flat
+                     menus keep --menu-max-height
+     motion          closed parks translate var(--space-1) -50% (toward
+                     the trigger) over --duration-fast; open settles at
+                     0 -50% over --duration-normal — the same enter/exit
+                     curves as the root panel, travelled horizontally
+   TRIGGER TREATMENT
+     while open      the reused .btn's own expanded treatment is owned by
+                     button.css; this component adds nothing to the
+                     trigger
+   FOCUS ON THE PANEL   .dropdown-menu__panel:focus-visible →
+                     --shadow-lift stacked with 0 0 0 --ring-width
+                     --ring-focus (programmatic open-focus does not match
+                     :focus-visible; keyboard users who tab back to the
+                     panel see the shared ring)
+   REDUCED MOTION    transitions removed from items, chevrons, and both
+                     panel generations — open/close becomes instant;
+                     visibility still gates tree and tab order.
+
+   TOKEN NOTES: no new tokens were needed — every role mapped to an
+   existing token, including --menu-max-height and --z-dropdown shipped
+   for anchored menus. Documented compositions: the 36px item floor is
+   calc(--control-height-sm + --space-1); the panel gutters are
+   --space-1 block with the inline gutter composed onto items
+   (--space-2 + --space-3 = --space-3 column for every label); the
+   submenu overlap is one --space-1. "Mechanic" values carrying no themed
+   magnitude: the 180deg chevron rotation and translate -50% centering.
+   ========================================================================== */
+
+.dropdown-menu {
+  position: relative;
+  display: inline-flex;
+}
+
+/* ===== Panel (closed by default) ===== */
+
+.dropdown-menu__panel {
+  position: absolute;
+  top: calc(100% + var(--space-2));
+  left: 0;
+  z-index: var(--z-dropdown);
+  display: flex;
+  flex-direction: column;
+  min-width: var(--sidebar-width);
+  max-width: calc(var(--space-16) * 8);
+  max-height: var(--menu-max-height);
+  overflow-y: auto;
+  padding-block: var(--space-1);
+  border: var(--border-width) solid var(--border);
+  border-radius: var(--radius-md);
+  background: var(--popover);
+  color: var(--popover-foreground);
+  box-shadow: var(--shadow-lift);
+  font-family: var(--font-sans);
+  opacity: 0;
+  visibility: hidden;
+  /* closed park: --space-1 toward the trigger; closing curve */
+  translate: 0 calc(-1 * var(--space-1));
+  transition:
+    opacity var(--duration-fast) var(--ease-standard),
+    translate var(--duration-fast) var(--ease-standard),
+    visibility var(--duration-fast);
+}
+
+.dropdown-menu__panel:focus-visible {
+  outline: none;
+  box-shadow:
+    var(--shadow-lift),
+    0 0 0 var(--ring-width) var(--ring-focus);
+}
+
+/* A panel that owns branches cannot be a scroll container: the
+   absolutely positioned submenu must escape the panel, and overflow
+   would clip it behind a horizontal scrollbar. Flat menus keep the
+   --menu-max-height cap. */
+.dropdown-menu__panel:has(.dropdown-menu__submenu) {
+  max-height: none;
+  overflow: visible;
+}
+
+/* ===== Open (data-open or static mirror) =====
+   The enter curve is declared here so opening travels while closing
+   fades. */
+
+.dropdown-menu[data-open] .dropdown-menu__panel,
+.dropdown-menu .dropdown-menu__panel.is-open {
+  opacity: 1;
+  visibility: visible;
+  translate: 0 0;
+  transition:
+    opacity var(--duration-normal) var(--ease-standard),
+    translate var(--duration-normal) var(--ease-standard),
+    visibility var(--duration-normal);
+}
+
+/* ===== Static mirrors of the transitional frames =====
+   opening: early enter frame — half opacity, mid-travel;
+   closing: late exit frame — half opacity, fully retreated. */
+
+.dropdown-menu__panel.is-opening {
+  opacity: var(--opacity-disabled);
+  visibility: visible;
+  translate: 0 calc(-1 * var(--space-0-5));
+}
+
+.dropdown-menu__panel.is-closing {
+  opacity: var(--opacity-disabled);
+  visibility: visible;
+}
+
+/* ===== Items ===== */
+
+.dropdown-menu__item {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  width: 100%;
+  min-height: calc(var(--control-height-sm) + var(--space-1));
+  padding-block: var(--space-1);
+  padding-inline: var(--space-2) var(--space-3);
+  border: 0;
+  border-radius: var(--radius-xs);
+  background: transparent;
+  cursor: pointer;
+  text-align: left;
+  font-family: var(--font-sans);
+  font-size: var(--text-nav-link);
+  font-weight: var(--font-weight-medium);
+  line-height: var(--text-nav-link--line-height);
+  color: var(--foreground);
+  transition:
+    background-color var(--duration-fast) var(--ease-standard),
+    box-shadow var(--duration-fast) var(--ease-standard),
+    color var(--duration-fast) var(--ease-standard);
+}
+
+/* ===== Highlighted: hover or keyboard focus ===== */
+
+.dropdown-menu__item:hover:not(:disabled),
+.dropdown-menu__item.is-hover {
+  background: var(--accent);
+}
+
+/* :focus (not :focus-visible): menu focus is programmatic roving, so the
+   ring must always show. Checked items stack the ring over the accent
+   fill below. */
+.dropdown-menu__item:focus,
+.dropdown-menu__item.is-focus-visible:not([aria-checked="true"]) {
+  outline: none;
+  background: var(--accent);
+  box-shadow: 0 0 0 var(--ring-width) var(--ring-focus);
+}
+
+/* ===== Selected / checked =====
+   The reserved indicator slot carries the state; the surface stays
+   quiet so hover reads as hover. */
+
+.dropdown-menu__indicator {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: none;
+  width: var(--icon-size-sm);
+  height: var(--icon-size-sm);
+}
+
+.dropdown-menu__check {
+  width: var(--space-2);
+  height: var(--space-2);
+  visibility: hidden;
+}
+
+.dropdown-menu__check path {
+  stroke: currentColor;
+  stroke-width: var(--stroke-width-icon);
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.dropdown-menu__check circle {
+  fill: currentColor;
+}
+
+.dropdown-menu__item[aria-checked="true"] .dropdown-menu__check {
+  visibility: visible;
+}
+
+.dropdown-menu__item[aria-checked="true"]:focus,
+.dropdown-menu__item[aria-checked="true"].is-focus-visible {
+  box-shadow:
+    0 0 0 var(--ring-width) var(--ring-focus);
+  background: var(--accent);
+}
+
+/* ===== Destructive item ===== */
+
+.dropdown-menu__item--destructive {
+  color: var(--destructive);
+}
+
+.dropdown-menu__item--destructive:hover:not(:disabled),
+.dropdown-menu__item--destructive.is-hover {
+  background: var(--accent);
+  color: var(--destructive-hover);
+}
+
+.dropdown-menu__item--destructive:active:not(:disabled) {
+  background: var(--accent);
+  color: var(--destructive-active);
+}
+
+/* ===== Disabled item ===== */
+
+.dropdown-menu__item:disabled {
+  opacity: var(--opacity-disabled);
+  cursor: not-allowed;
+}
+
+/* ===== Item contents ===== */
+
+.dropdown-menu__icon {
+  width: var(--icon-size-sm);
+  height: var(--icon-size-sm);
+  flex: none;
+  stroke-width: var(--stroke-width-icon);
+}
+
+.dropdown-menu__label {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.dropdown-menu__shortcut {
+  flex: none;
+  margin-inline-start: auto;
+  font-family: var(--font-mono);
+  font-size: var(--text-caption-up);
+  font-weight: var(--font-weight-regular);
+  line-height: var(--text-caption-up--line-height);
+  color: var(--caption-foreground);
+}
+
+/* ===== Separator ===== */
+
+.dropdown-menu__separator {
+  margin-block: var(--space-1);
+  border: 0;
+  border-block-end: var(--border-width) solid var(--border-soft);
+}
+
+/* ===== Group label ===== */
+
+.dropdown-menu__group-label {
+  margin: 0;
+  padding-block: var(--space-2);
+  padding-inline: var(--space-3) var(--space-2);
+  font-family: var(--font-sans);
+  font-size: var(--text-caption-up);
+  font-weight: var(--font-weight-medium);
+  line-height: var(--text-caption-up--line-height);
+  letter-spacing: var(--text-caption-up--letter-spacing);
+  text-transform: uppercase;
+  color: var(--caption-foreground);
+}
+
+/* ===== Submenu ===== */
+
+.dropdown-menu__chevron {
+  width: var(--icon-size-sm);
+  height: var(--icon-size-sm);
+  flex: none;
+  margin-inline-start: var(--space-3);
+  stroke-width: var(--stroke-width-icon);
+  color: var(--muted-foreground);
+  transition: transform var(--duration-normal) var(--ease-standard);
+}
+
+.dropdown-menu__item[aria-expanded="true"] .dropdown-menu__chevron {
+  transform: rotate(180deg);
+}
+
+/* The expanded branch keeps its trigger row highlighted; hover steps one
+   cream deeper (the accordion-open hover recipe). */
+.dropdown-menu__item[aria-expanded="true"] {
+  background: var(--accent);
+}
+
+.dropdown-menu__item[aria-expanded="true"]:hover:not(:disabled),
+.dropdown-menu__item[aria-expanded="true"].is-hover {
+  background: var(--surface-cream-pressed);
+}
+
+.has-submenu {
+  position: relative;
+}
+
+/* Submenu panel — the root's full floating-panel recipe (surface, chrome,
+   widths, scroll cap), positioned absolutely so it escapes the parent's
+   row flow; anchored one --space-1 over the parent's edge so the pointer
+   can cross without losing the hover. */
+.dropdown-menu__submenu {
+  position: absolute;
+  z-index: var(--z-dropdown);
+  display: flex;
+  flex-direction: column;
+  min-width: var(--sidebar-width);
+  max-width: calc(var(--space-16) * 8);
+  max-height: var(--menu-max-height);
+  overflow-y: auto;
+  padding-block: var(--space-1);
+  border: var(--border-width) solid var(--border);
+  border-radius: var(--radius-md);
+  background: var(--popover);
+  color: var(--popover-foreground);
+  box-shadow: var(--shadow-lift);
+  font-family: var(--font-sans);
+  top: 50%;
+  left: 100%;
+  margin-left: calc(-1 * var(--space-1));
+  opacity: 0;
+  visibility: hidden;
+  /* closed park: --space-1 toward the trigger; closing curve */
+  translate: var(--space-1) -50%;
+  transition:
+    opacity var(--duration-fast) var(--ease-standard),
+    translate var(--duration-fast) var(--ease-standard),
+    visibility var(--duration-fast);
+}
+
+.dropdown-menu__item[aria-expanded="true"] + .dropdown-menu__submenu,
+.dropdown-menu__submenu.is-open {
+  opacity: 1;
+  visibility: visible;
+  translate: 0 -50%;
+  transition:
+    opacity var(--duration-normal) var(--ease-standard),
+    translate var(--duration-normal) var(--ease-standard),
+    visibility var(--duration-normal);
+}
+
+.dropdown-menu__submenu.is-opening {
+  opacity: var(--opacity-disabled);
+  visibility: visible;
+  translate: var(--space-0-5) -50%;
+}
+
+.dropdown-menu__submenu.is-closing {
+  opacity: var(--opacity-disabled);
+  visibility: visible;
+}
+
+/* ===== Reduced motion ===== */
+
+@media (prefers-reduced-motion: reduce) {
+  .dropdown-menu__panel,
+  .dropdown-menu__submenu,
+  .dropdown-menu__item,
+  .dropdown-menu__chevron {
+    transition: none;
+  }
+}

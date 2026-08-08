@@ -14,6 +14,8 @@
      .field__description          helper text, id="{control-id}-desc"
      .field__error                error text, id="{control-id}-error",
                                   role="alert"
+     .field__success              success text, id="{control-id}-success",
+                                  role="status"
 
    Accessibility wiring (showcase demonstrates each):
      label       htmlFor → control id
@@ -32,10 +34,11 @@
                 --font-weight-regular, color --muted-foreground
    error        --font-sans, --text-caption (+ --line-height),
                 --font-weight-medium, color --destructive
+   success      --font-sans, --text-caption (+ --line-height),
+                --font-weight-medium, color --success
    count        --font-sans, --text-caption (+ --line-height),
                 --font-weight-regular, color --caption-foreground
-   success      description slot recolors to --success (token exists;
-                no extra tokens invented)
+   helper       remains --muted-foreground in every validation state
 
    STATE COORDINATION (the control keeps its own visuals — the field only
    reacts; :has() reads the child's real state, nothing is duplicated)
@@ -43,12 +46,16 @@
      focused-child    :has(.field__control :focus-visible) → label color
                       --foreground (one step stronger); the focus RING stays
                       the control's own job (--ring-width / --ring-focus)
+     filled-child     .field--filled → label --foreground-strong
      disabled-child   :has(.field__control :disabled) → label, description,
                       count at opacity --opacity-disabled; pointer cursor
                       off on the label
-     error            .field--error → .field__error visible, color
+     readonly-child   :has(.field__control [readonly]) → label
+                      --muted-foreground; control remains focusable
+     error            .field--error → label and .field__error use
                       --destructive; description stays in place
-     success          .field--success → description color --success
+     success          .field--success → .field__success visible with
+                      --success; description stays in place
 
    SPACING
      vertical rhythm  grid gap --space-2 (label→control→help)
@@ -115,33 +122,55 @@
   color: var(--muted-foreground);
 }
 
-.field__error {
+.field__error,
+.field__success {
   display: none;
   margin: 0;
   font-family: var(--font-sans);
   font-size: var(--text-caption);
   font-weight: var(--font-weight-medium);
   line-height: var(--text-caption--line-height);
+}
+
+.field__error {
   color: var(--destructive);
+}
+
+.field__success {
+  color: var(--success);
 }
 
 /* ===== State coordination ===== */
 
-.field:has(.field__control :focus-visible) .field__label {
+.field:has(.field__control :focus-visible) .field__label,
+.field--focused .field__label {
   color: var(--foreground);
 }
 
-.field:has(.field__control :disabled) :is(.field__label, .field__description, .field__count) {
+.field--filled .field__label {
+  color: var(--foreground-strong);
+}
+
+.field:has(.field__control :disabled)
+  :is(.field__label, .field__description, .field__count, .field__success) {
   opacity: var(--opacity-disabled);
 }
 .field:has(.field__control :disabled) .field__label {
   cursor: not-allowed;
 }
 
+.field:has(.field__control [readonly]) .field__label {
+  color: var(--muted-foreground);
+}
+
+.field--error .field__label {
+  color: var(--destructive);
+}
+
 .field--error .field__error {
   display: block;
 }
 
-.field--success .field__description {
-  color: var(--success);
+.field--success .field__success {
+  display: block;
 }
