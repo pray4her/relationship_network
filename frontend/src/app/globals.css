@@ -301,6 +301,8 @@
   --color-secondary-foreground: var(--secondary-foreground);
   --color-muted: var(--muted);
   --color-muted-foreground: var(--muted-foreground);
+  --color-muted-foreground-hover: var(--muted-foreground-hover);
+  --color-muted-foreground-active: var(--muted-foreground-active);
   --color-caption-foreground: var(--caption-foreground);
   --color-accent: var(--accent);
   --color-accent-foreground: var(--accent-foreground);
@@ -325,6 +327,8 @@
   --color-border-strong: var(--border-strong);
   --color-input: var(--input);
   --color-ring: var(--ring);
+  --color-selected-bg: var(--selected-bg);
+  --color-selected-border: var(--selected-border);
   --color-surface-soft: var(--surface-soft);
   --color-surface-cream-strong: var(--surface-cream-strong);
   --color-surface-dark: var(--surface-dark);
