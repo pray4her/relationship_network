@@ -3,6 +3,7 @@ import Link from "next/link"
 import { redirect } from "next/navigation"
 
 import { AdminGateNotice } from "@/components/admin/admin-gate-notice"
+import { Page, PageTitle } from "@/components/layout/page"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
@@ -93,13 +94,11 @@ export default async function AdminPage({ searchParams }: AdminPageProps) {
   }
 
   return (
-    <main className="mx-auto flex w-full max-w-7xl flex-col gap-6 px-6 py-6">
+    <Page>
       <section aria-labelledby="tenants-heading">
         <Card>
           <CardHeader>
-            <h1 className="text-2xl font-bold tracking-tight" id="tenants-heading">
-              租户管理
-            </h1>
+            <PageTitle id="tenants-heading">租户管理</PageTitle>
           </CardHeader>
           <CardContent className="flex flex-col gap-4">
             <form action="/admin" className="flex flex-wrap items-end gap-4" method="get">
@@ -220,6 +219,6 @@ export default async function AdminPage({ searchParams }: AdminPageProps) {
           </CardContent>
         </Card>
       </section>
-    </main>
+    </Page>
   )
 }

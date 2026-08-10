@@ -5,6 +5,7 @@ import { redirect } from "next/navigation"
 import { confirmOrderAction, rejectOrderAction } from "@/app/actions/admin"
 import { AdminGateNotice } from "@/components/admin/admin-gate-notice"
 import { OrderReviewAction } from "@/components/admin/order-review-action"
+import { Page, PageTitle } from "@/components/layout/page"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader } from "@/components/ui/card"
@@ -85,13 +86,11 @@ export default async function AdminOrdersPage({ searchParams }: AdminOrdersPageP
   }
 
   return (
-    <main className="mx-auto flex w-full max-w-7xl flex-col gap-6 px-6 py-6">
+    <Page>
       <section aria-labelledby="orders-heading">
         <Card>
           <CardHeader>
-            <h1 className="text-2xl font-bold tracking-tight" id="orders-heading">
-              订单审核
-            </h1>
+            <PageTitle id="orders-heading">订单审核</PageTitle>
           </CardHeader>
           <CardContent className="flex flex-col gap-4">
             <form action="/admin/orders" className="flex flex-wrap items-end gap-4" method="get">
@@ -171,6 +170,6 @@ export default async function AdminOrdersPage({ searchParams }: AdminOrdersPageP
           </CardContent>
         </Card>
       </section>
-    </main>
+    </Page>
   )
 }

@@ -5,6 +5,7 @@ import { redirect } from "next/navigation"
 import { tenantStatusAction } from "@/app/actions/admin"
 import { AdminGateNotice } from "@/components/admin/admin-gate-notice"
 import { TenantStatusAction } from "@/components/admin/tenant-status-action"
+import { Page, PageTitle } from "@/components/layout/page"
 import { Badge } from "@/components/ui/badge"
 import { Card, CardContent, CardHeader } from "@/components/ui/card"
 import { Table, TableBody, TableCell, TableHead, TableRow } from "@/components/ui/table"
@@ -62,13 +63,11 @@ export default async function AdminTenantPage({ params }: AdminTenantPageProps) 
   const tenant = result.tenant
 
   return (
-    <main className="mx-auto flex w-full max-w-7xl flex-col gap-6 px-6 py-6">
+    <Page>
       <section aria-labelledby="tenant-heading">
         <Card>
           <CardHeader>
-            <h1 className="text-2xl font-bold tracking-tight" id="tenant-heading">
-              {tenant.name}
-            </h1>
+            <PageTitle id="tenant-heading">{tenant.name}</PageTitle>
           </CardHeader>
           <CardContent className="flex flex-col gap-4">
             <Table>
@@ -127,6 +126,6 @@ export default async function AdminTenantPage({ params }: AdminTenantPageProps) 
           </CardContent>
         </Card>
       </section>
-    </main>
+    </Page>
   )
 }

@@ -9,13 +9,31 @@ import {
   memberStatusAction,
   revokeInvitationAction,
 } from "@/app/actions/members"
+import {
+  DataRegion,
+  DataRegionContent,
+  FormSection,
+  FormSectionContent,
+  FormSectionDescription,
+  FormSectionHeader,
+  FormSectionTitle,
+  Page,
+  PageDescription,
+  PageHeader,
+  PageHeaderContent,
+  PageSection,
+  PageSectionHeader,
+  PageSectionHeaderContent,
+  PageSectionTitle,
+  PageTitle,
+} from "@/components/layout/page"
 import { InviteForm } from "@/components/members/invite-form"
 import { MemberStatusActions } from "@/components/members/member-status-actions"
 import { RevokeInvitationButton } from "@/components/members/revoke-invitation-button"
 import { RoleAssignment } from "@/components/members/role-assignment"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Badge } from "@/components/ui/badge"
-import { Card, CardContent, CardHeader } from "@/components/ui/card"
+import { Empty, EmptyHeader, EmptyTitle } from "@/components/ui/empty"
 import {
   Table,
   TableBody,
@@ -46,20 +64,18 @@ function formatDateTime(value: string): string {
 
 const headClassName = "font-mono text-xs tracking-wider text-muted-foreground uppercase"
 
-function NoticeCard({ children }: { readonly children: React.ReactNode }) {
+function NoticePage({ children }: { readonly children: React.ReactNode }) {
   return (
-    <main className="mx-auto flex w-full max-w-7xl flex-col gap-6 px-6 py-6">
-      <Card>
-        <CardHeader>
-          <h1 className="text-2xl font-bold tracking-tight">成员管理</h1>
-        </CardHeader>
-        <CardContent>
-          <Alert>
-            <AlertDescription>{children}</AlertDescription>
-          </Alert>
-        </CardContent>
-      </Card>
-    </main>
+    <Page>
+      <PageHeader>
+        <PageHeaderContent>
+          <PageTitle>成员管理</PageTitle>
+        </PageHeaderContent>
+      </PageHeader>
+      <Alert>
+        <AlertDescription>{children}</AlertDescription>
+      </Alert>
+    </Page>
   )
 }
 
@@ -69,20 +85,20 @@ export default async function MembersPage() {
 
   if (!session) {
     return (
-      <NoticeCard>
+      <NoticePage>
         请先
         <Link className="font-medium underline underline-offset-4" href="/login">
           登录
         </Link>
         后查看租户成员。
-      </NoticeCard>
+      </NoticePage>
     )
   }
 
   const auth = await loadAuthSession(createAuthTransport(), session)
   if (auth.kind !== "authenticated") {
     return (
-      <NoticeCard>
+      <NoticePage>
         {auth.kind === "anonymous" ? (
           <>
             登录已过期，请
@@ -94,14 +110,14 @@ export default async function MembersPage() {
         ) : (
           "服务暂时不可用，请稍后再试。"
         )}
-      </NoticeCard>
+      </NoticePage>
     )
   }
 
   const permissions = auth.view.permissions
 
   if (auth.view.tenant === null) {
-    return <NoticeCard>你没有加入任何租户，无法查看租户成员。</NoticeCard>
+    return <NoticePage>你没有加入任何租户，无法查看租户成员。</NoticePage>
   }
 
   const canRead = permissions.includes("members:read")
@@ -109,7 +125,7 @@ export default async function MembersPage() {
   const canInvite = permissions.includes("members:invite")
 
   if (!canRead) {
-    return <NoticeCard>你没有查看租户成员的权限。</NoticeCard>
+    return <NoticePage>你没有查看租户成员的权限。</NoticePage>
   }
 
   const membersTransport = createMembersTransport()
@@ -126,143 +142,158 @@ export default async function MembersPage() {
   }
 
   if (membersResult.kind !== "ok" || invitationsResult.kind !== "ok") {
-    return <NoticeCard>成员数据暂时不可用，请稍后再试。</NoticeCard>
+    return <NoticePage>成员数据暂时不可用，请稍后再试。</NoticePage>
   }
 
   const roles = rolesResult.kind === "ok" ? rolesResult.roles : []
 
   return (
-    <main className="mx-auto flex w-full max-w-7xl flex-col gap-6 px-6 py-6">
-      <Card aria-labelledby="members-heading">
-        <CardHeader>
-          <h1 className="text-2xl font-bold tracking-tight" id="members-heading">
-            成员列表
-          </h1>
-        </CardHeader>
-        <CardContent>
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead className={headClassName}>姓名</TableHead>
-                <TableHead className={headClassName}>邮箱</TableHead>
-                <TableHead className={headClassName}>角色</TableHead>
-                <TableHead className={headClassName}>状态</TableHead>
-                {canManage ? <TableHead className={headClassName}>操作</TableHead> : null}
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {membersResult.members.map((member) => {
-                const isOwner = member.membership_role === "owner"
-                return (
-                  <TableRow key={member.membership_id}>
-                    <TableCell>{member.display_name}</TableCell>
-                    <TableCell>{member.email}</TableCell>
-                    <TableCell>
-                      <Badge variant={isOwner ? "default" : "secondary"}>
-                        {isOwner ? "所有者" : "成员"}
-                      </Badge>
-                    </TableCell>
-                    <TableCell>
-                      {member.is_active ? (
-                        <Badge className="bg-success/10 text-success">正常</Badge>
-                      ) : (
-                        <Badge variant="secondary">已停用</Badge>
-                      )}
-                    </TableCell>
-                    {canManage ? (
-                      <TableCell>
-                        {isOwner ? null : (
-                          <div className="flex flex-col items-start gap-2">
-                            <MemberStatusActions
-                              action={memberStatusAction}
-                              isActive={member.is_active}
-                              membershipId={member.membership_id}
-                            />
-                            <RoleAssignment
-                              action={assignRolesAction}
-                              assignedRoleIds={member.role_ids}
-                              membershipId={member.membership_id}
-                              roles={roles}
-                            />
-                          </div>
-                        )}
-                      </TableCell>
-                    ) : null}
-                  </TableRow>
-                )
-              })}
-            </TableBody>
-          </Table>
-        </CardContent>
-      </Card>
-
-      {canInvite ? (
-        <Card aria-labelledby="invite-heading">
-          <CardHeader>
-            <h2 className="text-lg font-semibold" id="invite-heading">
-              邀请成员
-            </h2>
-          </CardHeader>
-          <CardContent>
-            <InviteForm action={inviteAction} />
-          </CardContent>
-        </Card>
-      ) : null}
-
-      <Card aria-labelledby="invitations-heading">
-        <CardHeader>
-          <h2 className="text-lg font-semibold" id="invitations-heading">
-            邀请记录
-          </h2>
-        </CardHeader>
-        <CardContent>
-          {invitationsResult.invitations.length === 0 ? (
-            <p className="text-sm text-muted-foreground">暂无邀请记录。</p>
-          ) : (
+    <Page>
+      <PageHeader>
+        <PageHeaderContent>
+          <PageTitle>成员管理</PageTitle>
+          <PageDescription>查看成员、分配角色并管理租户邀请。</PageDescription>
+        </PageHeaderContent>
+      </PageHeader>
+      <PageSection aria-labelledby="members-heading">
+        <PageSectionHeader>
+          <PageSectionHeaderContent>
+            <PageSectionTitle id="members-heading">成员列表</PageSectionTitle>
+          </PageSectionHeaderContent>
+        </PageSectionHeader>
+        <DataRegion>
+          <DataRegionContent>
             <Table>
               <TableHeader>
                 <TableRow>
+                  <TableHead className={headClassName}>姓名</TableHead>
                   <TableHead className={headClassName}>邮箱</TableHead>
+                  <TableHead className={headClassName}>角色</TableHead>
                   <TableHead className={headClassName}>状态</TableHead>
-                  <TableHead className={headClassName}>过期时间</TableHead>
-                  {canInvite ? <TableHead className={headClassName}>操作</TableHead> : null}
+                  {canManage ? <TableHead className={headClassName}>操作</TableHead> : null}
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {invitationsResult.invitations.map((invitation) => (
-                  <TableRow key={invitation.id}>
-                    <TableCell>{invitation.email}</TableCell>
-                    <TableCell>
-                      {invitation.status === "accepted" ? (
-                        <Badge className="bg-success/10 text-success">
-                          {invitationStatusLabels[invitation.status]}
-                        </Badge>
-                      ) : (
-                        <Badge variant={invitation.status === "pending" ? "default" : "secondary"}>
-                          {invitationStatusLabels[invitation.status]}
-                        </Badge>
-                      )}
-                    </TableCell>
-                    <TableCell className="tabular-nums">
-                      {formatDateTime(invitation.expires_at)}
-                    </TableCell>
-                    {canInvite ? (
+                {membersResult.members.map((member) => {
+                  const isOwner = member.membership_role === "owner"
+                  return (
+                    <TableRow key={member.membership_id}>
+                      <TableCell>{member.display_name}</TableCell>
+                      <TableCell>{member.email}</TableCell>
                       <TableCell>
-                        {invitation.status === "pending" ? (
-                          <RevokeInvitationButton
-                            action={revokeInvitationAction}
-                            invitationId={invitation.id}
-                          />
-                        ) : null}
+                        <Badge variant={isOwner ? "default" : "secondary"}>
+                          {isOwner ? "所有者" : "成员"}
+                        </Badge>
                       </TableCell>
-                    ) : null}
-                  </TableRow>
-                ))}
+                      <TableCell>
+                        {member.is_active ? (
+                          <Badge className="bg-success/10 text-success">正常</Badge>
+                        ) : (
+                          <Badge variant="secondary">已停用</Badge>
+                        )}
+                      </TableCell>
+                      {canManage ? (
+                        <TableCell>
+                          {isOwner ? null : (
+                            <div className="flex flex-col items-start gap-2">
+                              <MemberStatusActions
+                                action={memberStatusAction}
+                                isActive={member.is_active}
+                                membershipId={member.membership_id}
+                              />
+                              <RoleAssignment
+                                action={assignRolesAction}
+                                assignedRoleIds={member.role_ids}
+                                membershipId={member.membership_id}
+                                roles={roles}
+                              />
+                            </div>
+                          )}
+                        </TableCell>
+                      ) : null}
+                    </TableRow>
+                  )
+                })}
               </TableBody>
             </Table>
-          )}
-        </CardContent>
-      </Card>
-    </main>
+          </DataRegionContent>
+        </DataRegion>
+      </PageSection>
+
+      {canInvite ? (
+        <FormSection aria-labelledby="invite-heading">
+          <FormSectionHeader>
+            <FormSectionTitle id="invite-heading">邀请成员</FormSectionTitle>
+            <FormSectionDescription>向新成员发送限时邀请。</FormSectionDescription>
+          </FormSectionHeader>
+          <FormSectionContent>
+            <InviteForm action={inviteAction} />
+          </FormSectionContent>
+        </FormSection>
+      ) : null}
+
+      <PageSection aria-labelledby="invitations-heading">
+        <PageSectionHeader>
+          <PageSectionHeaderContent>
+            <PageSectionTitle id="invitations-heading">邀请记录</PageSectionTitle>
+          </PageSectionHeaderContent>
+        </PageSectionHeader>
+        <DataRegion>
+          <DataRegionContent>
+            {invitationsResult.invitations.length === 0 ? (
+              <Empty>
+                <EmptyHeader>
+                  <EmptyTitle>暂无邀请记录</EmptyTitle>
+                </EmptyHeader>
+              </Empty>
+            ) : (
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead className={headClassName}>邮箱</TableHead>
+                    <TableHead className={headClassName}>状态</TableHead>
+                    <TableHead className={headClassName}>过期时间</TableHead>
+                    {canInvite ? <TableHead className={headClassName}>操作</TableHead> : null}
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {invitationsResult.invitations.map((invitation) => (
+                    <TableRow key={invitation.id}>
+                      <TableCell>{invitation.email}</TableCell>
+                      <TableCell>
+                        {invitation.status === "accepted" ? (
+                          <Badge className="bg-success/10 text-success">
+                            {invitationStatusLabels[invitation.status]}
+                          </Badge>
+                        ) : (
+                          <Badge
+                            variant={invitation.status === "pending" ? "default" : "secondary"}
+                          >
+                            {invitationStatusLabels[invitation.status]}
+                          </Badge>
+                        )}
+                      </TableCell>
+                      <TableCell className="tabular-nums">
+                        {formatDateTime(invitation.expires_at)}
+                      </TableCell>
+                      {canInvite ? (
+                        <TableCell>
+                          {invitation.status === "pending" ? (
+                            <RevokeInvitationButton
+                              action={revokeInvitationAction}
+                              invitationId={invitation.id}
+                            />
+                          ) : null}
+                        </TableCell>
+                      ) : null}
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            )}
+          </DataRegionContent>
+        </DataRegion>
+      </PageSection>
+    </Page>
   )
 }

@@ -7,9 +7,27 @@ import { cancelSubscriptionAction, submitOrderAction } from "@/app/actions/order
 import { CancelSubscriptionAction } from "@/components/billing/cancel-subscription-action"
 import { OrderRequestForm } from "@/components/billing/order-request-form"
 import { ReadOnlyBanner } from "@/components/billing/read-only-banner"
+import {
+  DataRegion,
+  DataRegionContent,
+  FormSection,
+  FormSectionContent,
+  FormSectionDescription,
+  FormSectionHeader,
+  FormSectionTitle,
+  Page,
+  PageDescription,
+  PageHeader,
+  PageHeaderContent,
+  PageSection,
+  PageSectionHeader,
+  PageSectionHeaderContent,
+  PageSectionTitle,
+  PageTitle,
+} from "@/components/layout/page"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Badge } from "@/components/ui/badge"
-import { Card, CardContent, CardHeader } from "@/components/ui/card"
+import { Empty, EmptyHeader, EmptyTitle } from "@/components/ui/empty"
 import {
   Table,
   TableBody,
@@ -50,20 +68,18 @@ function formatDateTime(value: string): string {
 
 const headClassName = "font-mono text-xs tracking-wider text-muted-foreground uppercase"
 
-function NoticeCard({ children }: { readonly children: React.ReactNode }) {
+function NoticePage({ children }: { readonly children: React.ReactNode }) {
   return (
-    <main className="mx-auto flex w-full max-w-7xl flex-col gap-6 px-6 py-6">
-      <Card>
-        <CardHeader>
-          <h1 className="text-2xl font-bold tracking-tight">用量与套餐</h1>
-        </CardHeader>
-        <CardContent>
-          <Alert>
-            <AlertDescription>{children}</AlertDescription>
-          </Alert>
-        </CardContent>
-      </Card>
-    </main>
+    <Page>
+      <PageHeader>
+        <PageHeaderContent>
+          <PageTitle>用量与套餐</PageTitle>
+        </PageHeaderContent>
+      </PageHeader>
+      <Alert>
+        <AlertDescription>{children}</AlertDescription>
+      </Alert>
+    </Page>
   )
 }
 
@@ -78,13 +94,12 @@ function OrderSections({ canManage, ordersResult }: OrderSectionsProps) {
   const idempotencyKey = crypto.randomUUID()
   return (
     <>
-      <Card aria-labelledby="order-apply-heading">
-        <CardHeader>
-          <h2 className="text-lg font-semibold" id="order-apply-heading">
-            申请订阅（线下付款）
-          </h2>
-        </CardHeader>
-        <CardContent>
+      <FormSection aria-labelledby="order-apply-heading">
+        <FormSectionHeader>
+          <FormSectionTitle id="order-apply-heading">申请订阅（线下付款）</FormSectionTitle>
+          <FormSectionDescription>提交套餐与付款凭证，等待平台管理员审核。</FormSectionDescription>
+        </FormSectionHeader>
+        <FormSectionContent>
           {canManage ? (
             <OrderRequestForm action={submitOrderAction} idempotencyKey={idempotencyKey} />
           ) : (
@@ -92,58 +107,64 @@ function OrderSections({ canManage, ordersResult }: OrderSectionsProps) {
               你没有提交订单申请的权限，请联系租户管理员。
             </p>
           )}
-        </CardContent>
-      </Card>
+        </FormSectionContent>
+      </FormSection>
 
-      <Card aria-labelledby="orders-heading">
-        <CardHeader>
-          <h2 className="text-lg font-semibold" id="orders-heading">
-            我的订单
-          </h2>
-        </CardHeader>
-        <CardContent>
-          {ordersResult.kind !== "ok" ? (
-            <p className="text-sm text-muted-foreground">订单数据暂时不可用，请稍后再试。</p>
-          ) : ordersResult.orders.length === 0 ? (
-            <p className="text-sm text-muted-foreground">暂无订单记录。</p>
-          ) : (
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead className={headClassName}>套餐</TableHead>
-                  <TableHead className={headClassName}>金额</TableHead>
-                  <TableHead className={headClassName}>付款凭证号</TableHead>
-                  <TableHead className={headClassName}>状态</TableHead>
-                  <TableHead className={headClassName}>提交时间</TableHead>
-                  <TableHead className={headClassName}>审核备注</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {ordersResult.orders.map((order) => (
-                  <TableRow key={order.id}>
-                    <TableCell>
-                      {order.plan_code} v{order.plan_version}
-                    </TableCell>
-                    <TableCell className="tabular-nums">
-                      {formatAmountCents(order.amount_cents)}
-                    </TableCell>
-                    <TableCell>{order.payment_reference}</TableCell>
-                    <TableCell>
-                      <Badge variant={order.status === "pending" ? "default" : "secondary"}>
-                        {orderStatusLabels[order.status]}
-                      </Badge>
-                    </TableCell>
-                    <TableCell className="tabular-nums">
-                      {formatDateTime(order.created_at)}
-                    </TableCell>
-                    <TableCell>{order.review_note === "" ? "—" : order.review_note}</TableCell>
+      <PageSection aria-labelledby="orders-heading">
+        <PageSectionHeader>
+          <PageSectionHeaderContent>
+            <PageSectionTitle id="orders-heading">我的订单</PageSectionTitle>
+          </PageSectionHeaderContent>
+        </PageSectionHeader>
+        <DataRegion>
+          <DataRegionContent>
+            {ordersResult.kind !== "ok" ? (
+              <p className="text-sm text-muted-foreground">订单数据暂时不可用，请稍后再试。</p>
+            ) : ordersResult.orders.length === 0 ? (
+              <Empty>
+                <EmptyHeader>
+                  <EmptyTitle>暂无订单记录。</EmptyTitle>
+                </EmptyHeader>
+              </Empty>
+            ) : (
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead className={headClassName}>套餐</TableHead>
+                    <TableHead className={headClassName}>金额</TableHead>
+                    <TableHead className={headClassName}>付款凭证号</TableHead>
+                    <TableHead className={headClassName}>状态</TableHead>
+                    <TableHead className={headClassName}>提交时间</TableHead>
+                    <TableHead className={headClassName}>审核备注</TableHead>
                   </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          )}
-        </CardContent>
-      </Card>
+                </TableHeader>
+                <TableBody>
+                  {ordersResult.orders.map((order) => (
+                    <TableRow key={order.id}>
+                      <TableCell>
+                        {order.plan_code} v{order.plan_version}
+                      </TableCell>
+                      <TableCell className="tabular-nums">
+                        {formatAmountCents(order.amount_cents)}
+                      </TableCell>
+                      <TableCell>{order.payment_reference}</TableCell>
+                      <TableCell>
+                        <Badge variant={order.status === "pending" ? "default" : "secondary"}>
+                          {orderStatusLabels[order.status]}
+                        </Badge>
+                      </TableCell>
+                      <TableCell className="tabular-nums">
+                        {formatDateTime(order.created_at)}
+                      </TableCell>
+                      <TableCell>{order.review_note === "" ? "—" : order.review_note}</TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            )}
+          </DataRegionContent>
+        </DataRegion>
+      </PageSection>
     </>
   )
 }
@@ -154,20 +175,20 @@ export default async function UsagePage() {
 
   if (!session) {
     return (
-      <NoticeCard>
+      <NoticePage>
         请先
         <Link className="font-medium underline underline-offset-4" href="/login">
           登录
         </Link>
         后查看用量与套餐。
-      </NoticeCard>
+      </NoticePage>
     )
   }
 
   const auth = await loadAuthSession(createAuthTransport(), session)
   if (auth.kind !== "authenticated") {
     return (
-      <NoticeCard>
+      <NoticePage>
         {auth.kind === "anonymous" ? (
           <>
             登录已过期，请
@@ -179,16 +200,16 @@ export default async function UsagePage() {
         ) : (
           "服务暂时不可用，请稍后再试。"
         )}
-      </NoticeCard>
+      </NoticePage>
     )
   }
 
   if (auth.view.tenant === null) {
-    return <NoticeCard>你没有加入任何租户，无法查看用量与套餐。</NoticeCard>
+    return <NoticePage>你没有加入任何租户，无法查看用量与套餐。</NoticePage>
   }
 
   if (!auth.view.permissions.includes("billing:read")) {
-    return <NoticeCard>你没有查看用量与套餐的权限。</NoticeCard>
+    return <NoticePage>你没有查看用量与套餐的权限。</NoticePage>
   }
 
   const [result, ordersResult] = await Promise.all([
@@ -204,24 +225,23 @@ export default async function UsagePage() {
 
   if (result.kind === "notFound") {
     return (
-      <main className="mx-auto flex w-full max-w-7xl flex-col gap-6 px-6 py-6">
-        <Card>
-          <CardHeader>
-            <h1 className="text-2xl font-bold tracking-tight">用量与套餐</h1>
-          </CardHeader>
-          <CardContent>
-            <Alert>
-              <AlertDescription>当前租户暂无订阅</AlertDescription>
-            </Alert>
-          </CardContent>
-        </Card>
+      <Page>
+        <PageHeader>
+          <PageHeaderContent>
+            <PageTitle>用量与套餐</PageTitle>
+            <PageDescription>查看套餐状态、配额使用与订单记录。</PageDescription>
+          </PageHeaderContent>
+        </PageHeader>
+        <Alert>
+          <AlertDescription>当前租户暂无订阅</AlertDescription>
+        </Alert>
         <OrderSections canManage={canManage} ordersResult={ordersResult} />
-      </main>
+      </Page>
     )
   }
 
   if (result.kind !== "ok") {
-    return <NoticeCard>用量数据暂时不可用，请稍后再试。</NoticeCard>
+    return <NoticePage>用量数据暂时不可用，请稍后再试。</NoticePage>
   }
 
   const { summary } = result
@@ -236,69 +256,79 @@ export default async function UsagePage() {
     canManage
 
   return (
-    <main className="mx-auto flex w-full max-w-7xl flex-col gap-6 px-6 py-6">
-      <Card aria-labelledby="plan-heading">
-        <CardHeader>
-          <h1 className="text-2xl font-bold tracking-tight" id="plan-heading">
-            用量与套餐
-          </h1>
-        </CardHeader>
-        <CardContent className="flex flex-col gap-3">
-          {isReadOnly ? <ReadOnlyBanner /> : null}
-          <p>
-            当前套餐：{summary.plan.name} v{summary.plan.version}{" "}
-            <Badge variant="default">{billingStatusLabels[summary.status]}</Badge>
-          </p>
-          {summary.status === "trialing" && summary.trial_ends_at !== null ? (
-            <p className="tabular-nums">试用到期时间：{formatDateTime(summary.trial_ends_at)}</p>
-          ) : null}
-          <p className="tabular-nums">
-            当前计费周期：{formatDateTime(summary.current_period_start)} –{" "}
-            {formatDateTime(summary.current_period_end)}
-          </p>
-          {summary.cancel_requested_at ? (
-            <p className="tabular-nums">
-              已于 {formatDateTime(summary.cancel_requested_at)} 申请取消，将于{" "}
-              {formatDateTime(summary.current_period_end)} 到期后取消。
+    <Page>
+      <PageHeader>
+        <PageHeaderContent>
+          <PageTitle id="plan-heading">用量与套餐</PageTitle>
+          <PageDescription>查看套餐状态、配额使用与订单记录。</PageDescription>
+        </PageHeaderContent>
+      </PageHeader>
+      <PageSection aria-labelledby="summary-heading">
+        <PageSectionHeader>
+          <PageSectionHeaderContent>
+            <PageSectionTitle id="summary-heading">套餐概况</PageSectionTitle>
+          </PageSectionHeaderContent>
+        </PageSectionHeader>
+        <DataRegion>
+          <DataRegionContent className="space-y-3 p-[var(--space-5)]">
+            {isReadOnly ? <ReadOnlyBanner /> : null}
+            <p>
+              当前套餐：{summary.plan.name} v{summary.plan.version}{" "}
+              <Badge variant="default">{billingStatusLabels[summary.status]}</Badge>
             </p>
-          ) : null}
-          {canCancel ? <CancelSubscriptionAction action={cancelSubscriptionAction} /> : null}
-        </CardContent>
-      </Card>
+            {summary.status === "trialing" && summary.trial_ends_at !== null ? (
+              <p className="tabular-nums">试用到期时间：{formatDateTime(summary.trial_ends_at)}</p>
+            ) : null}
+            <p className="tabular-nums">
+              当前计费周期：{formatDateTime(summary.current_period_start)} –{" "}
+              {formatDateTime(summary.current_period_end)}
+            </p>
+            {summary.cancel_requested_at ? (
+              <p className="tabular-nums">
+                已于 {formatDateTime(summary.cancel_requested_at)} 申请取消，将于{" "}
+                {formatDateTime(summary.current_period_end)} 到期后取消。
+              </p>
+            ) : null}
+            {canCancel ? <CancelSubscriptionAction action={cancelSubscriptionAction} /> : null}
+          </DataRegionContent>
+        </DataRegion>
+      </PageSection>
 
-      <Card aria-labelledby="metrics-heading">
-        <CardHeader>
-          <h2 className="text-lg font-semibold" id="metrics-heading">
-            配额用量
-          </h2>
-        </CardHeader>
-        <CardContent>
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead className={headClassName}>指标</TableHead>
-                <TableHead className={headClassName}>限额</TableHead>
-                <TableHead className={headClassName}>已用</TableHead>
-                <TableHead className={headClassName}>预占中</TableHead>
-                <TableHead className={headClassName}>剩余</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {summary.metrics.map((metric) => (
-                <TableRow key={metric.metric}>
-                  <TableCell>{billingMetricLabels[metric.metric]}</TableCell>
-                  <TableCell className="tabular-nums">{metric.limit}</TableCell>
-                  <TableCell className="tabular-nums">{metric.used}</TableCell>
-                  <TableCell className="tabular-nums">{metric.reserved}</TableCell>
-                  <TableCell className="tabular-nums">{metric.remaining}</TableCell>
+      <PageSection aria-labelledby="metrics-heading">
+        <PageSectionHeader>
+          <PageSectionHeaderContent>
+            <PageSectionTitle id="metrics-heading">配额用量</PageSectionTitle>
+          </PageSectionHeaderContent>
+        </PageSectionHeader>
+        <DataRegion>
+          <DataRegionContent>
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead className={headClassName}>指标</TableHead>
+                  <TableHead className={headClassName}>限额</TableHead>
+                  <TableHead className={headClassName}>已用</TableHead>
+                  <TableHead className={headClassName}>预占中</TableHead>
+                  <TableHead className={headClassName}>剩余</TableHead>
                 </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-        </CardContent>
-      </Card>
+              </TableHeader>
+              <TableBody>
+                {summary.metrics.map((metric) => (
+                  <TableRow key={metric.metric}>
+                    <TableCell>{billingMetricLabels[metric.metric]}</TableCell>
+                    <TableCell className="tabular-nums">{metric.limit}</TableCell>
+                    <TableCell className="tabular-nums">{metric.used}</TableCell>
+                    <TableCell className="tabular-nums">{metric.reserved}</TableCell>
+                    <TableCell className="tabular-nums">{metric.remaining}</TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </DataRegionContent>
+        </DataRegion>
+      </PageSection>
 
       <OrderSections canManage={canManage} ordersResult={ordersResult} />
-    </main>
+    </Page>
   )
 }
