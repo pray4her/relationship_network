@@ -367,8 +367,12 @@ button.stepper__trigger.is-focus-visible .stepper__indicator {
 
 .stepper__step--error button.stepper__trigger:focus-visible .stepper__indicator,
 .stepper__step--error button.stepper__trigger.is-focus-visible .stepper__indicator,
-.stepper__step--error[aria-current="step"] button.stepper__trigger:focus-visible .stepper__indicator,
-.stepper__step--error[aria-current="step"] button.stepper__trigger.is-focus-visible .stepper__indicator {
+.stepper__step--error[aria-current="step"]
+  button.stepper__trigger:focus-visible
+  .stepper__indicator,
+.stepper__step--error[aria-current="step"]
+  button.stepper__trigger.is-focus-visible
+  .stepper__indicator {
   box-shadow: 0 0 0 var(--ring-width) var(--ring-focus);
 }
 

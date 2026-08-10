@@ -1,9 +1,50 @@
 "use client"
 
 import { AlertDialog as AlertDialogPrimitive } from "@base-ui/react/alert-dialog"
+import { cva } from "class-variance-authority"
+import { XIcon } from "lucide-react"
 import type * as React from "react"
 import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
+
+/**
+ * 视觉规格:frontend/src/styles/dialog.css 的 confirmation / destructive confirmation
+ * 变体(showcase/dialog.html 为唯一标准)。AlertDialog 固定对应规格的确认场景:
+ * Base UI primitive 自带 role="alertdialog",且默认不响应 overlay 点击关闭(规格的
+ * data-overlay-close="false"),Escape 仍允许。
+ *
+ * API → 规格映射:
+ * - size:default → 规格 md(max-width calc(--space-16 × 8),默认 padding);
+ *   sm → 规格 sm(紧凑 padding,title/body 降一档字号);
+ *   lg 为规格有而旧 API 没有的尺寸,作为可选值新增。
+ * - variant(新增可选):default → .dialog--confirmation(无额外着色);
+ *   destructive → .dialog--destructive(surface 边框与 title 用 --destructive,
+ *   提交动作由调用方给 AlertDialogAction 传 variant="destructive")。
+ * - AlertDialogMedia 在规格解剖中无对应物,保留导出兼容旧 API,仅做 token 化。
+ * 生命周期经 Base UI data-starting-style / data-ending-style 镜像规格的
+ * dialog--opening / dialog--closing:半透明 --opacity-disabled + --space-2 下沉位移,
+ * closing 切换 --duration-fast;motion-reduce 下动效移除(规格 REDUCED MOTION 条款)。
+ */
+const alertDialogContentVariants = cva(
+  "group/alert-dialog-content fixed inset-0 isolate z-[var(--z-popover)] m-auto flex h-fit w-[calc(100%-var(--space-6)*2)] max-h-[calc(100%-var(--space-6)*2)] translate-y-0 flex-col overflow-hidden rounded-[var(--radius-xl)] border-[length:var(--border-width)] border-border bg-popover text-popover-foreground opacity-100 shadow-lift outline-none transition-[opacity,translate,box-shadow] duration-[var(--duration-normal)] ease-standard focus-visible:shadow-[var(--shadow-lift),0_0_0_var(--ring-width)_var(--ring-focus)] data-[ending-style]:translate-y-[var(--space-2)] data-[starting-style]:translate-y-[var(--space-2)] data-[ending-style]:opacity-[var(--opacity-disabled)] data-[starting-style]:opacity-[var(--opacity-disabled)] data-[ending-style]:duration-[var(--duration-fast)] data-[state=focus-visible]:shadow-[var(--shadow-lift),0_0_0_var(--ring-width)_var(--ring-focus)] motion-reduce:transition-none motion-reduce:data-[ending-style]:translate-y-0 motion-reduce:data-[starting-style]:translate-y-0",
+  {
+    variants: {
+      size: {
+        default: "max-w-[calc(var(--space-16)*8)]",
+        sm: "max-w-[calc(var(--space-16)*6)]",
+        lg: "max-w-[calc(var(--space-16)*12)]",
+      },
+      variant: {
+        default: "",
+        destructive: "border-destructive",
+      },
+    },
+    defaultVariants: {
+      size: "default",
+      variant: "default",
+    },
+  },
+)
 
 function AlertDialog({ ...props }: AlertDialogPrimitive.Root.Props) {
   return <AlertDialogPrimitive.Root data-slot="alert-dialog" {...props} />
@@ -22,7 +63,7 @@ function AlertDialogOverlay({ className, ...props }: AlertDialogPrimitive.Backdr
     <AlertDialogPrimitive.Backdrop
       data-slot="alert-dialog-overlay"
       className={cn(
-        "fixed inset-0 isolate z-50 bg-black/10 duration-100 supports-backdrop-filter:backdrop-blur-xs data-open:animate-in data-open:fade-in-0 data-closed:animate-out data-closed:fade-out-0",
+        "fixed inset-0 isolate z-[var(--z-popover)] bg-scrim opacity-100 transition-opacity duration-[var(--duration-normal)] ease-standard data-[ending-style]:opacity-[var(--opacity-disabled)] data-[starting-style]:opacity-[var(--opacity-disabled)] data-[ending-style]:duration-[var(--duration-fast)] motion-reduce:transition-none",
         className,
       )}
       {...props}
@@ -33,9 +74,11 @@ function AlertDialogOverlay({ className, ...props }: AlertDialogPrimitive.Backdr
 function AlertDialogContent({
   className,
   size = "default",
+  variant = "default",
   ...props
 }: AlertDialogPrimitive.Popup.Props & {
-  size?: "default" | "sm"
+  size?: "default" | "sm" | "lg"
+  variant?: "default" | "destructive"
 }) {
   return (
     <AlertDialogPortal>
@@ -43,22 +86,54 @@ function AlertDialogContent({
       <AlertDialogPrimitive.Popup
         data-slot="alert-dialog-content"
         data-size={size}
-        className={cn(
-          "group/alert-dialog-content fixed top-1/2 left-1/2 z-50 grid w-full -translate-x-1/2 -translate-y-1/2 gap-4 rounded-xl bg-popover p-4 text-popover-foreground ring-1 ring-foreground/10 duration-100 outline-none data-[size=default]:max-w-xs data-[size=sm]:max-w-xs data-[size=default]:sm:max-w-sm data-open:animate-in data-open:fade-in-0 data-open:zoom-in-95 data-closed:animate-out data-closed:fade-out-0 data-closed:zoom-out-95",
-          className,
-        )}
+        data-variant={variant}
+        className={cn(alertDialogContentVariants({ size, variant }), className)}
         {...props}
       />
     </AlertDialogPortal>
   )
 }
 
-function AlertDialogHeader({ className, ...props }: React.ComponentProps<"div">) {
+function AlertDialogHeader({
+  className,
+  children,
+  showCloseButton = true,
+  ...props
+}: React.ComponentProps<"div"> & {
+  /** 规格解剖:header = heading cluster + 组合的 IconButton 关闭控件。 */
+  showCloseButton?: boolean
+}) {
   return (
     <div
       data-slot="alert-dialog-header"
       className={cn(
-        "grid grid-rows-[auto_1fr] place-items-center gap-1.5 text-center has-data-[slot=alert-dialog-media]:grid-rows-[auto_auto_1fr] has-data-[slot=alert-dialog-media]:gap-x-4 sm:group-data-[size=default]/alert-dialog-content:place-items-start sm:group-data-[size=default]/alert-dialog-content:text-left sm:group-data-[size=default]/alert-dialog-content:has-data-[slot=alert-dialog-media]:grid-rows-[auto_1fr]",
+        "flex items-start gap-[var(--space-4)] border-border-soft border-b-[length:var(--border-width)] p-[var(--space-6)] group-data-[size=lg]/alert-dialog-content:p-[var(--space-8)] group-data-[size=sm]/alert-dialog-content:p-[var(--space-4)]",
+        className,
+      )}
+      {...props}
+    >
+      <div data-slot="alert-dialog-heading" className="grid min-w-0 flex-1 gap-[var(--space-2)]">
+        {children}
+      </div>
+      {showCloseButton && (
+        <AlertDialogPrimitive.Close
+          data-slot="alert-dialog-close"
+          render={<Button className="flex-none" size="icon-sm" variant="ghost" />}
+        >
+          <XIcon />
+          <span className="sr-only">Close</span>
+        </AlertDialogPrimitive.Close>
+      )}
+    </div>
+  )
+}
+
+function AlertDialogBody({ className, ...props }: React.ComponentProps<"div">) {
+  return (
+    <div
+      data-slot="alert-dialog-body"
+      className={cn(
+        "grid min-h-0 gap-[var(--space-4)] overflow-y-auto overscroll-contain p-[var(--space-6)] font-sans text-[length:var(--text-body-md)] text-foreground-body leading-[var(--text-body-md--line-height)] group-data-[size=lg]/alert-dialog-content:p-[var(--space-8)] group-data-[size=sm]/alert-dialog-content:p-[var(--space-4)] group-data-[size=sm]/alert-dialog-content:text-[length:var(--text-body-sm)] group-data-[size=sm]/alert-dialog-content:leading-[var(--text-body-sm--line-height)] [&>*]:m-0",
         className,
       )}
       {...props}
@@ -71,7 +146,7 @@ function AlertDialogFooter({ className, ...props }: React.ComponentProps<"div">)
     <div
       data-slot="alert-dialog-footer"
       className={cn(
-        "-mx-4 -mb-4 flex flex-col-reverse gap-2 rounded-b-xl border-t bg-muted/50 p-4 group-data-[size=sm]/alert-dialog-content:grid group-data-[size=sm]/alert-dialog-content:grid-cols-2 sm:flex-row sm:justify-end",
+        "flex flex-none flex-wrap justify-end gap-[var(--space-3)] border-border-soft border-t-[length:var(--border-width)] bg-surface-soft px-[var(--space-6)] py-[var(--space-4)] group-data-[size=lg]/alert-dialog-content:px-[var(--space-8)] group-data-[size=sm]/alert-dialog-content:px-[var(--space-4)] group-data-[size=lg]/alert-dialog-content:py-[var(--space-6)] group-data-[size=sm]/alert-dialog-content:py-[var(--space-3)]",
         className,
       )}
       {...props}
@@ -84,7 +159,7 @@ function AlertDialogMedia({ className, ...props }: React.ComponentProps<"div">) 
     <div
       data-slot="alert-dialog-media"
       className={cn(
-        "mb-2 inline-flex size-10 items-center justify-center rounded-md bg-muted sm:group-data-[size=default]/alert-dialog-content:row-span-2 *:[svg:not([class*='size-'])]:size-6",
+        "mb-[var(--space-2)] inline-flex size-[calc(var(--space-4)*2.5)] items-center justify-center rounded-[var(--radius-md)] bg-surface-soft [&_svg:not([class*='size-'])]:size-[var(--icon-size-lg)]",
         className,
       )}
       {...props}
@@ -92,15 +167,12 @@ function AlertDialogMedia({ className, ...props }: React.ComponentProps<"div">) 
   )
 }
 
-function AlertDialogTitle({
-  className,
-  ...props
-}: React.ComponentProps<typeof AlertDialogPrimitive.Title>) {
+function AlertDialogTitle({ className, ...props }: AlertDialogPrimitive.Title.Props) {
   return (
     <AlertDialogPrimitive.Title
       data-slot="alert-dialog-title"
       className={cn(
-        "text-base font-medium sm:group-data-[size=default]/alert-dialog-content:group-has-data-[slot=alert-dialog-media]/alert-dialog-content:col-start-2",
+        "font-sans font-medium text-[length:var(--text-title-lg)] text-foreground leading-[var(--text-title-lg--line-height)] group-data-[size=sm]/alert-dialog-content:text-[length:var(--text-title-md)] group-data-[size=sm]/alert-dialog-content:leading-[var(--text-title-md--line-height)] group-data-[variant=destructive]/alert-dialog-content:text-destructive",
         className,
       )}
       {...props}
@@ -108,15 +180,12 @@ function AlertDialogTitle({
   )
 }
 
-function AlertDialogDescription({
-  className,
-  ...props
-}: React.ComponentProps<typeof AlertDialogPrimitive.Description>) {
+function AlertDialogDescription({ className, ...props }: AlertDialogPrimitive.Description.Props) {
   return (
     <AlertDialogPrimitive.Description
       data-slot="alert-dialog-description"
       className={cn(
-        "text-sm text-balance text-muted-foreground md:text-pretty *:[a]:underline *:[a]:underline-offset-3 *:[a]:hover:text-foreground",
+        "font-sans text-[length:var(--text-body-sm)] text-muted-foreground leading-[var(--text-body-sm--line-height)] *:[a]:underline *:[a]:underline-offset-[var(--link-underline-offset)] *:[a]:hover:text-foreground",
         className,
       )}
       {...props}
@@ -148,6 +217,7 @@ function AlertDialogCancel({
 export {
   AlertDialog,
   AlertDialogAction,
+  AlertDialogBody,
   AlertDialogCancel,
   AlertDialogContent,
   AlertDialogDescription,

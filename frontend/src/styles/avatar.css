@@ -193,10 +193,18 @@
   box-shadow: 0 0 0 var(--border-width) var(--background); /* canvas separator ring */
 }
 
-.avatar__status--online { --_status-color: var(--status-online); }
-.avatar__status--offline { --_status-color: var(--status-offline); }
-.avatar__status--busy { --_status-color: var(--status-busy); }
-.avatar__status--away { --_status-color: var(--status-away); }
+.avatar__status--online {
+  --_status-color: var(--status-online);
+}
+.avatar__status--offline {
+  --_status-color: var(--status-offline);
+}
+.avatar__status--busy {
+  --_status-color: var(--status-busy);
+}
+.avatar__status--away {
+  --_status-color: var(--status-away);
+}
 
 /* ===== Interactive (root is <a> or <button>) ===== */
 

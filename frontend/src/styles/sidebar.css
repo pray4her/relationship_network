@@ -297,8 +297,7 @@
   box-shadow: inset var(--border-width-strong) 0 0 var(--selected-border);
 }
 .sidebar__link.is-parent-active,
-.sidebar__list > li:has(> .sidebar__sublist .sidebar__link[aria-current="page"])
-  > .sidebar__link {
+.sidebar__list > li:has(> .sidebar__sublist .sidebar__link[aria-current="page"]) > .sidebar__link {
   color: var(--foreground);
   box-shadow: inset var(--border-width) 0 0 var(--selected-border);
 }

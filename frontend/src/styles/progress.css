@@ -145,8 +145,8 @@
 .progress--indeterminate .progress__indicator,
 .progress-field--indeterminate .progress__indicator {
   width: var(--progress-indeterminate-size);
-  animation: progress-sweep var(--progress-animation-duration)
-    var(--progress-animation-easing) infinite;
+  animation: progress-sweep var(--progress-animation-duration) var(--progress-animation-easing)
+    infinite;
 }
 
 @keyframes progress-sweep {

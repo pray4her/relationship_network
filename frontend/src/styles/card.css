@@ -196,8 +196,12 @@
   line-height: var(--text-body-md--line-height);
   color: var(--foreground-body);
 }
-.card__body > :first-child { margin-top: 0; }
-.card__body > :last-child { margin-bottom: 0; }
+.card__body > :first-child {
+  margin-top: 0;
+}
+.card__body > :last-child {
+  margin-bottom: 0;
+}
 
 .card__footer {
   border-top: var(--border-width) solid var(--border-soft);

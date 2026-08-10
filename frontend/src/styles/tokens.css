@@ -3,12 +3,12 @@
 /* Naming: shadcn convention. Light theme only — no .dark block. */
 :root {
   /* ===== Surfaces ===== */
-  --background: #faf9f5;            /* canvas: the page floor, warm cream */
-  --surface-soft: #f5f0e8;          /* soft section bands */
-  --card: #efe9de;                  /* surface-card: feature/content cards */
+  --background: #faf9f5; /* canvas: the page floor, warm cream */
+  --surface-soft: #f5f0e8; /* soft section bands */
+  --card: #efe9de; /* surface-card: feature/content cards */
   --card-foreground: #141413;
-  --surface-cream-strong: #e8e0d2;  /* active tabs, emphasized bands */
-  --popover: #faf9f5;               /* = canvas */
+  --surface-cream-strong: #e8e0d2; /* active tabs, emphasized bands */
+  --popover: #faf9f5; /* = canvas */
   --popover-foreground: #141413;
 
   /* Dark product surfaces (code mockups, footer — not a theme) */
@@ -19,37 +19,37 @@
   --on-dark-soft: #a09d96;
 
   /* ===== Text ===== */
-  --foreground: #141413;            /* ink: headlines, primary text */
-  --foreground-strong: #252523;     /* body-strong: lead paragraphs */
-  --foreground-body: #3d3d3a;       /* body: running text */
-  --muted: #f5f0e8;                 /* muted bg (shadcn role) = surface-soft */
-  --muted-foreground: #6c6a64;      /* muted text: sub-heads, breadcrumbs */
-  --caption-foreground: #8e8b82;    /* muted-soft: captions, fine print */
+  --foreground: #141413; /* ink: headlines, primary text */
+  --foreground-strong: #252523; /* body-strong: lead paragraphs */
+  --foreground-body: #3d3d3a; /* body: running text */
+  --muted: #f5f0e8; /* muted bg (shadcn role) = surface-soft */
+  --muted-foreground: #6c6a64; /* muted text: sub-heads, breadcrumbs */
+  --caption-foreground: #8e8b82; /* muted-soft: captions, fine print */
 
   /* ===== Brand ===== */
-  --primary: #cc785c;               /* coral — scarce on elements, generous on bands */
-  --primary-foreground: #ffffff;    /* on-primary */
-  --primary-active: #a9583e;        /* pressed state */
-  --primary-disabled: #e6dfd8;      /* = hairline; pair with --muted-foreground text */
-  --secondary: #f5f0e8;             /* = surface-soft */
+  --primary: #cc785c; /* coral — scarce on elements, generous on bands */
+  --primary-foreground: #ffffff; /* on-primary */
+  --primary-active: #a9583e; /* pressed state */
+  --primary-disabled: #e6dfd8; /* = hairline; pair with --muted-foreground text */
+  --secondary: #f5f0e8; /* = surface-soft */
   --secondary-foreground: #141413;
-  --accent: #efe9de;                /* hover/tab-active bg (shadcn role) = surface-card */
+  --accent: #efe9de; /* hover/tab-active bg (shadcn role) = surface-card */
   --accent-foreground: #141413;
-  --accent-teal: #5db8a6;           /* status dots, "connected" indicators */
-  --accent-amber: #e8a55a;          /* badges, inline highlights */
+  --accent-teal: #5db8a6; /* status dots, "connected" indicators */
+  --accent-amber: #e8a55a; /* badges, inline highlights */
 
   /* ===== Interactive states ===== */
-  --primary-hover: #bd6a4e;           /* midway between --primary and --primary-active */
+  --primary-hover: #bd6a4e; /* midway between --primary and --primary-active */
   --destructive-hover: #b23b3b;
   --destructive-active: #9e3232;
-  --info-hover: #54a795;              /* darkens --info in the same direction (added with Badge) */
+  --info-hover: #54a795; /* darkens --info in the same direction (added with Badge) */
   --info-active: #4a9585;
-  --opacity-disabled: 0.5;            /* disabled = same colors, reduced opacity */
+  --opacity-disabled: 0.5; /* disabled = same colors, reduced opacity */
 
   /* Selection & pressed surfaces (added with Card / Switch) */
-  --selected-bg: #e8e0d2;             /* = surface-cream-strong */
-  --selected-border: #cc785c;         /* = ring */
-  --surface-cream-pressed: #e6dfd8;   /* cream pressed track; = hairline tone */
+  --selected-bg: #e8e0d2; /* = surface-cream-strong */
+  --selected-border: #cc785c; /* = ring */
+  --surface-cream-pressed: #e6dfd8; /* cream pressed track; = hairline tone */
 
   /* Icon state colors — added with the Icon component (reported gap: hover/active
      existed only for primary & destructive). Each pair darkens its base in the
@@ -62,16 +62,16 @@
   --success-active: #4a935b;
   --warning-hover: #bf9015;
   --warning-active: #aa8012;
-  --inverse-hover: #eae6dd;         /* dims --on-dark for hover on dark surfaces */
-  --inverse-active: #dad5ca;        /* dims further for active on dark surfaces */
+  --inverse-hover: #eae6dd; /* dims --on-dark for hover on dark surfaces */
+  --inverse-active: #dad5ca; /* dims further for active on dark surfaces */
 
   /* ===== Semantic ===== */
   --success: #5db872;
   --warning: #d4a017;
-  --destructive: #c64545;           /* error */
+  --destructive: #c64545; /* error */
   --destructive-foreground: #ffffff;
-  --info: #5db8a6;                  /* = accent-teal (added with Badge) */
-  --success-foreground: #141413;    /* ink on the bright fill (added with Badge) */
+  --info: #5db8a6; /* = accent-teal (added with Badge) */
+  --success-foreground: #141413; /* ink on the bright fill (added with Badge) */
   --warning-foreground: #141413;
   --info-foreground: #141413;
 
@@ -83,26 +83,28 @@
   --info-soft: #e1efe8;
 
   /* Presence (added with Avatar status dots) */
-  --status-online: #5db8a6;         /* = accent-teal */
-  --status-offline: #8e8b82;        /* = caption-foreground */
-  --status-busy: #c64545;           /* = destructive */
-  --status-away: #d4a017;           /* = warning */
+  --status-online: #5db8a6; /* = accent-teal */
+  --status-offline: #8e8b82; /* = caption-foreground */
+  --status-busy: #c64545; /* = destructive */
+  --status-away: #d4a017; /* = warning */
 
   /* ===== Lines & focus ===== */
-  --border: #e6dfd8;                /* hairline */
-  --border-soft: #ebe6df;           /* hairline-soft: quiet dividers */
-  --border-strong: #6c6a64;         /* strong line: hover borders, strong divider = muted-foreground */
-  --border-width: 1px;              /* every hairline border */
-  --border-width-strong: 2px;       /* emphasized dividers */
+  --border: #e6dfd8; /* hairline */
+  --border-soft: #ebe6df; /* hairline-soft: quiet dividers */
+  --border-strong: #6c6a64; /* strong line: hover borders, strong divider = muted-foreground */
+  --border-width: 1px; /* every hairline border */
+  --border-width-strong: 2px; /* emphasized dividers */
   --input: #e6dfd8;
   --ring: #cc785c;
-  --ring-width: 3px;                /* focus ring spread */
+  --ring-width: 3px; /* focus ring spread */
   --ring-focus: rgb(204 120 92 / 0.15); /* focus ring, coral at 15% alpha */
-  --ring-destructive: rgb(198 69 69 / 0.15); /* invalid-field focus ring, destructive at 15% alpha */
+  --ring-destructive: rgb(
+    198 69 69 / 0.15
+  ); /* invalid-field focus ring, destructive at 15% alpha */
 
   /* ===== Links (added with Link) ===== */
-  --link-visited: #a9583e;            /* = primary-active: "seen" reads darker, same hue */
-  --link-underline-offset: 0.125rem;  /* = --space-0-5 */
+  --link-visited: #a9583e; /* = primary-active: "seen" reads darker, same hue */
+  --link-underline-offset: 0.125rem; /* = --space-0-5 */
 
   /* ===== Code mockups (on dark surfaces only) ===== */
   --syntax-keyword: #8fb8d8;
@@ -115,55 +117,75 @@
   --chart-5: #6c4335;
 
   /* ===== Typography (Tailwind v4 companion syntax) ===== */
-  --font-display: "Copernicus", "Tiempos Headline", "Cormorant Garamond",
-    "EB Garamond", Garamond, Georgia, "Times New Roman", serif;
-  --font-sans: "StyreneB", Inter, -apple-system, BlinkMacSystemFont,
-    "Segoe UI", Roboto, sans-serif;
-  --font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo,
-    Consolas, monospace;
+  --font-display:
+    "Copernicus", "Tiempos Headline", "Cormorant Garamond", "EB Garamond", Garamond, Georgia,
+    "Times New Roman", serif;
+  --font-sans: "StyreneB", Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
 
-  --font-weight-regular: 400;   /* body, display, code (added with Typography) */
-  --font-weight-medium: 500;    /* titles, labels, buttons (added with Typography) */
+  --font-weight-regular: 400; /* body, display, code (added with Typography) */
+  --font-weight-medium: 500; /* titles, labels, buttons (added with Typography) */
 
-  --text-display-xl: 4rem;    /* 64px */ --text-display-xl--line-height: 1.05; --text-display-xl--letter-spacing: -1.5px;
-  --text-display-lg: 3rem;    /* 48px */ --text-display-lg--line-height: 1.1;  --text-display-lg--letter-spacing: -1px;
-  --text-display-md: 2.25rem; /* 36px */ --text-display-md--line-height: 1.15; --text-display-md--letter-spacing: -0.5px;
-  --text-display-sm: 1.75rem; /* 28px */ --text-display-sm--line-height: 1.2;  --text-display-sm--letter-spacing: -0.3px;
-  --text-title-lg: 1.375rem;  /* 22px */ --text-title-lg--line-height: 1.3;
-  --text-title-md: 1.125rem;  /* 18px */ --text-title-md--line-height: 1.4;
-  --text-title-sm: 1rem;      /* 16px */ --text-title-sm--line-height: 1.4;
-  --text-body-lg: 1.125rem; /* 18px */ --text-body-lg--line-height: 1.55; /* lead paragraphs */
-  --text-body-md: 1rem;       /* 16px */ --text-body-md--line-height: 1.55;
-  --text-body-sm: 0.875rem;   /* 14px */ --text-body-sm--line-height: 1.55;
-  --text-caption: 0.8125rem;  /* 13px */ --text-caption--line-height: 1.4;
-  --text-caption-up: 0.75rem; /* 12px */ --text-caption-up--line-height: 1.4;  --text-caption-up--letter-spacing: 1.5px;
-  --text-code: 0.875rem;      /* 14px */ --text-code--line-height: 1.6;
-  --text-button: 0.875rem;    /* 14px */ --text-button--line-height: 1;
-  --text-nav-link: 0.875rem;  /* 14px */ --text-nav-link--line-height: 1.4;
+  --text-display-xl: 4rem; /* 64px */
+  --text-display-xl--line-height: 1.05;
+  --text-display-xl--letter-spacing: -1.5px;
+  --text-display-lg: 3rem; /* 48px */
+  --text-display-lg--line-height: 1.1;
+  --text-display-lg--letter-spacing: -1px;
+  --text-display-md: 2.25rem; /* 36px */
+  --text-display-md--line-height: 1.15;
+  --text-display-md--letter-spacing: -0.5px;
+  --text-display-sm: 1.75rem; /* 28px */
+  --text-display-sm--line-height: 1.2;
+  --text-display-sm--letter-spacing: -0.3px;
+  --text-title-lg: 1.375rem; /* 22px */
+  --text-title-lg--line-height: 1.3;
+  --text-title-md: 1.125rem; /* 18px */
+  --text-title-md--line-height: 1.4;
+  --text-title-sm: 1rem; /* 16px */
+  --text-title-sm--line-height: 1.4;
+  --text-body-lg: 1.125rem; /* 18px */
+  --text-body-lg--line-height: 1.55; /* lead paragraphs */
+  --text-body-md: 1rem; /* 16px */
+  --text-body-md--line-height: 1.55;
+  --text-body-sm: 0.875rem; /* 14px */
+  --text-body-sm--line-height: 1.55;
+  --text-caption: 0.8125rem; /* 13px */
+  --text-caption--line-height: 1.4;
+  --text-caption-up: 0.75rem; /* 12px */
+  --text-caption-up--line-height: 1.4;
+  --text-caption-up--letter-spacing: 1.5px;
+  --text-code: 0.875rem; /* 14px */
+  --text-code--line-height: 1.6;
+  --text-button: 0.875rem; /* 14px */
+  --text-button--line-height: 1;
+  --text-nav-link: 0.875rem; /* 14px */
+  --text-nav-link--line-height: 1.4;
 
   /* Compact display sizes for narrow viewports */
-  --text-display-xl-compact: 2rem;     /* 32px */ --text-display-xl-compact--letter-spacing: -0.5px;
+  --text-display-xl-compact: 2rem; /* 32px */
+  --text-display-xl-compact--letter-spacing: -0.5px;
   --text-display-lg-compact: 1.875rem; /* 30px */
 
   /* ===== Spacing (4px base) ===== */
-  --space-0-5: 0.125rem;  /* 2px  — micro nudge (doc-page meta rows) */
-  --space-0-75: 0.1875rem;/* 3px  — micro nudge (doc-page meta rows) */
-  --space-1: 0.25rem;   /* 4px  — xxs */
-  --space-2: 0.5rem;    /* 8px  — xs */
-  --space-3: 0.75rem;   /* 12px — sm */
-  --space-4: 1rem;      /* 16px — md */
-  --space-6: 1.5rem;    /* 24px — lg */
-  --space-8: 2rem;      /* 32px — xl, card padding */
-  --space-12: 3rem;     /* 48px — xxl */
-  --space-16: 4rem;     /* 64px — footer/cta-band padding, top-nav height */
-  --space-24: 6rem;     /* 96px — section rhythm */
+  --space-0-5: 0.125rem; /* 2px  — micro nudge (doc-page meta rows) */
+  --space-0-75: 0.1875rem; /* 3px  — micro nudge (doc-page meta rows) */
+  --space-1: 0.25rem; /* 4px  — xxs */
+  --space-2: 0.5rem; /* 8px  — xs */
+  --space-3: 0.75rem; /* 12px — sm */
+  --space-4: 1rem; /* 16px — md */
+  --space-6: 1.5rem; /* 24px — lg */
+  --space-8: 2rem; /* 32px — xl, card padding */
+  --space-12: 3rem; /* 48px — xxl */
+  --space-16: 4rem; /* 64px — footer/cta-band padding, top-nav height */
+  --space-24: 6rem; /* 96px — section rhythm */
 
   /* ===== Radius ===== */
   --radius-xs: 4px;
   --radius-sm: 6px;
-  --radius-md: 8px;     /* buttons, inputs, tabs */
-  --radius-lg: 12px;    /* cards */
-  --radius-xl: 16px;    /* hero containers */
+  --radius-md: 8px; /* buttons, inputs, tabs */
+  --radius-lg: 12px; /* cards */
+  --radius-xl: 16px; /* hero containers */
   --radius-full: 9999px; /* pills, circular icon buttons */
 
   /* ===== Shadow (color-block first; shadows rare) ===== */
@@ -180,50 +202,50 @@
   --motion-rotation-full: 1turn; /* one complete progress-indicator cycle */
 
   /* ===== Control dimensions (component-spec, off spacing scale) ===== */
-  --control-height-sm: 32px;     /* = --space-8 */
-  --control-height: 40px;        /* buttons, text-input */
-  --control-height-lg: 48px;     /* = --space-12 */
+  --control-height-sm: 32px; /* = --space-8 */
+  --control-height: 40px; /* buttons, text-input */
+  --control-height-lg: 48px; /* = --space-12 */
   --icon-button-size: 36px;
-  --button-padding-inline-sm: 16px;  /* = --space-4 */
+  --button-padding-inline-sm: 16px; /* = --space-4 */
   --button-padding-inline: 20px;
-  --button-padding-inline-lg: 24px;  /* = --space-6 */
+  --button-padding-inline-lg: 24px; /* = --space-6 */
   --input-padding-block: 10px;
   --input-padding-inline: 14px;
   --tab-padding-inline: 14px;
 
   /* ===== Icons & strokes ===== */
-  --icon-size-xs: 0.75rem;     /* 12px — added with the Icon component */
-  --icon-size-sm: 1rem;        /* 16px — icon buttons */
-  --icon-size-md: 1.125rem;    /* 18px — feature-card icons */
-  --icon-size-lg: 1.5rem;      /* 24px — added with the Icon component */
-  --icon-size-xl: 2rem;        /* 32px — added with the Avatar component */
-  --brand-mark-size: 1.25rem;  /* 20px — logo glyph */
+  --icon-size-xs: 0.75rem; /* 12px — added with the Icon component */
+  --icon-size-sm: 1rem; /* 16px — icon buttons */
+  --icon-size-md: 1.125rem; /* 18px — feature-card icons */
+  --icon-size-lg: 1.5rem; /* 24px — added with the Icon component */
+  --icon-size-xl: 2rem; /* 32px — added with the Avatar component */
+  --brand-mark-size: 1.25rem; /* 20px — logo glyph */
   --stroke-width-icon: 1.6;
   --stroke-width-brand: 2.1;
 
   /* ===== Component size scales (added with their components; values equal
      the spacing / control-height tokens noted beside them) ===== */
-  --avatar-size-xs: 1.5rem;   /* 24px = --space-6 */
-  --avatar-size-sm: 2rem;     /* 32px = --space-8 */
-  --avatar-size-md: 2.5rem;   /* 40px = --control-height */
-  --avatar-size-lg: 3rem;     /* 48px = --control-height-lg */
-  --avatar-size-xl: 4rem;     /* 64px = --space-16 */
-  --checkbox-size-sm: 1rem;    /* 16px */
-  --checkbox-size-md: 1.125rem;/* 18px */
+  --avatar-size-xs: 1.5rem; /* 24px = --space-6 */
+  --avatar-size-sm: 2rem; /* 32px = --space-8 */
+  --avatar-size-md: 2.5rem; /* 40px = --control-height */
+  --avatar-size-lg: 3rem; /* 48px = --control-height-lg */
+  --avatar-size-xl: 4rem; /* 64px = --space-16 */
+  --checkbox-size-sm: 1rem; /* 16px */
+  --checkbox-size-md: 1.125rem; /* 18px */
   --checkbox-size-lg: 1.25rem; /* 20px */
   --slider-track-height-sm: 0.125rem; /* 2px = --space-0-5 */
-  --slider-track-height-md: 0.25rem;  /* 4px = --space-1 */
-  --slider-track-height-lg: 0.5rem;   /* 8px = --space-2 */
-  --slider-thumb-sm: 0.75rem;  /* 12px = --icon-size-xs */
-  --slider-thumb-md: 1rem;     /* 16px = --icon-size-sm */
-  --slider-thumb-lg: 1.25rem;  /* 20px = --brand-mark-size */
-  --slider-tick: #8e8b82;      /* step ticks = caption-foreground */
-  --switch-track-height-sm: 1rem;   /* 16px = --space-4 */
+  --slider-track-height-md: 0.25rem; /* 4px = --space-1 */
+  --slider-track-height-lg: 0.5rem; /* 8px = --space-2 */
+  --slider-thumb-sm: 0.75rem; /* 12px = --icon-size-xs */
+  --slider-thumb-md: 1rem; /* 16px = --icon-size-sm */
+  --slider-thumb-lg: 1.25rem; /* 20px = --brand-mark-size */
+  --slider-tick: #8e8b82; /* step ticks = caption-foreground */
+  --switch-track-height-sm: 1rem; /* 16px = --space-4 */
   --switch-track-height-md: 1.5rem; /* 24px = --space-6 */
-  --switch-track-height-lg: 2rem;   /* 32px = --space-8 */
-  --progress-height-sm: 0.25rem;  /* 4px = --space-1 (added with Progress) */
-  --progress-height-md: 0.5rem;   /* 8px = --space-2 (added with Progress) */
-  --progress-height-lg: 0.75rem;  /* 12px = --space-3 (added with Progress) */
+  --switch-track-height-lg: 2rem; /* 32px = --space-8 */
+  --progress-height-sm: 0.25rem; /* 4px = --space-1 (added with Progress) */
+  --progress-height-md: 0.5rem; /* 8px = --space-2 (added with Progress) */
+  --progress-height-lg: 0.75rem; /* 12px = --space-3 (added with Progress) */
 
   /* Data-display component recipes. These aliases keep the public
      component CSS semantic and prevent showcase-only palette choices. */
@@ -242,12 +264,12 @@
   --skeleton-highlight-size: var(--space-24);
   --skeleton-animation-duration: var(--duration-loading);
   --skeleton-animation-easing: var(--ease-standard);
-  --textarea-min-height-sm: 4rem;   /* 64px = --space-16 */
-  --textarea-min-height-md: 6rem;   /* 96px = --space-24 */
-  --textarea-min-height-lg: 8rem;   /* 128px = --space-24 + --space-8 */
-  --calendar-cell-size: 2rem;  /* 32px = --control-height-sm */
+  --textarea-min-height-sm: 4rem; /* 64px = --space-16 */
+  --textarea-min-height-md: 6rem; /* 96px = --space-24 */
+  --textarea-min-height-lg: 8rem; /* 128px = --space-24 + --space-8 */
+  --calendar-cell-size: 2rem; /* 32px = --control-height-sm */
   --menu-max-height: calc(var(--control-height) * 6); /* six option rows */
-  --today-indicator: #cc785c;  /* datepicker today ring = primary */
+  --today-indicator: #cc785c; /* datepicker today ring = primary */
   --sidebar-width: calc(var(--space-16) * 4); /* 256px — expanded app rail (added with Sidebar) */
   --sidebar-width-collapsed: var(--space-16); /* 64px — icon-only rail (added with Sidebar) */
 
@@ -256,9 +278,9 @@
      pairs with --z-popover panels. Same alpha-token recipe as --ring-focus. */
   --scrim: rgb(20 20 19 / 0.4);
 
-  --z-sticky: 10;   /* sticky chrome (doc topnav) */
+  --z-sticky: 10; /* sticky chrome (doc topnav) */
   --z-dropdown: 20; /* anchored menus (select, combobox) */
-  --z-popover: 30;  /* overlays above menus (datepicker) */
+  --z-popover: 30; /* overlays above menus (datepicker) */
 
   /* ===== Documentation page layout (design-system.html only) ===== */
   --doc-container-max: 1200px;

@@ -1,96 +1,409 @@
 @import "tailwindcss";
 
 /*
- * Design tokens — Anthropic 气质 × 后台刻度(ADR 0001)
- * 唯一事实源:组件内只允许语义 token,禁止原始色值。
+ * Design tokens — Claude 设计体系(ADR 0003)
+ * 运行时唯一事实源。值与上游规格 frontend/src/styles/tokens.css 保持一致:
+ * 规格改动先落 tokens.css,再人工同步到本文件(同步纪律见 ADR 0003)。
+ * 组件内只允许语义 token,禁止原始色值。
+ * 不含 tokens.css 末尾的 --doc-* 块(仅 design-system.html/showcase 文档页用)。
  */
 :root {
-  --background: #faf9f5;
-  --foreground: #141413;
-
-  --card: #ffffff;
+  /* ===== Surfaces ===== */
+  --background: #faf9f5; /* canvas: the page floor, warm cream */
+  --surface-soft: #f5f0e8; /* soft section bands */
+  --card: #efe9de; /* surface-card: feature/content cards */
   --card-foreground: #141413;
-  --popover: #ffffff;
+  --surface-cream-strong: #e8e0d2; /* active tabs, emphasized bands */
+  --popover: #faf9f5; /* = canvas */
   --popover-foreground: #141413;
 
-  --primary: #141413;
-  --primary-foreground: #faf9f5;
+  /* Dark product surfaces (code mockups, footer — not a theme) */
+  --surface-dark: #181715;
+  --surface-dark-elevated: #252320;
+  --surface-dark-soft: #1f1e1b;
+  --on-dark: #faf9f5;
+  --on-dark-soft: #a09d96;
 
-  --secondary: #f0eee7;
+  /* ===== Text ===== */
+  --foreground: #141413; /* ink: headlines, primary text */
+  --foreground-strong: #252523; /* body-strong: lead paragraphs */
+  --foreground-body: #3d3d3a; /* body: running text */
+  --muted: #f5f0e8; /* muted bg (shadcn role) = surface-soft */
+  --muted-foreground: #6c6a64; /* muted text: sub-heads, breadcrumbs */
+  --caption-foreground: #8e8b82; /* muted-soft: captions, fine print */
+
+  /* ===== Brand ===== */
+  --primary: #cc785c; /* coral — scarce on elements, generous on bands */
+  --primary-foreground: #ffffff; /* on-primary */
+  --primary-active: #a9583e; /* pressed state */
+  --primary-disabled: #e6dfd8; /* = hairline; pair with --muted-foreground text */
+  --secondary: #f5f0e8; /* = surface-soft */
   --secondary-foreground: #141413;
+  --accent: #efe9de; /* hover/tab-active bg (shadcn role) = surface-card */
+  --accent-foreground: #141413;
+  --accent-teal: #5db8a6; /* status dots, "connected" indicators */
+  --accent-amber: #e8a55a; /* badges, inline highlights */
 
-  --muted: #f0eee7;
-  --muted-foreground: #5d5c56;
+  /* ===== Interactive states ===== */
+  --primary-hover: #bd6a4e; /* midway between --primary and --primary-active */
+  --destructive-hover: #b23b3b;
+  --destructive-active: #9e3232;
+  --info-hover: #54a795; /* darkens --info in the same direction */
+  --info-active: #4a9585;
+  --opacity-disabled: 0.5; /* disabled = same colors, reduced opacity */
 
-  --accent: #d97757;
-  --accent-foreground: #ffffff;
+  /* Selection & pressed surfaces */
+  --selected-bg: #e8e0d2; /* = surface-cream-strong */
+  --selected-border: #cc785c; /* = ring */
+  --surface-cream-pressed: #e6dfd8; /* cream pressed track; = hairline tone */
 
-  --destructive: #b3402a;
+  /* Icon state colors */
+  --foreground-hover: #0d0d0c;
+  --foreground-active: #000000;
+  --muted-foreground-hover: #5f5d58;
+  --muted-foreground-active: #545350;
+  --success-hover: #54a667;
+  --success-active: #4a935b;
+  --warning-hover: #bf9015;
+  --warning-active: #aa8012;
+  --inverse-hover: #eae6dd; /* dims --on-dark for hover on dark surfaces */
+  --inverse-active: #dad5ca; /* dims further for active on dark surfaces */
+
+  /* ===== Semantic ===== */
+  --success: #5db872;
+  --warning: #d4a017;
+  --destructive: #c64545; /* error */
   --destructive-foreground: #ffffff;
+  --info: #5db8a6; /* = accent-teal */
+  --success-foreground: #141413; /* ink on the bright fill */
+  --warning-foreground: #141413;
+  --info-foreground: #141413;
 
-  --success: #3d7a50;
-  --success-foreground: #ffffff;
+  /* Semantic tint surfaces — 16% of the semantic color over the canvas */
+  --success-soft: #e1efe0;
+  --warning-soft: #f4ebd1;
+  --destructive-soft: #f2dcd9;
+  --info-soft: #e1efe8;
 
-  --border: rgb(20 20 19 / 0.14);
-  --input: rgb(20 20 19 / 0.22);
-  --ring: #d97757;
+  /* Presence (Avatar status dots) */
+  --status-online: #5db8a6; /* = accent-teal */
+  --status-offline: #8e8b82; /* = caption-foreground */
+  --status-busy: #c64545; /* = destructive */
+  --status-away: #d4a017; /* = warning */
 
-  --radius-sm: 8px;
-  --radius-md: 16px;
-  --radius-lg: 24px;
+  /* ===== Lines & focus ===== */
+  --border: #e6dfd8; /* hairline */
+  --border-soft: #ebe6df; /* hairline-soft: quiet dividers */
+  --border-strong: #6c6a64; /* strong line: hover borders, strong divider */
+  --border-width: 1px; /* every hairline border */
+  --border-width-strong: 2px; /* emphasized dividers */
+  --input: #e6dfd8;
+  --ring: #cc785c;
+  --ring-width: 3px; /* focus ring spread */
+  --ring-focus: rgb(204 120 92 / 0.15); /* focus ring, coral at 15% alpha */
+  --ring-destructive: rgb(198 69 69 / 0.15); /* invalid-field focus ring */
 
-  --shadow-card:
-    rgb(20 20 19 / 0.01) 0px 2px 2px 0px, rgb(20 20 19 / 0.02) 0px 4px 4px 0px,
-    rgb(20 20 19 / 0.04) 0px 16px 24px 0px;
-  --shadow-elevated:
-    rgb(20 20 19 / 0.02) 0px 2px 4px 0px, rgb(20 20 19 / 0.04) 0px 8px 16px 0px,
-    rgb(20 20 19 / 0.06) 0px 24px 40px 0px;
+  /* ===== Links ===== */
+  --link-visited: #a9583e; /* = primary-active: "seen" reads darker, same hue */
+  --link-underline-offset: 0.125rem;
 
+  /* ===== Code mockups (on dark surfaces only) ===== */
+  --syntax-keyword: #8fb8d8;
+
+  /* ===== Charts ===== */
+  --chart-1: #cc785c;
+  --chart-2: #f8e9e4;
+  --chart-3: #965a46;
+  --chart-4: #ebc2b4;
+  --chart-5: #6c4335;
+
+  /* ===== Typography =====
+     商业字体 Copernicus/StyreneB 不可自托管,走 fallback 链(ADR 0003)。 */
+  --font-display:
+    "Copernicus", "Tiempos Headline", "Cormorant Garamond", "EB Garamond", Garamond, Georgia,
+    "Times New Roman", serif;
+  --font-sans:
+    "StyreneB", Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "PingFang SC",
+    "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+
+  --font-weight-regular: 400; /* body, display, code */
+  --font-weight-medium: 500; /* titles, labels, buttons */
+
+  --text-display-xl: 4rem;
+  --text-display-xl--line-height: 1.05;
+  --text-display-xl--letter-spacing: -1.5px;
+  --text-display-lg: 3rem;
+  --text-display-lg--line-height: 1.1;
+  --text-display-lg--letter-spacing: -1px;
+  --text-display-md: 2.25rem;
+  --text-display-md--line-height: 1.15;
+  --text-display-md--letter-spacing: -0.5px;
+  --text-display-sm: 1.75rem;
+  --text-display-sm--line-height: 1.2;
+  --text-display-sm--letter-spacing: -0.3px;
+  --text-title-lg: 1.375rem;
+  --text-title-lg--line-height: 1.3;
+  --text-title-md: 1.125rem;
+  --text-title-md--line-height: 1.4;
+  --text-title-sm: 1rem;
+  --text-title-sm--line-height: 1.4;
+  --text-body-lg: 1.125rem;
+  --text-body-lg--line-height: 1.55; /* lead paragraphs */
+  --text-body-md: 1rem;
+  --text-body-md--line-height: 1.55;
+  --text-body-sm: 0.875rem;
+  --text-body-sm--line-height: 1.55;
+  --text-caption: 0.8125rem;
+  --text-caption--line-height: 1.4;
+  --text-caption-up: 0.75rem;
+  --text-caption-up--line-height: 1.4;
+  --text-caption-up--letter-spacing: 1.5px;
+  --text-code: 0.875rem;
+  --text-code--line-height: 1.6;
+  --text-button: 0.875rem;
+  --text-button--line-height: 1;
+  --text-nav-link: 0.875rem;
+  --text-nav-link--line-height: 1.4;
+
+  /* Compact display sizes for narrow viewports */
+  --text-display-xl-compact: 2rem;
+  --text-display-xl-compact--letter-spacing: -0.5px;
+  --text-display-lg-compact: 1.875rem;
+
+  /* ===== Spacing (4px base) ===== */
+  --space-0-5: 0.125rem; /* 2px */
+  --space-0-75: 0.1875rem; /* 3px */
+  --space-1: 0.25rem; /* 4px */
+  --space-2: 0.5rem; /* 8px */
+  --space-3: 0.75rem; /* 12px */
+  --space-4: 1rem; /* 16px */
+  --space-6: 1.5rem; /* 24px */
+  --space-8: 2rem; /* 32px — card padding */
+  --space-12: 3rem; /* 48px */
+  --space-16: 4rem; /* 64px — top-nav height */
+  --space-24: 6rem; /* 96px — section rhythm */
+
+  /* ===== Radius ===== */
+  --radius-xs: 4px;
+  --radius-sm: 6px;
+  --radius-md: 8px; /* buttons, inputs, tabs */
+  --radius-lg: 12px; /* cards */
+  --radius-xl: 16px; /* hero containers */
+  --radius-full: 9999px; /* pills, circular icon buttons */
+
+  /* ===== Shadow (color-block first; shadows rare) ===== */
+  --shadow-subtle: 0 1px 3px rgb(20 20 19 / 0.08);
+  --shadow-lift: 0 4px 12px rgb(20 20 19 / 0.12); /* hover lift on elevated surfaces */
+
+  /* ===== Motion ===== */
   --duration-fast: 100ms;
-  --duration-base: 200ms;
-  --duration-slow: 800ms;
-  --ease-out-expo: cubic-bezier(0.16, 1, 0.3, 1);
+  --duration-normal: 200ms;
+  --duration-slow: 300ms;
+  --duration-loading: 800ms; /* continuous progress indicators */
+  --ease-standard: cubic-bezier(0.2, 0, 0, 1);
+  --ease-linear: linear; /* constant-speed progress rotation */
+  --motion-rotation-full: 1turn; /* one complete progress-indicator cycle */
+
+  /* ===== Control dimensions ===== */
+  --control-height-sm: 32px;
+  --control-height: 40px; /* buttons, text-input */
+  --control-height-lg: 48px;
+  --icon-button-size: 36px;
+  --button-padding-inline-sm: 16px;
+  --button-padding-inline: 20px;
+  --button-padding-inline-lg: 24px;
+  --input-padding-block: 10px;
+  --input-padding-inline: 14px;
+  --tab-padding-inline: 14px;
+
+  /* ===== Icons & strokes ===== */
+  --icon-size-xs: 0.75rem; /* 12px */
+  --icon-size-sm: 1rem; /* 16px — icon buttons */
+  --icon-size-md: 1.125rem; /* 18px — feature-card icons */
+  --icon-size-lg: 1.5rem; /* 24px */
+  --icon-size-xl: 2rem; /* 32px */
+  --brand-mark-size: 1.25rem; /* 20px — logo glyph */
+  --stroke-width-icon: 1.6;
+  --stroke-width-brand: 2.1;
+
+  /* ===== Component size scales ===== */
+  --avatar-size-xs: 1.5rem;
+  --avatar-size-sm: 2rem;
+  --avatar-size-md: 2.5rem;
+  --avatar-size-lg: 3rem;
+  --avatar-size-xl: 4rem;
+  --checkbox-size-sm: 1rem;
+  --checkbox-size-md: 1.125rem;
+  --checkbox-size-lg: 1.25rem;
+  --slider-track-height-sm: 0.125rem;
+  --slider-track-height-md: 0.25rem;
+  --slider-track-height-lg: 0.5rem;
+  --slider-thumb-sm: 0.75rem;
+  --slider-thumb-md: 1rem;
+  --slider-thumb-lg: 1.25rem;
+  --slider-tick: #8e8b82; /* = caption-foreground */
+  --switch-track-height-sm: 1rem;
+  --switch-track-height-md: 1.5rem;
+  --switch-track-height-lg: 2rem;
+  --progress-height-sm: 0.25rem;
+  --progress-height-md: 0.5rem;
+  --progress-height-lg: 0.75rem;
+
+  /* Data-display component recipes */
+  --progress-track: var(--surface-cream-strong);
+  --progress-indicator: var(--primary);
+  --progress-indeterminate-size: var(--space-16);
+  --progress-animation-duration: var(--duration-loading);
+  --progress-animation-easing: var(--ease-standard);
+
+  --skeleton-surface: var(--card);
+  --skeleton-highlight: var(--background);
+  --skeleton-highlight-opacity: var(--opacity-disabled);
+  --skeleton-radius-rectangle: var(--radius-md);
+  --skeleton-radius-text: var(--radius-sm);
+  --skeleton-radius-circle: var(--radius-full);
+  --skeleton-highlight-size: var(--space-24);
+  --skeleton-animation-duration: var(--duration-loading);
+  --skeleton-animation-easing: var(--ease-standard);
+  --textarea-min-height-sm: 4rem;
+  --textarea-min-height-md: 6rem;
+  --textarea-min-height-lg: 8rem;
+  --calendar-cell-size: 2rem;
+  --menu-max-height: calc(var(--control-height) * 6); /* six option rows */
+  --today-indicator: #cc785c; /* datepicker today ring = primary */
+  --sidebar-width: calc(var(--space-16) * 4); /* 256px */
+  --sidebar-width-collapsed: var(--space-16); /* 64px */
+
+  /* ===== Layering ===== */
+  --scrim: rgb(20 20 19 / 0.4); /* ink at 40% behind modal overlays */
+
+  --z-sticky: 10; /* sticky chrome */
+  --z-dropdown: 20; /* anchored menus (select, combobox) */
+  --z-popover: 30; /* overlays above menus (datepicker) */
 }
 
 @theme inline {
+  /* ===== Colors(shadcn 语义角色 + 新体系命名色)===== */
   --color-background: var(--background);
   --color-foreground: var(--foreground);
+  --color-foreground-strong: var(--foreground-strong);
+  --color-foreground-body: var(--foreground-body);
   --color-card: var(--card);
   --color-card-foreground: var(--card-foreground);
   --color-popover: var(--popover);
   --color-popover-foreground: var(--popover-foreground);
   --color-primary: var(--primary);
   --color-primary-foreground: var(--primary-foreground);
+  --color-primary-hover: var(--primary-hover);
+  --color-primary-active: var(--primary-active);
   --color-secondary: var(--secondary);
   --color-secondary-foreground: var(--secondary-foreground);
   --color-muted: var(--muted);
   --color-muted-foreground: var(--muted-foreground);
+  --color-caption-foreground: var(--caption-foreground);
   --color-accent: var(--accent);
   --color-accent-foreground: var(--accent-foreground);
+  --color-accent-teal: var(--accent-teal);
+  --color-accent-amber: var(--accent-amber);
   --color-destructive: var(--destructive);
   --color-destructive-foreground: var(--destructive-foreground);
+  --color-destructive-hover: var(--destructive-hover);
+  --color-destructive-active: var(--destructive-active);
+  --color-destructive-soft: var(--destructive-soft);
   --color-success: var(--success);
   --color-success-foreground: var(--success-foreground);
+  --color-success-soft: var(--success-soft);
+  --color-warning: var(--warning);
+  --color-warning-foreground: var(--warning-foreground);
+  --color-warning-soft: var(--warning-soft);
+  --color-info: var(--info);
+  --color-info-foreground: var(--info-foreground);
+  --color-info-soft: var(--info-soft);
   --color-border: var(--border);
+  --color-border-soft: var(--border-soft);
+  --color-border-strong: var(--border-strong);
   --color-input: var(--input);
   --color-ring: var(--ring);
+  --color-surface-soft: var(--surface-soft);
+  --color-surface-cream-strong: var(--surface-cream-strong);
+  --color-surface-dark: var(--surface-dark);
+  --color-on-dark: var(--on-dark);
+  --color-on-dark-soft: var(--on-dark-soft);
+  --color-scrim: var(--scrim);
 
+  /* ===== Radius ===== */
+  --radius-xs: var(--radius-xs);
   --radius-sm: var(--radius-sm);
   --radius-md: var(--radius-md);
   --radius-lg: var(--radius-lg);
+  --radius-xl: var(--radius-xl);
+  --radius-full: var(--radius-full);
 
-  --shadow-card: var(--shadow-card);
-  --shadow-elevated: var(--shadow-elevated);
+  /* ===== Shadow ===== */
+  --shadow-subtle: var(--shadow-subtle);
+  --shadow-lift: var(--shadow-lift);
 
-  --font-sans:
-    var(--font-anthropic-sans), "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", system-ui,
-    sans-serif;
-  --font-mono: var(--font-anthropic-mono), "Cascadia Mono", ui-monospace, monospace;
+  /* ===== Typography =====
+     新体系命名阶梯(tokens.css companion syntax),生成 text-display-* /
+     text-title-* / text-caption / text-code / text-button 等工具类。 */
+  --font-display: var(--font-display);
+  --font-sans: var(--font-sans);
+  --font-mono: var(--font-mono);
 
+  --text-display-xl: var(--text-display-xl);
+  --text-display-xl--line-height: var(--text-display-xl--line-height);
+  --text-display-xl--letter-spacing: var(--text-display-xl--letter-spacing);
+  --text-display-lg: var(--text-display-lg);
+  --text-display-lg--line-height: var(--text-display-lg--line-height);
+  --text-display-lg--letter-spacing: var(--text-display-lg--letter-spacing);
+  --text-display-md: var(--text-display-md);
+  --text-display-md--line-height: var(--text-display-md--line-height);
+  --text-display-md--letter-spacing: var(--text-display-md--letter-spacing);
+  --text-display-sm: var(--text-display-sm);
+  --text-display-sm--line-height: var(--text-display-sm--line-height);
+  --text-display-sm--letter-spacing: var(--text-display-sm--letter-spacing);
+  --text-title-lg: var(--text-title-lg);
+  --text-title-lg--line-height: var(--text-title-lg--line-height);
+  --text-title-md: var(--text-title-md);
+  --text-title-md--line-height: var(--text-title-md--line-height);
+  --text-title-sm: var(--text-title-sm);
+  --text-title-sm--line-height: var(--text-title-sm--line-height);
+  --text-caption: var(--text-caption);
+  --text-caption--line-height: var(--text-caption--line-height);
+  --text-code: var(--text-code);
+  --text-code--line-height: var(--text-code--line-height);
+
+  /* Tailwind 默认字号阶梯重映射到新刻度度量(ADR 0003:页面标记不重写)。
+     text-xs/sm/base/lg 维持正文语义;text-xl 起进入 title/display 阶梯。 */
+  --text-xs: var(--text-caption-up);
+  --text-xs--line-height: var(--text-caption-up--line-height);
+  --text-sm: var(--text-body-sm);
+  --text-sm--line-height: var(--text-body-sm--line-height);
+  --text-base: var(--text-body-md);
+  --text-base--line-height: var(--text-body-md--line-height);
+  --text-lg: var(--text-body-lg);
+  --text-lg--line-height: var(--text-body-lg--line-height);
+  --text-xl: var(--text-title-lg);
+  --text-xl--line-height: var(--text-title-lg--line-height);
+  --text-2xl: var(--text-display-sm);
+  --text-2xl--line-height: var(--text-display-sm--line-height);
+  --text-2xl--letter-spacing: var(--text-display-sm--letter-spacing);
+  --text-3xl: var(--text-display-md);
+  --text-3xl--line-height: var(--text-display-md--line-height);
+  --text-3xl--letter-spacing: var(--text-display-md--letter-spacing);
+  --text-4xl: var(--text-display-lg);
+  --text-4xl--line-height: var(--text-display-lg--line-height);
+  --text-4xl--letter-spacing: var(--text-display-lg--letter-spacing);
+  --text-5xl: var(--text-display-xl);
+  --text-5xl--line-height: var(--text-display-xl--line-height);
+  --text-5xl--letter-spacing: var(--text-display-xl--letter-spacing);
+
+  /* ===== Motion ===== */
   --duration-fast: var(--duration-fast);
-  --duration-base: var(--duration-base);
+  --duration-normal: var(--duration-normal);
   --duration-slow: var(--duration-slow);
-  --ease-out-expo: var(--ease-out-expo);
+  --ease-standard: var(--ease-standard);
 }
 
 @layer base {
@@ -109,8 +422,8 @@
     background: var(--background);
     color: var(--foreground);
     font-family: var(--font-sans);
-    font-size: 0.875rem;
-    line-height: 1.6;
+    font-size: var(--text-body-sm);
+    line-height: var(--text-body-sm--line-height);
     -webkit-font-smoothing: antialiased;
     text-rendering: optimizeLegibility;
   }
@@ -120,7 +433,6 @@
   h3,
   h4 {
     text-wrap: balance;
-    letter-spacing: -0.02em;
   }
 
   p {
@@ -128,7 +440,7 @@
   }
 
   ::selection {
-    background: rgb(217 119 87 / 0.24);
+    background: rgb(204 120 92 / 0.24);
   }
 
   :focus-visible {

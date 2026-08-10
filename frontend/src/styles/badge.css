@@ -108,7 +108,9 @@
 
 /* ===== Variants (subtle defaults: tint + accent; primary stays neutral) ===== */
 
-.badge--primary { --_accent: var(--primary); }
+.badge--primary {
+  --_accent: var(--primary);
+}
 .badge--success {
   --_bg: var(--success-soft);
   --_accent: var(--success);
@@ -162,11 +164,21 @@
   --_bg: transparent;
   --_border: var(--border);
 }
-.badge--outline.badge--primary { --_border: var(--primary); }
-.badge--outline.badge--success { --_border: var(--success); }
-.badge--outline.badge--warning { --_border: var(--warning); }
-.badge--outline.badge--destructive { --_border: var(--destructive); }
-.badge--outline.badge--info { --_border: var(--info); }
+.badge--outline.badge--primary {
+  --_border: var(--primary);
+}
+.badge--outline.badge--success {
+  --_border: var(--success);
+}
+.badge--outline.badge--warning {
+  --_border: var(--warning);
+}
+.badge--outline.badge--destructive {
+  --_border: var(--destructive);
+}
+.badge--outline.badge--info {
+  --_border: var(--info);
+}
 /* Outline accents come from the variant rules above — neutral keeps
    --muted-foreground rather than the near-invisible hairline. */
 

@@ -166,8 +166,12 @@
   color: var(--foreground-body);
 }
 
-.popover__content > :first-child { margin-top: 0; }
-.popover__content > :last-child { margin-bottom: 0; }
+.popover__content > :first-child {
+  margin-top: 0;
+}
+.popover__content > :last-child {
+  margin-bottom: 0;
+}
 
 /* ===== Footer ===== */
 

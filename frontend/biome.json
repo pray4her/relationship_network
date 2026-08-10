@@ -8,6 +8,8 @@
       "!!node_modules",
       "!!.next",
       "!!coverage",
+      "!!showcase",
+      "!!design-system.html",
       "!!next-env.d.ts",
       "!!playwright-report",
       "!!test-results",
@@ -39,6 +41,10 @@
     {
       "includes": ["src/app/globals.css"],
       "linter": { "rules": { "complexity": { "noImportantStyles": "off" } } }
+    },
+    {
+      "includes": ["src/styles/**"],
+      "linter": { "rules": { "style": { "noDescendingSpecificity": "off" } } }
     },
     {
       "includes": ["src/components/ui/**"],

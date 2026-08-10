@@ -100,8 +100,8 @@
   width: var(--skeleton-highlight-size);
   background: linear-gradient(90deg, transparent, var(--skeleton-highlight), transparent);
   opacity: var(--skeleton-highlight-opacity);
-  animation: skeleton-sweep var(--skeleton-animation-duration)
-    var(--skeleton-animation-easing) infinite;
+  animation: skeleton-sweep var(--skeleton-animation-duration) var(--skeleton-animation-easing)
+    infinite;
 }
 
 @keyframes skeleton-sweep {

@@ -3,34 +3,39 @@ import { cva, type VariantProps } from "class-variance-authority"
 
 import { cn } from "@/lib/utils"
 
+/**
+ * 视觉规格:frontend/src/styles/button.css + icon-button.css(showcase 为唯一标准)。
+ * 状态同时挂伪类与 data-[state=*] 镜像,预览页可静态渲染 hover/active/focus 态。
+ */
 const buttonVariants = cva(
-  "group/button inline-flex shrink-0 items-center justify-center rounded-lg border border-transparent bg-clip-padding text-sm font-medium whitespace-nowrap transition-all outline-none select-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 active:not-aria-[haspopup]:translate-y-px disabled:pointer-events-none disabled:opacity-50 aria-invalid:border-destructive aria-invalid:ring-3 aria-invalid:ring-destructive/20 dark:aria-invalid:border-destructive/50 dark:aria-invalid:ring-destructive/40 [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4",
+  "group/button relative inline-flex shrink-0 cursor-pointer items-center justify-center gap-[var(--space-2)] rounded-[var(--radius-md)] border border-transparent bg-clip-padding font-sans text-[length:var(--text-button)] leading-none font-medium whitespace-nowrap outline-none select-none transition-[background-color,color,border-color,box-shadow,opacity] duration-fast ease-standard focus-visible:shadow-[0_0_0_var(--ring-width)_var(--ring-focus)] disabled:pointer-events-none disabled:cursor-not-allowed disabled:opacity-[var(--opacity-disabled)] data-[state=focus-visible]:shadow-[0_0_0_var(--ring-width)_var(--ring-focus)] [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-[var(--icon-size-sm)] [&_svg_path]:[stroke-width:var(--stroke-width-icon)]",
   {
     variants: {
       variant: {
-        default: "bg-primary text-primary-foreground hover:bg-primary/80",
-        outline:
-          "border-border bg-background hover:bg-muted hover:text-foreground aria-expanded:bg-muted aria-expanded:text-foreground dark:border-input dark:bg-input/30 dark:hover:bg-input/50",
+        default:
+          "bg-primary text-primary-foreground hover:bg-primary-hover active:bg-primary-active data-[state=hover]:bg-primary-hover data-[state=active]:bg-primary-active [&_[data-slot=button-spinner]]:border-primary-foreground",
         secondary:
-          "bg-secondary text-secondary-foreground hover:bg-[color-mix(in_oklch,var(--secondary),var(--foreground)_5%)] aria-expanded:bg-secondary aria-expanded:text-secondary-foreground",
+          "border-border bg-secondary text-secondary-foreground hover:bg-accent active:bg-surface-cream-strong data-[state=hover]:bg-accent data-[state=active]:bg-surface-cream-strong [&_[data-slot=button-spinner]]:border-secondary-foreground",
+        outline:
+          "border-border bg-secondary text-secondary-foreground hover:bg-accent active:bg-surface-cream-strong data-[state=hover]:bg-accent data-[state=active]:bg-surface-cream-strong [&_[data-slot=button-spinner]]:border-secondary-foreground",
         ghost:
-          "hover:bg-muted hover:text-foreground aria-expanded:bg-muted aria-expanded:text-foreground dark:hover:bg-muted/50",
+          "text-foreground hover:bg-accent active:bg-surface-cream-strong data-[state=hover]:bg-accent data-[state=active]:bg-surface-cream-strong [&_[data-slot=button-spinner]]:border-foreground",
         destructive:
-          "bg-destructive/10 text-destructive hover:bg-destructive/20 focus-visible:border-destructive/40 focus-visible:ring-destructive/20 dark:bg-destructive/20 dark:hover:bg-destructive/30 dark:focus-visible:ring-destructive/40",
-        link: "text-primary underline-offset-4 hover:underline",
+          "bg-destructive text-destructive-foreground hover:bg-destructive-hover active:bg-destructive-active data-[state=hover]:bg-destructive-hover data-[state=active]:bg-destructive-active [&_[data-slot=button-spinner]]:border-destructive-foreground",
+        link: "h-auto cursor-pointer gap-[var(--space-1)] rounded-[var(--radius-xs)] border-0 px-0 text-primary underline decoration-[var(--border-width)] underline-offset-[var(--link-underline-offset)] transition-colors hover:text-primary-hover hover:underline active:text-primary-active data-[state=hover]:text-primary-hover data-[state=hover]:underline data-[state=active]:text-primary-active",
       },
       size: {
-        default:
-          "h-8 gap-1.5 px-2.5 has-data-[icon=inline-end]:pr-2 has-data-[icon=inline-start]:pl-2",
-        xs: "h-6 gap-1 rounded-[min(var(--radius-md),10px)] px-2 text-xs in-data-[slot=button-group]:rounded-lg has-data-[icon=inline-end]:pr-1.5 has-data-[icon=inline-start]:pl-1.5 [&_svg:not([class*='size-'])]:size-3",
-        sm: "h-7 gap-1 rounded-[min(var(--radius-md),12px)] px-2.5 text-[0.8rem] in-data-[slot=button-group]:rounded-lg has-data-[icon=inline-end]:pr-1.5 has-data-[icon=inline-start]:pl-1.5 [&_svg:not([class*='size-'])]:size-3.5",
-        lg: "h-9 gap-1.5 px-2.5 has-data-[icon=inline-end]:pr-2 has-data-[icon=inline-start]:pl-2",
-        icon: "size-8",
+        default: "h-[var(--control-height)] px-[var(--button-padding-inline)]",
+        xs: "h-[var(--control-height-sm)] px-[var(--button-padding-inline-sm)]",
+        sm: "h-[var(--control-height-sm)] px-[var(--button-padding-inline-sm)]",
+        lg: "h-[var(--control-height-lg)] px-[var(--button-padding-inline-lg)]",
+        icon: "size-[var(--icon-button-size)] rounded-[var(--radius-full)] px-0",
         "icon-xs":
-          "size-6 rounded-[min(var(--radius-md),10px)] in-data-[slot=button-group]:rounded-lg [&_svg:not([class*='size-'])]:size-3",
+          "size-[var(--control-height-sm)] rounded-[var(--radius-full)] px-0 [&_svg:not([class*='size-'])]:size-[var(--icon-size-xs)]",
         "icon-sm":
-          "size-7 rounded-[min(var(--radius-md),12px)] in-data-[slot=button-group]:rounded-lg",
-        "icon-lg": "size-9",
+          "size-[var(--control-height-sm)] rounded-[var(--radius-full)] px-0 [&_svg:not([class*='size-'])]:size-[var(--icon-size-xs)]",
+        "icon-lg":
+          "size-[var(--control-height-lg)] rounded-[var(--radius-full)] px-0 [&_svg:not([class*='size-'])]:size-[var(--icon-size-lg)]",
       },
     },
     defaultVariants: {
@@ -40,18 +45,43 @@ const buttonVariants = cva(
   },
 )
 
+type ButtonProps = ButtonPrimitive.Props &
+  VariantProps<typeof buttonVariants> & {
+    /** 加载态:规格要求同时携带 disabled + aria-busy,内容保持布局但隐藏,spinner 居中覆盖。 */
+    loading?: boolean
+  }
+
 function Button({
   className,
   variant = "default",
   size = "default",
+  loading,
+  children,
+  disabled,
   ...props
-}: ButtonPrimitive.Props & VariantProps<typeof buttonVariants>) {
+}: ButtonProps) {
   return (
     <ButtonPrimitive
+      aria-busy={loading || undefined}
+      className={cn(
+        buttonVariants({ variant, size }),
+        loading &&
+          "pointer-events-none cursor-progress text-transparent disabled:opacity-100 [&_svg]:invisible",
+        className,
+      )}
       data-slot="button"
-      className={cn(buttonVariants({ variant, size, className }))}
+      disabled={loading || disabled}
       {...props}
-    />
+    >
+      {children}
+      {loading && (
+        <span
+          aria-hidden="true"
+          className="absolute top-1/2 left-1/2 size-[var(--icon-size-sm)] -translate-x-1/2 -translate-y-1/2 animate-spin rounded-full border-[length:var(--space-0-5)] border-solid border-t-transparent [animation-duration:var(--duration-loading)] [animation-timing-function:linear]"
+          data-slot="button-spinner"
+        />
+      )}
+    </ButtonPrimitive>
   )
 }
 
