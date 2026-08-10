@@ -13,7 +13,9 @@ export function AuthShell({ children }: { readonly children: ReactNode }) {
       >
         <BrandMark />
       </Link>
-      {children}
+      <main className="flex min-h-dvh items-center justify-center px-[var(--space-4)] py-[calc(var(--space-24)+var(--space-6))]">
+        {children}
+      </main>
     </div>
   )
 }

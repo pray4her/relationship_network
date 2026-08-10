@@ -7,6 +7,7 @@ import { FormField } from "@/components/form-field"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Button } from "@/components/ui/button"
 import { FieldLegend, FieldSet } from "@/components/ui/field"
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
 
 type MfaVerifyFormProps = {
   readonly action: (state: MfaVerifyFormState, formData: FormData) => Promise<MfaVerifyFormState>
@@ -28,27 +29,16 @@ export function MfaVerifyForm({ action }: MfaVerifyFormProps) {
 
       <FieldSet>
         <FieldLegend variant="label">验证方式</FieldLegend>
-        <label className="flex items-center gap-2 text-sm" htmlFor="factor-code">
-          <input
-            className="size-4 accent-primary"
-            defaultChecked
-            id="factor-code"
-            name="factor"
-            type="radio"
-            value="code"
-          />
-          身份验证器验证码
-        </label>
-        <label className="flex items-center gap-2 text-sm" htmlFor="factor-recovery">
-          <input
-            className="size-4 accent-primary"
-            id="factor-recovery"
-            name="factor"
-            type="radio"
-            value="recovery_code"
-          />
-          恢复码
-        </label>
+        <RadioGroup defaultValue="code" name="factor">
+          <label className="flex min-h-11 items-center gap-3 text-sm" htmlFor="factor-code">
+            <RadioGroupItem id="factor-code" value="code" />
+            身份验证器验证码
+          </label>
+          <label className="flex min-h-11 items-center gap-3 text-sm" htmlFor="factor-recovery">
+            <RadioGroupItem id="factor-recovery" value="recovery_code" />
+            恢复码
+          </label>
+        </RadioGroup>
       </FieldSet>
 
       <FormField
@@ -60,8 +50,8 @@ export function MfaVerifyForm({ action }: MfaVerifyFormProps) {
         type="text"
       />
 
-      <Button className="w-full" disabled={isPending} type="submit">
-        {isPending ? "验证中…" : "验证并登录"}
+      <Button className="w-full" loading={isPending} type="submit">
+        验证并登录
       </Button>
     </form>
   )

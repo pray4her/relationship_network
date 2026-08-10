@@ -59,8 +59,8 @@ export function InviteRegisterForm({
         type="text"
       />
 
-      <Button className="w-full" disabled={isPending} type="submit">
-        {isPending ? "提交中…" : "注册并接受邀请"}
+      <Button className="w-full" loading={isPending} type="submit">
+        注册并接受邀请
       </Button>
     </form>
   )

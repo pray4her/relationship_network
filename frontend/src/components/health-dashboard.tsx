@@ -1,5 +1,20 @@
+import {
+  DataRegion,
+  DataRegionContent,
+  Page,
+  PageActions,
+  PageDescription,
+  PageEyebrow,
+  PageHeader,
+  PageHeaderContent,
+  PageSection,
+  PageSectionHeader,
+  PageSectionHeaderContent,
+  PageSectionTitle,
+  PageTitle,
+} from "@/components/layout/page"
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import { Badge } from "@/components/ui/badge"
-import { Card, CardContent } from "@/components/ui/card"
 import type { DashboardHealth, HealthResponse } from "@/lib/health-contract"
 import { cn } from "@/lib/utils"
 
@@ -17,38 +32,15 @@ type ConnectedDashboardProps = {
   readonly health: HealthResponse
 }
 
-function Masthead({ recovery }: { readonly recovery?: boolean }) {
+function StatusLabel({ online }: { readonly online: boolean }) {
   return (
-    <header className="flex items-center justify-between border-b py-4">
-      <a
-        className="font-mono text-sm font-semibold tracking-widest"
-        href="/"
-        aria-label="关系网络平台首页"
-      >
-        RELATIONSHIP / NETWORK
-      </a>
-      <Badge variant={recovery ? "destructive" : "secondary"}>
-        {recovery ? "MVP · RECOVERY" : "MVP · LOCAL"}
-      </Badge>
-    </header>
-  )
-}
-
-function Footer({ left, right }: { readonly left: string; readonly right: string }) {
-  return (
-    <footer className="mt-auto flex items-center justify-between border-t py-4 font-mono text-xs tracking-wider text-muted-foreground">
-      <span>{left}</span>
-      <span>{right}</span>
-    </footer>
-  )
-}
-
-function StatusPill({ online }: { readonly online: boolean }) {
-  return (
-    <span className="inline-flex items-center gap-2 font-mono text-xs tracking-wider">
+    <span className="inline-flex shrink-0 items-center gap-[var(--space-2)] font-mono text-[length:var(--text-caption)] tracking-[var(--tracking-label)]">
       <span
         aria-hidden="true"
-        className={cn("size-2 rounded-full", online ? "bg-success" : "bg-destructive")}
+        className={cn(
+          "size-[var(--space-2)] rounded-[var(--radius-full)]",
+          online ? "bg-success" : "bg-destructive",
+        )}
       />
       {online ? "ONLINE" : "OFFLINE"}
     </span>
@@ -66,56 +58,60 @@ function ConnectedDashboard({ health }: ConnectedDashboardProps) {
   ]
 
   return (
-    <main
-      className="mx-auto flex min-h-dvh w-full max-w-7xl flex-col px-6"
-      data-state={health.status}
-    >
-      <Masthead />
+    <Page data-state={health.status}>
+      <PageHeader>
+        <PageHeaderContent>
+          <PageEyebrow>平台健康状态</PageEyebrow>
+          <PageTitle id="health-title">{isReady ? "系统运行正常" : "部分服务不可用"}</PageTitle>
+          <PageDescription>
+            {isReady
+              ? "核心基础设施已连通，可以继续使用平台功能。"
+              : "平台已启动，但部分依赖仍在恢复。请检查下方服务状态。"}
+          </PageDescription>
+        </PageHeaderContent>
+        <PageActions>
+          <Badge variant={isReady ? "success" : "destructive"}>
+            {isReady ? "就绪" : "需要处理"}
+          </Badge>
+          <Badge variant="secondary">本地 MVP</Badge>
+        </PageActions>
+      </PageHeader>
 
-      <section aria-labelledby="health-title" className="py-16 md:py-20">
-        <p className="font-mono text-xs tracking-widest text-muted-foreground uppercase">
-          PLATFORM READINESS / 平台就绪状态
-        </p>
-        <h1
-          className="mt-4 max-w-3xl text-4xl font-bold tracking-tight md:text-5xl"
-          id="health-title"
-        >
-          {isReady ? "系统运行正常" : "部分服务不可用"}
-        </h1>
-        <p className="mt-5 max-w-[65ch] text-base text-muted-foreground">
-          {isReady
-            ? "核心基础设施已连通，后续产品开发可以开始。"
-            : "平台已启动，但部分依赖仍在恢复。请检查下方状态。"}
-        </p>
-      </section>
-
-      <section aria-label="平台服务状态">
-        <Card>
-          <CardContent className="divide-y p-0">
+      <PageSection aria-labelledby="services-heading">
+        <PageSectionHeader>
+          <PageSectionHeaderContent>
+            <PageSectionTitle id="services-heading">服务状态</PageSectionTitle>
+          </PageSectionHeaderContent>
+        </PageSectionHeader>
+        <DataRegion>
+          <DataRegionContent className="divide-y divide-border-soft">
             {services.map((service, index) => (
               <article
-                className="flex items-center gap-4 px-4 py-3.5"
+                className="flex min-h-[var(--control-height-lg)] items-center gap-[var(--space-4)] px-[var(--space-5)] py-[var(--space-4)] max-sm:px-[var(--space-4)]"
                 data-state={service.status}
                 key={service.name}
               >
-                <span className="w-7 font-mono text-xs text-muted-foreground">
+                <span className="w-7 shrink-0 font-mono text-[length:var(--text-caption)] text-muted-foreground">
                   {String(index + 1).padStart(2, "0")}
                 </span>
                 <div className="min-w-0 flex-1">
-                  <h2 className="text-sm font-medium">{service.label}</h2>
-                  <p className="text-xs text-muted-foreground">
+                  <h3 className="m-0 text-[length:var(--text-body-md)] font-medium">
+                    {service.label}
+                  </h3>
+                  <p className="m-0 text-[length:var(--text-body-sm)] text-muted-foreground">
                     {service.status === "ok" ? "连接正常" : "暂时不可用"}
                   </p>
                 </div>
-                <StatusPill online={service.status === "ok"} />
+                <StatusLabel online={service.status === "ok"} />
               </article>
             ))}
-          </CardContent>
-        </Card>
-      </section>
-
-      <Footer left="API / WORKER / STORAGE" right="刷新状态：重新加载页面" />
-    </main>
+          </DataRegionContent>
+        </DataRegion>
+        <p className="m-0 text-[length:var(--text-body-sm)] text-muted-foreground">
+          刷新状态：重新加载页面。
+        </p>
+      </PageSection>
+    </Page>
   )
 }
 
@@ -125,29 +121,21 @@ export function HealthDashboard({ health }: HealthDashboardProps) {
   }
 
   return (
-    <main
-      className="mx-auto flex min-h-dvh w-full max-w-7xl flex-col px-6"
-      data-state="unreachable"
-    >
-      <Masthead recovery />
-
-      <section aria-labelledby="health-title" className="flex flex-1 flex-col justify-center py-16">
-        <p className="font-mono text-xs tracking-widest text-muted-foreground uppercase">
-          CONNECTION INTERRUPTED / 连接中断
-        </p>
-        <h1
-          className="mt-4 max-w-3xl text-4xl font-bold tracking-tight md:text-5xl"
-          id="health-title"
-        >
-          服务正在恢复
-        </h1>
-        <p className="mt-5 max-w-[65ch] text-base text-muted-foreground">{health.reason}</p>
-        <p className="mt-4 w-fit rounded-md border border-destructive/30 bg-destructive/5 px-3 py-2 text-sm">
-          请确认 Docker 服务已启动，然后刷新页面。
-        </p>
-      </section>
-
-      <Footer left="API CONNECTION REQUIRED" right="状态不会影响已保存的数据" />
-    </main>
+    <Page data-state="unreachable">
+      <PageHeader>
+        <PageHeaderContent>
+          <PageEyebrow>平台健康状态</PageEyebrow>
+          <PageTitle id="health-title">服务正在恢复</PageTitle>
+          <PageDescription>{health.reason}</PageDescription>
+        </PageHeaderContent>
+        <PageActions>
+          <Badge variant="destructive">连接中断</Badge>
+        </PageActions>
+      </PageHeader>
+      <Alert variant="destructive">
+        <AlertTitle>无法连接 API</AlertTitle>
+        <AlertDescription>请确认 Docker 服务已启动，然后刷新页面。</AlertDescription>
+      </Alert>
+    </Page>
   )
 }

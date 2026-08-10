@@ -40,8 +40,8 @@ export function LoginForm({ action }: LoginFormProps) {
         type="password"
       />
 
-      <Button className="w-full" disabled={isPending} type="submit">
-        {isPending ? "登录中…" : "登录"}
+      <Button className="w-full" loading={isPending} type="submit">
+        登录
       </Button>
     </form>
   )

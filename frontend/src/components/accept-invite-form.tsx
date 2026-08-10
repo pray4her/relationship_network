@@ -26,8 +26,8 @@ export function AcceptInviteForm({ action, token }: AcceptInviteFormProps) {
       ) : null}
 
       <input name="token" type="hidden" value={token} />
-      <Button className="w-full" disabled={isPending} type="submit">
-        {isPending ? "接受中…" : "接受邀请"}
+      <Button className="w-full" loading={isPending} type="submit">
+        接受邀请
       </Button>
     </form>
   )

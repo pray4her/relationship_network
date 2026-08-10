@@ -55,8 +55,8 @@ export function RegisterForm({ action }: RegisterFormProps) {
         type="text"
       />
 
-      <Button className="w-full" disabled={isPending} type="submit">
-        {isPending ? "提交中…" : "创建账户"}
+      <Button className="w-full" loading={isPending} type="submit">
+        创建账户
       </Button>
     </form>
   )
