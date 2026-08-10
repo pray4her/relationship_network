@@ -5,7 +5,7 @@ import { loadAuthSession } from "@/lib/auth-client"
 import { loadBillingSummary } from "@/lib/billing-client"
 import type { BillingSummary } from "@/lib/billing-contract"
 import { listOrders } from "@/lib/orders-client"
-import UsagePage from "../src/app/usage/page"
+import UsagePage from "../src/app/(product)/usage/page"
 
 vi.mock("next/headers", () => ({
   cookies: async () => ({
@@ -15,10 +15,6 @@ vi.mock("next/headers", () => ({
 
 vi.mock("next/navigation", () => ({
   redirect: vi.fn(),
-}))
-
-vi.mock("@/components/account-panel", () => ({
-  AccountPanel: () => null,
 }))
 
 vi.mock("@/lib/auth-client", async (importOriginal) => {

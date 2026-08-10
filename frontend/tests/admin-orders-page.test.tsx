@@ -3,7 +3,7 @@ import { beforeEach, expect, test, vi } from "vitest"
 
 import { listAdminOrders } from "@/lib/admin-client"
 import { loadAuthSession } from "@/lib/auth-client"
-import AdminOrdersPage from "../src/app/admin/orders/page"
+import AdminOrdersPage from "../src/app/(product)/admin/orders/page"
 
 vi.mock("next/headers", () => ({
   cookies: async () => ({
@@ -13,10 +13,6 @@ vi.mock("next/headers", () => ({
 
 vi.mock("next/navigation", () => ({
   redirect: vi.fn(),
-}))
-
-vi.mock("@/components/account-panel", () => ({
-  AccountPanel: () => null,
 }))
 
 vi.mock("@/lib/auth-client", async (importOriginal) => {

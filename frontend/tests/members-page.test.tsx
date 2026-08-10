@@ -4,7 +4,7 @@ import { beforeEach, expect, test, vi } from "vitest"
 import { loadAuthSession } from "@/lib/auth-client"
 import { loadInvitations } from "@/lib/invitations-client"
 import { loadMembers, loadRoles } from "@/lib/members-client"
-import MembersPage from "../src/app/members/page"
+import MembersPage from "../src/app/(product)/members/page"
 
 vi.mock("next/headers", () => ({
   cookies: async () => ({
@@ -14,10 +14,6 @@ vi.mock("next/headers", () => ({
 
 vi.mock("next/navigation", () => ({
   redirect: vi.fn(),
-}))
-
-vi.mock("@/components/account-panel", () => ({
-  AccountPanel: () => null,
 }))
 
 vi.mock("@/lib/auth-client", async (importOriginal) => {

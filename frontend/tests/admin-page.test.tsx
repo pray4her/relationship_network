@@ -4,7 +4,7 @@ import { beforeEach, expect, test, vi } from "vitest"
 
 import { loadAdminAuditEvents, searchAdminTenants } from "@/lib/admin-client"
 import { loadAuthSession } from "@/lib/auth-client"
-import AdminPage from "../src/app/admin/page"
+import AdminPage from "../src/app/(product)/admin/page"
 
 vi.mock("next/headers", () => ({
   cookies: async () => ({
@@ -14,10 +14,6 @@ vi.mock("next/headers", () => ({
 
 vi.mock("next/navigation", () => ({
   redirect: vi.fn(),
-}))
-
-vi.mock("@/components/account-panel", () => ({
-  AccountPanel: () => null,
 }))
 
 vi.mock("@/lib/auth-client", async (importOriginal) => {

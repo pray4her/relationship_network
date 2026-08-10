@@ -4,23 +4,29 @@ import type { ReactNode } from "react"
 
 import "./globals.css"
 
-const anthropicSans = localFont({
+const copernicus = localFont({
   display: "swap",
-  src: "./fonts/AnthropicSans-Variable.woff2",
-  variable: "--font-anthropic-sans",
-  weight: "300 800",
+  src: "./fonts/CopernicusTrial-Book-BF66160450c2e92.ttf",
+  variable: "--font-copernicus",
+  weight: "400",
 })
 
-const anthropicMono = localFont({
+const styrene = localFont({
   display: "swap",
-  src: "./fonts/AnthropicMono-Variable.woff2",
-  variable: "--font-anthropic-mono",
-  weight: "300 800",
+  src: [
+    { path: "./fonts/StyreneB-Regular.otf", weight: "400" },
+    { path: "./fonts/StyreneB-Medium.otf", weight: "500" },
+  ],
+  variable: "--font-styrene",
 })
 
 export const metadata: Metadata = {
-  description: "全球人才精准匹配平台运行状态",
-  title: "Relationship Network · 系统状态",
+  description: "全球人才精准匹配与租户协作平台",
+  icons: { icon: "/icon.svg" },
+  title: {
+    default: "Relationship Network",
+    template: "%s · Relationship Network",
+  },
 }
 
 type RootLayoutProps = {
@@ -29,8 +35,8 @@ type RootLayoutProps = {
 
 export default function RootLayout({ children }: RootLayoutProps) {
   return (
-    <html lang="zh-CN">
-      <body className={`${anthropicSans.variable} ${anthropicMono.variable}`}>{children}</body>
+    <html className={`${copernicus.variable} ${styrene.variable}`} lang="zh-CN">
+      <body>{children}</body>
     </html>
   )
 }
