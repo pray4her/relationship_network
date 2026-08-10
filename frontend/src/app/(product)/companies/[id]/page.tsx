@@ -11,9 +11,37 @@ import {
 import { CompanyArchiveButton } from "@/components/companies/company-archive-button"
 import { CompanyDocumentUpload } from "@/components/companies/company-document-upload"
 import { CompanyEditForm } from "@/components/companies/company-edit-form"
+import {
+  DataRegion,
+  DataRegionContent,
+  DataRegionFooter,
+  FormSection,
+  FormSectionContent,
+  FormSectionDescription,
+  FormSectionHeader,
+  FormSectionTitle,
+  Page,
+  PageActions,
+  PageDescription,
+  PageHeader,
+  PageHeaderContent,
+  PageSection,
+  PageSectionHeader,
+  PageSectionHeaderContent,
+  PageSectionTitle,
+  PageTitle,
+} from "@/components/layout/page"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Badge } from "@/components/ui/badge"
-import { Card, CardAction, CardContent, CardHeader } from "@/components/ui/card"
+import {
+  Breadcrumb,
+  BreadcrumbItem,
+  BreadcrumbLink,
+  BreadcrumbList,
+  BreadcrumbPage,
+  BreadcrumbSeparator,
+} from "@/components/ui/breadcrumb"
+import { Empty, EmptyDescription, EmptyHeader, EmptyTitle } from "@/components/ui/empty"
 import {
   Table,
   TableBody,
@@ -47,20 +75,18 @@ function formatDateTime(value: string): string {
 
 const headClassName = "font-mono text-xs tracking-wider text-muted-foreground uppercase"
 
-function NoticeCard({ children }: { readonly children: React.ReactNode }) {
+function NoticePage({ children }: { readonly children: React.ReactNode }) {
   return (
-    <main className="mx-auto flex w-full max-w-7xl flex-col gap-6 px-6 py-6">
-      <Card>
-        <CardHeader>
-          <h1 className="text-2xl font-bold tracking-tight">企业详情</h1>
-        </CardHeader>
-        <CardContent>
-          <Alert>
-            <AlertDescription>{children}</AlertDescription>
-          </Alert>
-        </CardContent>
-      </Card>
-    </main>
+    <Page>
+      <PageHeader>
+        <PageHeaderContent>
+          <PageTitle>企业详情</PageTitle>
+        </PageHeaderContent>
+      </PageHeader>
+      <Alert>
+        <AlertDescription>{children}</AlertDescription>
+      </Alert>
+    </Page>
   )
 }
 
@@ -71,23 +97,23 @@ export default async function CompanyDetailPage({ params }: CompanyDetailPagePro
 
   if (!session) {
     return (
-      <NoticeCard>
+      <NoticePage>
         请先
         <Link className="font-medium underline underline-offset-4" href="/login">
           登录
         </Link>
         。
-      </NoticeCard>
+      </NoticePage>
     )
   }
 
   const auth = await loadAuthSession(createAuthTransport(), session)
   if (auth.kind !== "authenticated") {
-    return <NoticeCard>登录状态无效，请重新登录。</NoticeCard>
+    return <NoticePage>登录状态无效，请重新登录。</NoticePage>
   }
 
   if (!auth.view.permissions.includes("companies:read")) {
-    return <NoticeCard>你没有查看企业的权限。</NoticeCard>
+    return <NoticePage>你没有查看企业的权限。</NoticePage>
   }
 
   const detail = await loadCompanyDetail(createCompaniesTransport(), session, id)
@@ -98,7 +124,7 @@ export default async function CompanyDetailPage({ params }: CompanyDetailPagePro
     notFound()
   }
   if (detail.kind !== "ok") {
-    return <NoticeCard>企业详情暂时不可用，请稍后再试。</NoticeCard>
+    return <NoticePage>企业详情暂时不可用，请稍后再试。</NoticePage>
   }
 
   const { company, documents, events } = detail
@@ -106,43 +132,39 @@ export default async function CompanyDetailPage({ params }: CompanyDetailPagePro
   const isActive = company.status === "active"
 
   return (
-    <main className="mx-auto flex w-full max-w-7xl flex-col gap-6 px-6 py-6">
-      <Card aria-labelledby="company-detail-heading">
-        <CardHeader>
-          <h1 className="text-2xl font-bold tracking-tight" id="company-detail-heading">
-            {company.name}
-          </h1>
-          <CardAction>
-            {isActive ? (
-              <Badge className="bg-success/10 text-success">活跃</Badge>
-            ) : (
-              <Badge variant="secondary">已归档</Badge>
-            )}
-          </CardAction>
-        </CardHeader>
-        <CardContent className="flex flex-col gap-3">
-          <p>
-            <Link
-              className="text-sm text-muted-foreground underline underline-offset-4 hover:text-foreground"
-              href="/companies"
-            >
-              ← 返回企业列表
-            </Link>
-          </p>
-          <p className="text-sm text-muted-foreground">
-            {company.profile_text || "暂无企业简介。"}
-          </p>
-        </CardContent>
-      </Card>
+    <Page>
+      <Breadcrumb>
+        <BreadcrumbList>
+          <BreadcrumbItem>
+            <BreadcrumbLink render={<Link href="/companies" />}>企业管理</BreadcrumbLink>
+          </BreadcrumbItem>
+          <BreadcrumbSeparator />
+          <BreadcrumbItem>
+            <BreadcrumbPage>{company.name}</BreadcrumbPage>
+          </BreadcrumbItem>
+        </BreadcrumbList>
+      </Breadcrumb>
+      <PageHeader>
+        <PageHeaderContent>
+          <PageTitle id="company-detail-heading">{company.name}</PageTitle>
+          <PageDescription>{company.profile_text || "暂无企业简介。"}</PageDescription>
+        </PageHeaderContent>
+        <PageActions>
+          {isActive ? (
+            <Badge variant="success">活跃</Badge>
+          ) : (
+            <Badge variant="secondary">已归档</Badge>
+          )}
+        </PageActions>
+      </PageHeader>
 
       {canManage && isActive ? (
-        <Card aria-labelledby="edit-company-heading">
-          <CardHeader>
-            <h2 className="text-lg font-semibold" id="edit-company-heading">
-              编辑企业
-            </h2>
-          </CardHeader>
-          <CardContent className="flex flex-col gap-4">
+        <FormSection aria-labelledby="edit-company-heading">
+          <FormSectionHeader>
+            <FormSectionTitle id="edit-company-heading">编辑企业</FormSectionTitle>
+            <FormSectionDescription>更新企业名称、简介或归档企业。</FormSectionDescription>
+          </FormSectionHeader>
+          <FormSectionContent>
             <CompanyEditForm
               action={updateCompanyAction}
               companyId={company.id}
@@ -150,95 +172,112 @@ export default async function CompanyDetailPage({ params }: CompanyDetailPagePro
               profileText={company.profile_text}
             />
             <CompanyArchiveButton action={archiveCompanyAction} companyId={company.id} />
-          </CardContent>
-        </Card>
+          </FormSectionContent>
+        </FormSection>
       ) : null}
 
-      <Card aria-labelledby="documents-heading">
-        <CardHeader>
-          <h2 className="text-lg font-semibold" id="documents-heading">
-            企业文档
-          </h2>
-        </CardHeader>
-        <CardContent className="flex flex-col gap-4">
-          {documents.length === 0 ? (
-            <p className="text-sm text-muted-foreground">尚未上传文档。</p>
-          ) : (
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead className={headClassName}>文件名</TableHead>
-                  <TableHead className={headClassName}>大小</TableHead>
-                  <TableHead className={headClassName}>抽取文本预览</TableHead>
-                  <TableHead className={headClassName}>上传时间</TableHead>
-                  <TableHead className={headClassName}>下载</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {documents.map((document) => (
-                  <TableRow key={document.id}>
-                    <TableCell>{document.original_filename}</TableCell>
-                    <TableCell className="tabular-nums">{document.byte_size} B</TableCell>
-                    <TableCell className="max-w-md truncate">
-                      {document.extracted_text.slice(0, 120) || "—"}
-                    </TableCell>
-                    <TableCell className="tabular-nums">
-                      {formatDateTime(document.created_at)}
-                    </TableCell>
-                    <TableCell>
-                      <a
-                        className="font-medium underline underline-offset-4"
-                        href={`${apiPublicBaseUrl()}/companies/${company.id}/documents/${document.id}/content`}
-                      >
-                        下载
-                      </a>
-                    </TableCell>
+      <PageSection aria-labelledby="documents-heading">
+        <PageSectionHeader>
+          <PageSectionHeaderContent>
+            <PageSectionTitle id="documents-heading">企业文档</PageSectionTitle>
+          </PageSectionHeaderContent>
+        </PageSectionHeader>
+        <DataRegion>
+          <DataRegionContent>
+            {documents.length === 0 ? (
+              <Empty>
+                <EmptyHeader>
+                  <EmptyTitle>尚未上传文档</EmptyTitle>
+                  <EmptyDescription>
+                    上传企业资料后，可在此查看抽取文本和下载原文件。
+                  </EmptyDescription>
+                </EmptyHeader>
+              </Empty>
+            ) : (
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead className={headClassName}>文件名</TableHead>
+                    <TableHead className={headClassName}>大小</TableHead>
+                    <TableHead className={headClassName}>抽取文本预览</TableHead>
+                    <TableHead className={headClassName}>上传时间</TableHead>
+                    <TableHead className={headClassName}>下载</TableHead>
                   </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          )}
+                </TableHeader>
+                <TableBody>
+                  {documents.map((document) => (
+                    <TableRow key={document.id}>
+                      <TableCell>{document.original_filename}</TableCell>
+                      <TableCell className="tabular-nums">{document.byte_size} B</TableCell>
+                      <TableCell className="max-w-md truncate">
+                        {document.extracted_text.slice(0, 120) || "—"}
+                      </TableCell>
+                      <TableCell className="tabular-nums">
+                        {formatDateTime(document.created_at)}
+                      </TableCell>
+                      <TableCell>
+                        <a
+                          className="font-medium underline underline-offset-4"
+                          href={`${apiPublicBaseUrl()}/companies/${company.id}/documents/${document.id}/content`}
+                        >
+                          下载
+                        </a>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            )}
+          </DataRegionContent>
           {canManage && isActive ? (
-            <CompanyDocumentUpload action={uploadCompanyDocumentAction} companyId={company.id} />
+            <DataRegionFooter>
+              <CompanyDocumentUpload action={uploadCompanyDocumentAction} companyId={company.id} />
+            </DataRegionFooter>
           ) : null}
-        </CardContent>
-      </Card>
+        </DataRegion>
+      </PageSection>
 
-      <Card aria-labelledby="events-heading">
-        <CardHeader>
-          <h2 className="text-lg font-semibold" id="events-heading">
-            操作记录
-          </h2>
-        </CardHeader>
-        <CardContent>
-          {events.length === 0 ? (
-            <p className="text-sm text-muted-foreground">暂无操作记录。</p>
-          ) : (
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead className={headClassName}>时间</TableHead>
-                  <TableHead className={headClassName}>动作</TableHead>
-                  <TableHead className={headClassName}>结果</TableHead>
-                  <TableHead className={headClassName}>详情</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {events.map((event) => (
-                  <TableRow key={event.id}>
-                    <TableCell className="tabular-nums">
-                      {formatDateTime(event.created_at)}
-                    </TableCell>
-                    <TableCell>{eventLabels[event.action] ?? event.action}</TableCell>
-                    <TableCell>{event.result}</TableCell>
-                    <TableCell>{event.detail || "—"}</TableCell>
+      <PageSection aria-labelledby="events-heading">
+        <PageSectionHeader>
+          <PageSectionHeaderContent>
+            <PageSectionTitle id="events-heading">操作记录</PageSectionTitle>
+          </PageSectionHeaderContent>
+        </PageSectionHeader>
+        <DataRegion>
+          <DataRegionContent>
+            {events.length === 0 ? (
+              <Empty>
+                <EmptyHeader>
+                  <EmptyTitle>暂无操作记录</EmptyTitle>
+                </EmptyHeader>
+              </Empty>
+            ) : (
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead className={headClassName}>时间</TableHead>
+                    <TableHead className={headClassName}>动作</TableHead>
+                    <TableHead className={headClassName}>结果</TableHead>
+                    <TableHead className={headClassName}>详情</TableHead>
                   </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          )}
-        </CardContent>
-      </Card>
-    </main>
+                </TableHeader>
+                <TableBody>
+                  {events.map((event) => (
+                    <TableRow key={event.id}>
+                      <TableCell className="tabular-nums">
+                        {formatDateTime(event.created_at)}
+                      </TableCell>
+                      <TableCell>{eventLabels[event.action] ?? event.action}</TableCell>
+                      <TableCell>{event.result}</TableCell>
+                      <TableCell>{event.detail || "—"}</TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            )}
+          </DataRegionContent>
+        </DataRegion>
+      </PageSection>
+    </Page>
   )
 }

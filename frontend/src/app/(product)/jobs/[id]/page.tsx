@@ -15,9 +15,37 @@ import { JobArchiveButton } from "@/components/jobs/job-archive-button"
 import { JobCloseButton } from "@/components/jobs/job-close-button"
 import { JobEditForm } from "@/components/jobs/job-edit-form"
 import { JobMaterialUpload } from "@/components/jobs/job-material-upload"
+import {
+  DataRegion,
+  DataRegionContent,
+  DataRegionFooter,
+  FormSection,
+  FormSectionContent,
+  FormSectionDescription,
+  FormSectionHeader,
+  FormSectionTitle,
+  Page,
+  PageActions,
+  PageDescription,
+  PageHeader,
+  PageHeaderContent,
+  PageSection,
+  PageSectionHeader,
+  PageSectionHeaderContent,
+  PageSectionTitle,
+  PageTitle,
+} from "@/components/layout/page"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Badge } from "@/components/ui/badge"
-import { Card, CardAction, CardContent, CardHeader } from "@/components/ui/card"
+import {
+  Breadcrumb,
+  BreadcrumbItem,
+  BreadcrumbLink,
+  BreadcrumbList,
+  BreadcrumbPage,
+  BreadcrumbSeparator,
+} from "@/components/ui/breadcrumb"
+import { Empty, EmptyDescription, EmptyHeader, EmptyTitle } from "@/components/ui/empty"
 import {
   Table,
   TableBody,
@@ -73,20 +101,18 @@ function StatusBadge({ status }: { readonly status: JobStatus }) {
   return <Badge variant="secondary">{statusLabels[status]}</Badge>
 }
 
-function NoticeCard({ children }: { readonly children: React.ReactNode }) {
+function NoticePage({ children }: { readonly children: React.ReactNode }) {
   return (
-    <main className="mx-auto flex w-full max-w-7xl flex-col gap-6 px-6 py-6">
-      <Card>
-        <CardHeader>
-          <h1 className="text-2xl font-bold tracking-tight">职位详情</h1>
-        </CardHeader>
-        <CardContent>
-          <Alert>
-            <AlertDescription>{children}</AlertDescription>
-          </Alert>
-        </CardContent>
-      </Card>
-    </main>
+    <Page>
+      <PageHeader>
+        <PageHeaderContent>
+          <PageTitle>职位详情</PageTitle>
+        </PageHeaderContent>
+      </PageHeader>
+      <Alert>
+        <AlertDescription>{children}</AlertDescription>
+      </Alert>
+    </Page>
   )
 }
 
@@ -97,23 +123,23 @@ export default async function JobDetailPage({ params }: JobDetailPageProps) {
 
   if (!session) {
     return (
-      <NoticeCard>
+      <NoticePage>
         请先
         <Link className={linkClassName} href="/login">
           登录
         </Link>
         。
-      </NoticeCard>
+      </NoticePage>
     )
   }
 
   const auth = await loadAuthSession(createAuthTransport(), session)
   if (auth.kind !== "authenticated") {
-    return <NoticeCard>登录状态无效，请重新登录。</NoticeCard>
+    return <NoticePage>登录状态无效，请重新登录。</NoticePage>
   }
 
   if (!auth.view.permissions.includes("jobs:read")) {
-    return <NoticeCard>你没有查看职位的权限。</NoticeCard>
+    return <NoticePage>你没有查看职位的权限。</NoticePage>
   }
 
   const detail = await loadJobDetail(createJobsTransport(), session, id)
@@ -124,7 +150,7 @@ export default async function JobDetailPage({ params }: JobDetailPageProps) {
     notFound()
   }
   if (detail.kind !== "ok") {
-    return <NoticeCard>职位详情暂时不可用，请稍后再试。</NoticeCard>
+    return <NoticePage>职位详情暂时不可用，请稍后再试。</NoticePage>
   }
 
   const { job, materials, events } = detail
@@ -144,31 +170,30 @@ export default async function JobDetailPage({ params }: JobDetailPageProps) {
   }
 
   return (
-    <main className="mx-auto flex w-full max-w-7xl flex-col gap-6 px-6 py-6">
-      <Card aria-labelledby="job-detail-heading">
-        <CardHeader>
-          <h1 className="text-2xl font-bold tracking-tight" id="job-detail-heading">
-            {job.title}
-          </h1>
-          <CardAction>
-            <StatusBadge status={job.status} />
-          </CardAction>
-        </CardHeader>
-        <CardContent className="flex flex-col gap-3">
-          <p>
-            <Link
-              className="text-sm text-muted-foreground underline underline-offset-4 hover:text-foreground"
-              href="/jobs"
-            >
-              ← 返回职位列表
-            </Link>
-          </p>
-          {companyName ? (
-            <p className="text-sm text-muted-foreground">所属企业：{companyName}</p>
-          ) : null}
-          <p className="text-sm text-muted-foreground">{job.description || "暂无职位描述。"}</p>
+    <Page>
+      <Breadcrumb>
+        <BreadcrumbList>
+          <BreadcrumbItem>
+            <BreadcrumbLink render={<Link href="/jobs" />}>职位管理</BreadcrumbLink>
+          </BreadcrumbItem>
+          <BreadcrumbSeparator />
+          <BreadcrumbItem>
+            <BreadcrumbPage>{job.title}</BreadcrumbPage>
+          </BreadcrumbItem>
+        </BreadcrumbList>
+      </Breadcrumb>
+      <PageHeader>
+        <PageHeaderContent>
+          <PageTitle id="job-detail-heading">{job.title}</PageTitle>
+          <PageDescription>
+            {companyName ? `所属企业：${companyName}。` : null}
+            {job.description || "暂无职位描述。"}
+          </PageDescription>
+        </PageHeaderContent>
+        <PageActions>
+          <StatusBadge status={job.status} />
           {canManage ? (
-            <div className="flex flex-wrap items-start gap-3">
+            <>
               {isDraft ? (
                 <>
                   <JobActivateButton action={activateJobAction} jobId={job.id} />
@@ -182,114 +207,130 @@ export default async function JobDetailPage({ params }: JobDetailPageProps) {
                   <JobArchiveButton action={archiveJobAction} jobId={job.id} />
                 </>
               ) : null}
-            </div>
+            </>
           ) : null}
-        </CardContent>
-      </Card>
+        </PageActions>
+      </PageHeader>
 
       {canManage && isDraft ? (
-        <Card aria-labelledby="edit-job-heading">
-          <CardHeader>
-            <h2 className="text-lg font-semibold" id="edit-job-heading">
-              编辑职位
-            </h2>
-          </CardHeader>
-          <CardContent>
+        <FormSection aria-labelledby="edit-job-heading">
+          <FormSectionHeader>
+            <FormSectionTitle id="edit-job-heading">编辑职位</FormSectionTitle>
+            <FormSectionDescription>更新草稿的职位名称和说明。</FormSectionDescription>
+          </FormSectionHeader>
+          <FormSectionContent>
             <JobEditForm
               action={updateJobAction}
               jobId={job.id}
               title={job.title}
               description={job.description}
             />
-          </CardContent>
-        </Card>
+          </FormSectionContent>
+        </FormSection>
       ) : null}
 
-      <Card aria-labelledby="materials-heading">
-        <CardHeader>
-          <h2 className="text-lg font-semibold" id="materials-heading">
-            职位材料
-          </h2>
-        </CardHeader>
-        <CardContent className="flex flex-col gap-4">
-          {materials.length === 0 ? (
-            <p className="text-sm text-muted-foreground">尚未上传材料。</p>
-          ) : (
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead className={headClassName}>文件名</TableHead>
-                  <TableHead className={headClassName}>大小</TableHead>
-                  <TableHead className={headClassName}>抽取文本预览</TableHead>
-                  <TableHead className={headClassName}>上传时间</TableHead>
-                  <TableHead className={headClassName}>下载</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {materials.map((material) => (
-                  <TableRow key={material.id}>
-                    <TableCell>{material.original_filename}</TableCell>
-                    <TableCell className="tabular-nums">{material.byte_size} B</TableCell>
-                    <TableCell className="max-w-md truncate">
-                      {material.extracted_text.slice(0, 120) || "—"}
-                    </TableCell>
-                    <TableCell className="tabular-nums">
-                      {formatDateTime(material.created_at)}
-                    </TableCell>
-                    <TableCell>
-                      <a
-                        className={linkClassName}
-                        href={`${apiPublicBaseUrl()}/jobs/${job.id}/materials/${material.id}/content`}
-                      >
-                        下载
-                      </a>
-                    </TableCell>
+      <PageSection aria-labelledby="materials-heading">
+        <PageSectionHeader>
+          <PageSectionHeaderContent>
+            <PageSectionTitle id="materials-heading">职位材料</PageSectionTitle>
+          </PageSectionHeaderContent>
+        </PageSectionHeader>
+        <DataRegion>
+          <DataRegionContent>
+            {materials.length === 0 ? (
+              <Empty>
+                <EmptyHeader>
+                  <EmptyTitle>尚未上传材料</EmptyTitle>
+                  <EmptyDescription>
+                    上传职位材料后，可在此查看抽取文本和下载原文件。
+                  </EmptyDescription>
+                </EmptyHeader>
+              </Empty>
+            ) : (
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead className={headClassName}>文件名</TableHead>
+                    <TableHead className={headClassName}>大小</TableHead>
+                    <TableHead className={headClassName}>抽取文本预览</TableHead>
+                    <TableHead className={headClassName}>上传时间</TableHead>
+                    <TableHead className={headClassName}>下载</TableHead>
                   </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          )}
+                </TableHeader>
+                <TableBody>
+                  {materials.map((material) => (
+                    <TableRow key={material.id}>
+                      <TableCell>{material.original_filename}</TableCell>
+                      <TableCell className="tabular-nums">{material.byte_size} B</TableCell>
+                      <TableCell className="max-w-md truncate">
+                        {material.extracted_text.slice(0, 120) || "—"}
+                      </TableCell>
+                      <TableCell className="tabular-nums">
+                        {formatDateTime(material.created_at)}
+                      </TableCell>
+                      <TableCell>
+                        <a
+                          className={linkClassName}
+                          href={`${apiPublicBaseUrl()}/jobs/${job.id}/materials/${material.id}/content`}
+                        >
+                          下载
+                        </a>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            )}
+          </DataRegionContent>
           {canManage && isDraft ? (
-            <JobMaterialUpload action={uploadJobMaterialAction} jobId={job.id} />
+            <DataRegionFooter>
+              <JobMaterialUpload action={uploadJobMaterialAction} jobId={job.id} />
+            </DataRegionFooter>
           ) : null}
-        </CardContent>
-      </Card>
+        </DataRegion>
+      </PageSection>
 
-      <Card aria-labelledby="events-heading">
-        <CardHeader>
-          <h2 className="text-lg font-semibold" id="events-heading">
-            操作记录
-          </h2>
-        </CardHeader>
-        <CardContent>
-          {events.length === 0 ? (
-            <p className="text-sm text-muted-foreground">暂无操作记录。</p>
-          ) : (
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead className={headClassName}>时间</TableHead>
-                  <TableHead className={headClassName}>动作</TableHead>
-                  <TableHead className={headClassName}>结果</TableHead>
-                  <TableHead className={headClassName}>详情</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {events.map((event) => (
-                  <TableRow key={event.id}>
-                    <TableCell className="tabular-nums">
-                      {formatDateTime(event.created_at)}
-                    </TableCell>
-                    <TableCell>{eventLabels[event.action] ?? event.action}</TableCell>
-                    <TableCell>{event.result}</TableCell>
-                    <TableCell>{event.detail || "—"}</TableCell>
+      <PageSection aria-labelledby="events-heading">
+        <PageSectionHeader>
+          <PageSectionHeaderContent>
+            <PageSectionTitle id="events-heading">操作记录</PageSectionTitle>
+          </PageSectionHeaderContent>
+        </PageSectionHeader>
+        <DataRegion>
+          <DataRegionContent>
+            {events.length === 0 ? (
+              <Empty>
+                <EmptyHeader>
+                  <EmptyTitle>暂无操作记录</EmptyTitle>
+                </EmptyHeader>
+              </Empty>
+            ) : (
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead className={headClassName}>时间</TableHead>
+                    <TableHead className={headClassName}>动作</TableHead>
+                    <TableHead className={headClassName}>结果</TableHead>
+                    <TableHead className={headClassName}>详情</TableHead>
                   </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          )}
-        </CardContent>
-      </Card>
-    </main>
+                </TableHeader>
+                <TableBody>
+                  {events.map((event) => (
+                    <TableRow key={event.id}>
+                      <TableCell className="tabular-nums">
+                        {formatDateTime(event.created_at)}
+                      </TableCell>
+                      <TableCell>{eventLabels[event.action] ?? event.action}</TableCell>
+                      <TableCell>{event.result}</TableCell>
+                      <TableCell>{event.detail || "—"}</TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            )}
+          </DataRegionContent>
+        </DataRegion>
+      </PageSection>
+    </Page>
   )
 }

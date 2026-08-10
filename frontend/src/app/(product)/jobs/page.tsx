@@ -1,3 +1,4 @@
+import { BriefcaseBusinessIcon } from "lucide-react"
 import type { Metadata } from "next"
 import { cookies } from "next/headers"
 import Link from "next/link"
@@ -7,9 +8,28 @@ import { Suspense } from "react"
 import { createJobAction } from "@/app/actions/jobs"
 import { JobCreateForm } from "@/components/jobs/job-create-form"
 import { JobsFilter } from "@/components/jobs/jobs-filter"
+import {
+  DataRegion,
+  DataRegionContent,
+  FormSection,
+  FormSectionContent,
+  FormSectionDescription,
+  FormSectionHeader,
+  FormSectionTitle,
+  Page,
+  PageDescription,
+  PageHeader,
+  PageHeaderContent,
+  PageSection,
+  PageSectionHeader,
+  PageSectionHeaderContent,
+  PageSectionTitle,
+  PageTitle,
+  PageToolbar,
+} from "@/components/layout/page"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Badge } from "@/components/ui/badge"
-import { Card, CardContent, CardHeader } from "@/components/ui/card"
+import { Empty, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from "@/components/ui/empty"
 import {
   Table,
   TableBody,
@@ -51,20 +71,19 @@ function StatusBadge({ status }: { readonly status: JobStatus }) {
   return <Badge variant="secondary">{statusLabels[status]}</Badge>
 }
 
-function NoticeCard({ children }: { readonly children: React.ReactNode }) {
+function NoticePage({ children }: { readonly children: React.ReactNode }) {
   return (
-    <main className="mx-auto flex w-full max-w-7xl flex-col gap-6 px-6 py-6">
-      <Card>
-        <CardHeader>
-          <h1 className="text-2xl font-bold tracking-tight">职位管理</h1>
-        </CardHeader>
-        <CardContent>
-          <Alert>
-            <AlertDescription>{children}</AlertDescription>
-          </Alert>
-        </CardContent>
-      </Card>
-    </main>
+    <Page>
+      <PageHeader>
+        <PageHeaderContent>
+          <PageTitle>职位管理</PageTitle>
+          <PageDescription>维护职位档案、状态与相关材料。</PageDescription>
+        </PageHeaderContent>
+      </PageHeader>
+      <Alert>
+        <AlertDescription>{children}</AlertDescription>
+      </Alert>
+    </Page>
   )
 }
 
@@ -78,20 +97,20 @@ export default async function JobsPage({ searchParams }: JobsPageProps) {
 
   if (!session) {
     return (
-      <NoticeCard>
+      <NoticePage>
         请先
         <Link className={linkClassName} href="/login">
           登录
         </Link>
         后查看职位。
-      </NoticeCard>
+      </NoticePage>
     )
   }
 
   const auth = await loadAuthSession(createAuthTransport(), session)
   if (auth.kind !== "authenticated") {
     return (
-      <NoticeCard>
+      <NoticePage>
         {auth.kind === "anonymous" ? (
           <>
             登录已过期，请
@@ -103,14 +122,14 @@ export default async function JobsPage({ searchParams }: JobsPageProps) {
         ) : (
           "服务暂时不可用，请稍后再试。"
         )}
-      </NoticeCard>
+      </NoticePage>
     )
   }
 
   const permissions = auth.view.permissions
 
   if (auth.view.tenant === null) {
-    return <NoticeCard>你没有加入任何租户，无法管理职位。</NoticeCard>
+    return <NoticePage>你没有加入任何租户，无法管理职位。</NoticePage>
   }
 
   const canRead = permissions.includes("jobs:read")
@@ -118,7 +137,7 @@ export default async function JobsPage({ searchParams }: JobsPageProps) {
   const canReadCompanies = permissions.includes("companies:read")
 
   if (!canRead) {
-    return <NoticeCard>你没有查看职位的权限。</NoticeCard>
+    return <NoticePage>你没有查看职位的权限。</NoticePage>
   }
 
   const params = await searchParams
@@ -140,7 +159,7 @@ export default async function JobsPage({ searchParams }: JobsPageProps) {
     redirect("/settings/security")
   }
   if (jobsResult.kind !== "ok") {
-    return <NoticeCard>职位数据暂时不可用，请稍后再试。</NoticeCard>
+    return <NoticePage>职位数据暂时不可用，请稍后再试。</NoticePage>
   }
 
   const companiesResult = canReadCompanies
@@ -150,62 +169,80 @@ export default async function JobsPage({ searchParams }: JobsPageProps) {
   const companyNameById = new Map(companies.map((company) => [company.id, company.name]))
 
   return (
-    <main className="mx-auto flex w-full max-w-7xl flex-col gap-6 px-6 py-6">
-      <Card aria-labelledby="jobs-heading">
-        <CardHeader>
-          <h1 className="text-2xl font-bold tracking-tight" id="jobs-heading">
-            职位列表
-          </h1>
-        </CardHeader>
-        <CardContent className="flex flex-col gap-4">
+    <Page>
+      <PageHeader>
+        <PageHeaderContent>
+          <PageTitle>职位管理</PageTitle>
+          <PageDescription>维护职位档案、状态与相关材料。</PageDescription>
+        </PageHeaderContent>
+      </PageHeader>
+
+      <PageSection aria-labelledby="jobs-heading">
+        <PageSectionHeader>
+          <PageSectionHeaderContent>
+            <PageSectionTitle id="jobs-heading">职位列表</PageSectionTitle>
+          </PageSectionHeaderContent>
+        </PageSectionHeader>
+        <PageToolbar aria-label="筛选职位">
           <Suspense>
             <JobsFilter
               companies={companies.map((company) => ({ id: company.id, name: company.name }))}
             />
           </Suspense>
-          {jobsResult.jobs.length === 0 ? (
-            <p className="text-sm text-muted-foreground">
-              尚未创建职位。创建草稿后可上传材料并启用。
-            </p>
-          ) : (
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead className={headClassName}>职位名称</TableHead>
-                  <TableHead className={headClassName}>所属企业</TableHead>
-                  <TableHead className={headClassName}>状态</TableHead>
-                  <TableHead className={headClassName}>创建时间</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {jobsResult.jobs.map((job) => (
-                  <TableRow key={job.id}>
-                    <TableCell>
-                      <Link className={linkClassName} href={`/jobs/${job.id}`}>
-                        {job.title}
-                      </Link>
-                    </TableCell>
-                    <TableCell>{companyNameById.get(job.company_id) ?? "—"}</TableCell>
-                    <TableCell>
-                      <StatusBadge status={job.status} />
-                    </TableCell>
-                    <TableCell className="tabular-nums">{formatDateTime(job.created_at)}</TableCell>
+        </PageToolbar>
+        <DataRegion>
+          <DataRegionContent>
+            {jobsResult.jobs.length === 0 ? (
+              <Empty variant="first-use">
+                <EmptyMedia>
+                  <BriefcaseBusinessIcon />
+                </EmptyMedia>
+                <EmptyHeader>
+                  <EmptyTitle>尚未创建职位</EmptyTitle>
+                  <EmptyDescription>创建职位草稿后，可以上传材料并启用职位。</EmptyDescription>
+                </EmptyHeader>
+              </Empty>
+            ) : (
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead className={headClassName}>职位名称</TableHead>
+                    <TableHead className={headClassName}>所属企业</TableHead>
+                    <TableHead className={headClassName}>状态</TableHead>
+                    <TableHead className={headClassName}>创建时间</TableHead>
                   </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          )}
-        </CardContent>
-      </Card>
+                </TableHeader>
+                <TableBody>
+                  {jobsResult.jobs.map((job) => (
+                    <TableRow key={job.id}>
+                      <TableCell>
+                        <Link className={linkClassName} href={`/jobs/${job.id}`}>
+                          {job.title}
+                        </Link>
+                      </TableCell>
+                      <TableCell>{companyNameById.get(job.company_id) ?? "—"}</TableCell>
+                      <TableCell>
+                        <StatusBadge status={job.status} />
+                      </TableCell>
+                      <TableCell className="tabular-nums">
+                        {formatDateTime(job.created_at)}
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            )}
+          </DataRegionContent>
+        </DataRegion>
+      </PageSection>
 
       {canManage ? (
-        <Card aria-labelledby="create-job-heading">
-          <CardHeader>
-            <h2 className="text-lg font-semibold" id="create-job-heading">
-              创建职位
-            </h2>
-          </CardHeader>
-          <CardContent>
+        <FormSection aria-labelledby="create-job-heading">
+          <FormSectionHeader>
+            <FormSectionTitle id="create-job-heading">创建职位</FormSectionTitle>
+            <FormSectionDescription>为现有企业添加职位草稿。</FormSectionDescription>
+          </FormSectionHeader>
+          <FormSectionContent>
             {companies.length === 0 ? (
               <p className="text-sm text-muted-foreground">
                 创建职位前请先在企业页创建至少一家企业。
@@ -216,9 +253,9 @@ export default async function JobsPage({ searchParams }: JobsPageProps) {
                 companies={companies.map((company) => ({ id: company.id, name: company.name }))}
               />
             )}
-          </CardContent>
-        </Card>
+          </FormSectionContent>
+        </FormSection>
       ) : null}
-    </main>
+    </Page>
   )
 }
