@@ -111,7 +111,7 @@ cd backend && poetry run pytest tests/integration/
 - Biome 2 统一 lint+format：2 空格缩进、双引号、行宽 100、`noExplicitAny`、`noNonNullAssertion`、`useImportType` 均为 error。
 - 组件复用 `components.json` 中的别名（`@/components`、`@/components/ui`、`@/lib`）与 shadcn/ui 主题约定；不要新建与 `ui/` 重复的基元组件。
 - API 访问走 `src/lib/` 的 `*-client.ts`（ky 封装）+ `*-contract.ts`（zod 校验），页面/Server Action 不直接拼 fetch。
-- 视觉系统遵守 ADR `docs/adr/0001`：暖米白底、近黑文字、陶土橘 `#d97757` 为唯一强调色，仅浅色主题；token 以 `src/app/globals.css` 为唯一事实源。
+- 视觉系统遵守 ADR `docs/adr/0003`（supersede 0001 相应条款）：暖米白底、近黑文字、珊瑚橘 `#cc785c` 为 primary，仅浅色主题；视觉规格以 `frontend/showcase/` + `src/styles/tokens.css` 为唯一标准，token 值先落 tokens.css 再同步到运行时唯一事实源 `src/app/globals.css`。
 
 领域语言：使用 `CONTEXT.md` 定义的术语（租户、成员、企业、邀请、两步验证、套餐订单、平台健康状态……），不要引入 `_Avoid_ 列出的同义词`。新概念没有约定术语时视为领域建模缺口，先补术语再写代码。
 
