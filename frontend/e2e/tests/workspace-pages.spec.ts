@@ -126,11 +126,20 @@ test("creates, activates, and uploads a material for a job", async ({ page }, te
     mimeType: "text/plain",
     buffer: Buffer.from("e2e job description body"),
   })
-  await page.getByRole("button", { name: "上传材料", exact: true }).click()
-  await expect(page.getByRole("cell", { name: "jd.txt" })).toBeVisible()
+  const uploadButton = page.getByRole("button", { name: "上传材料", exact: true })
+  await uploadButton.click()
+  await page.waitForLoadState("networkidle")
+  await page.reload()
+  await page.waitForLoadState("networkidle")
+  await expect(
+    page.getByRole("region", { name: "职位材料" }).getByRole("cell", { name: "jd.txt" }),
+  ).toBeVisible()
   await expect(page.getByRole("link", { name: "下载" }).first()).toBeVisible()
 
   await page.getByRole("button", { name: "启用职位" }).click()
+  await page.waitForLoadState("networkidle")
+  await page.reload()
+  await page.waitForLoadState("networkidle")
   await expect(page.getByText("活跃", { exact: true })).toBeVisible()
   await expect(page.getByRole("heading", { name: "编辑职位" })).toHaveCount(0)
   await expect(page.getByRole("link", { name: "下载" }).first()).toBeVisible()
