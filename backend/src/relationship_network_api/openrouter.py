@@ -78,11 +78,33 @@ class OpenRouterProbeResult:
     provider_request_id: str | None
     actual_model: str | None
     actual_provider: str | None
+    exchange: OpenRouterResponseExchange
+
+
+@dataclass(frozen=True)
+class OpenRouterResponseExchange:
+    """Provider response facts retained without request secrets or log rendering."""
+
+    status_code: int
+    headers: dict[str, str]
+    raw_body: bytes
+
+
+@dataclass(frozen=True)
+class OpenRouterGenerationMetadata:
+    generation_id: str
+    actual_model: str | None
+    actual_provider: str | None
+    prompt_tokens: int | None
+    completion_tokens: int | None
+    total_tokens: int | None
+    cost: float | None
+    exchange: OpenRouterResponseExchange
 
 
 @final
 class OpenRouterAdapterError(RuntimeError):
-    def __init__(
+    def __init__(  # noqa: PLR0913
         self,
         category: str,
         *,
@@ -90,6 +112,7 @@ class OpenRouterAdapterError(RuntimeError):
         outcome_unknown: bool = False,
         retry_after_seconds: int | None = None,
         status_code: int | None = None,
+        exchange: OpenRouterResponseExchange | None = None,
     ) -> None:
         super().__init__(category)
         self.category: str = category
@@ -97,6 +120,7 @@ class OpenRouterAdapterError(RuntimeError):
         self.outcome_unknown: bool = outcome_unknown
         self.retry_after_seconds: int | None = retry_after_seconds
         self.status_code: int | None = status_code
+        self.exchange: OpenRouterResponseExchange | None = exchange
 
 
 @final
@@ -131,6 +155,71 @@ class OpenRouterAdapter:
         if response.status_code >= HTTP_BAD_REQUEST:
             raise self._classify_http_error(response)
         return self._parse_probe_response(response)
+
+    async def fetch_generation(
+        self,
+        generation_id: str,
+        *,
+        timeout_seconds: int = 30,
+    ) -> OpenRouterGenerationMetadata:
+        """Fetch delayed usage, cost, model, and provider facts by generation ID."""
+        headers = {"Authorization": f"Bearer {self._config.api_key}"}
+        url = f"{self._config.base_url.rstrip('/')}/generation"
+        try:
+            if self._client is not None:
+                response = await self._client.get(
+                    url,
+                    headers=headers,
+                    params={"id": generation_id},
+                    timeout=timeout_seconds,
+                )
+            else:
+                async with httpx.AsyncClient() as client:
+                    response = await client.get(
+                        url,
+                        headers=headers,
+                        params={"id": generation_id},
+                        timeout=timeout_seconds,
+                    )
+        except httpx.TimeoutException as error:
+            category = "timeout"
+            raise OpenRouterAdapterError(category, retryable=True) from error
+        except httpx.NetworkError as error:
+            category = "network_error"
+            raise OpenRouterAdapterError(category, retryable=True) from error
+        if response.status_code >= HTTP_BAD_REQUEST:
+            raise self._classify_http_error(response)
+        exchange = _response_exchange(response)
+        try:
+            outer = _object_mapping(json.loads(exchange.raw_body))
+            raw_data = outer.get("data", outer)
+            data = _object_mapping(raw_data)
+        except (TypeError, ValueError, json.JSONDecodeError) as error:
+            category = "invalid_generation_metadata"
+            raise OpenRouterAdapterError(
+                category,
+                retryable=True,
+                exchange=exchange,
+            ) from error
+        usage = data.get("usage")
+        usage_data = cast("dict[str, object]", usage) if isinstance(usage, dict) else {}
+        prompt_tokens = _optional_int(usage_data.get("prompt_tokens", data.get("tokens_prompt")))
+        completion_tokens = _optional_int(
+            usage_data.get("completion_tokens", data.get("tokens_completion"))
+        )
+        total_tokens = _optional_int(usage_data.get("total_tokens"))
+        if total_tokens is None and prompt_tokens is not None and completion_tokens is not None:
+            total_tokens = prompt_tokens + completion_tokens
+        return OpenRouterGenerationMetadata(
+            generation_id=generation_id,
+            actual_model=_optional_string(data.get("model")),
+            actual_provider=_optional_string(data.get("provider_name", data.get("provider"))),
+            prompt_tokens=prompt_tokens,
+            completion_tokens=completion_tokens,
+            total_tokens=total_tokens,
+            cost=_optional_float(data.get("total_cost", data.get("cost"))),
+            exchange=exchange,
+        )
 
     def build_probe_payload(self, candidate: CandidateConfiguration) -> dict[str, object]:
         return {
@@ -182,6 +271,7 @@ class OpenRouterAdapter:
 
     @staticmethod
     def _classify_http_error(response: httpx.Response) -> OpenRouterAdapterError:
+        exchange = _response_exchange(response)
         retry_after = _parse_retry_after(response.headers.get("Retry-After"))
         if response.status_code == HTTP_UNAUTHORIZED:
             category = "authentication_failed"
@@ -197,6 +287,7 @@ class OpenRouterAdapter:
                 retryable=True,
                 retry_after_seconds=retry_after,
                 status_code=response.status_code,
+                exchange=exchange,
             )
         elif response.status_code >= HTTP_SERVER_ERROR or response.status_code in {
             HTTP_REQUEST_TIMEOUT,
@@ -207,15 +298,22 @@ class OpenRouterAdapter:
                 retryable=True,
                 retry_after_seconds=retry_after,
                 status_code=response.status_code,
+                exchange=exchange,
             )
         else:
             category = _classify_bad_request(response)
-        return OpenRouterAdapterError(category, retryable=False, status_code=response.status_code)
+        return OpenRouterAdapterError(
+            category,
+            retryable=False,
+            status_code=response.status_code,
+            exchange=exchange,
+        )
 
     @staticmethod
     def _parse_probe_response(response: httpx.Response) -> OpenRouterProbeResult:
+        exchange = _response_exchange(response)
         try:
-            body = cast("dict[str, object]", response.json())
+            body = cast("dict[str, object]", json.loads(exchange.raw_body))
             choices = cast("list[object]", body["choices"])
             choice = cast("dict[str, object]", choices[0])
             message = cast("dict[str, object]", choice["message"])
@@ -226,19 +324,47 @@ class OpenRouterAdapter:
             raise OpenRouterAdapterError(
                 category,
                 retryable=True,
+                exchange=exchange,
             ) from error
         if content != {"capability": "ok"}:
             category = "invalid_structured_output"
-            raise OpenRouterAdapterError(category, retryable=True)
+            raise OpenRouterAdapterError(category, retryable=True, exchange=exchange)
         return OpenRouterProbeResult(
             provider_request_id=_optional_string(body.get("id")),
             actual_model=_optional_string(body.get("model")),
             actual_provider=_optional_string(body.get("provider")),
+            exchange=exchange,
         )
 
 
 def _optional_string(value: object) -> str | None:
     return value if isinstance(value, str) and value else None
+
+
+def _object_mapping(value: object) -> dict[str, object]:
+    if not isinstance(value, dict):
+        message = "expected a JSON object"
+        raise TypeError(message)
+    return cast("dict[str, object]", value)
+
+
+def _optional_int(value: object) -> int | None:
+    return value if isinstance(value, int) and not isinstance(value, bool) and value >= 0 else None
+
+
+def _optional_float(value: object) -> float | None:
+    if not isinstance(value, (int, float)) or isinstance(value, bool):
+        return None
+    parsed = float(value)
+    return parsed if parsed >= 0 else None
+
+
+def _response_exchange(response: httpx.Response) -> OpenRouterResponseExchange:
+    return OpenRouterResponseExchange(
+        status_code=response.status_code,
+        headers=dict(response.headers),
+        raw_body=response.content,
+    )
 
 
 def _classify_bad_request(response: httpx.Response) -> str:

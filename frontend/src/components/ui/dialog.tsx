@@ -105,7 +105,7 @@ function DialogContent({
         data-size={size}
         data-slot="dialog-content"
         data-variant={variant}
-        role={variant === "default" ? undefined : "alertdialog"}
+        role={variant === "default" ? "dialog" : "alertdialog"}
         {...props}
       >
         {children}

@@ -32,6 +32,7 @@ function currentTotp(secret: string): string {
 test("platform admin probes, enables, cancels, and restores LLM configurations", async ({
   page,
 }, testInfo) => {
+  test.skip(testInfo.project.name !== "chrome", "全平台 LLM 配置单飞链路仅执行一次")
   const adminEmail = `llm-e2e-admin-${testInfo.project.name}@example.com`
   await page.goto("/register")
   await page.getByLabel("邮箱").fill(adminEmail)
@@ -56,6 +57,20 @@ test("platform admin probes, enables, cancels, and restores LLM configurations",
   await page.reload()
   await expect(page.getByText("test/success").first()).toBeVisible()
 
+  await page.goto("/admin/llm-calls?call_type=config_probe&outcome=succeeded")
+  await expect(page.getByRole("heading", { name: "LLM 调用记录" })).toBeVisible()
+  const successfulCall = page.getByRole("row").filter({ hasText: "test/success" }).first()
+  await expect(successfulCall.getByText("成功", { exact: true })).toBeVisible()
+  await successfulCall.getByRole("link").click()
+  await expect(page.getByRole("heading", { name: "LLM 调用详情" })).toBeVisible()
+  await page.getByRole("button", { name: "查看原始响应" }).click()
+  await expect(page.getByRole("dialog").locator("pre")).toContainText("fake-openrouter-request")
+
+  await page.goto("/admin")
+  await expect(page.getByRole("cell", { name: "llm_raw_response.view" }).first()).toBeVisible()
+
+  await page.goto("/admin/llm-configuration")
+
   await page.getByLabel("OpenRouter 模型").fill("test/delayed-success")
   await page.getByRole("button", { name: "提交并探测" }).click()
   await page.getByRole("button", { name: "取消变更" }).click()
@@ -65,4 +80,18 @@ test("platform admin probes, enables, cancels, and restores LLM configurations",
   await page.getByRole("button", { name: "复制并探测" }).last().click()
   await page.getByRole("button", { name: "复制并探测" }).last().click()
   await expect(page.getByText("已启用", { exact: true })).toBeVisible({ timeout: 15_000 })
+})
+
+test("tenant member cannot access LLM call diagnostics", async ({ page }, testInfo) => {
+  const email = `llm-e2e-member-${testInfo.project.name}-${Date.now()}@example.com`
+  await page.goto("/register")
+  await page.getByLabel("邮箱").fill(email)
+  await page.getByLabel("密码").fill(PASSWORD)
+  await page.getByLabel("显示名称").fill("LLM E2E 普通成员")
+  await page.getByRole("button", { name: "创建账户" }).click()
+  await page.waitForURL("/")
+
+  await page.goto("/admin/llm-calls")
+  await expect(page.getByRole("heading", { name: "LLM 调用记录" })).toBeVisible()
+  await expect(page.getByText("你没有访问平台管理控制台的权限。")).toBeVisible()
 })

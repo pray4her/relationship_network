@@ -16,8 +16,14 @@ APP_DATABASE_ROLE: Final = "relationship_app"
 """Non-superuser role application connections assume so row level security applies."""
 PLATFORM_WORKER_DATABASE_ROLE: Final = "relationship_platform_worker"
 OUTBOX_DISPATCHER_DATABASE_ROLE: Final = "relationship_outbox_dispatcher"
+LLM_MAINTENANCE_DATABASE_ROLE: Final = "relationship_llm_maintenance"
 _ALLOWED_DATABASE_ROLES: Final = frozenset(
-    {APP_DATABASE_ROLE, PLATFORM_WORKER_DATABASE_ROLE, OUTBOX_DISPATCHER_DATABASE_ROLE}
+    {
+        APP_DATABASE_ROLE,
+        PLATFORM_WORKER_DATABASE_ROLE,
+        OUTBOX_DISPATCHER_DATABASE_ROLE,
+        LLM_MAINTENANCE_DATABASE_ROLE,
+    }
 )
 
 

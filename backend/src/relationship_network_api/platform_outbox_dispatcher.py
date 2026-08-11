@@ -16,8 +16,12 @@ from relationship_network_api.db import (
     create_engine_from_settings,
     create_session_factory,
 )
+from relationship_network_api.llm_call_audit_service import LLM_METADATA_OUTBOX_TOPIC
 from relationship_network_api.llm_configuration_service import OUTBOX_TOPIC
-from relationship_network_api.tasks import PROCESS_LLM_CONFIGURATION_ATTEMPT_TASK_NAME
+from relationship_network_api.tasks import (
+    FETCH_LLM_CALL_METADATA_TASK_NAME,
+    PROCESS_LLM_CONFIGURATION_ATTEMPT_TASK_NAME,
+)
 
 if TYPE_CHECKING:
     from celery import Celery
@@ -105,7 +109,7 @@ async def dispatch_forever() -> None:
                 await anyio.sleep(_IDLE_SECONDS)
                 continue
             for event in events:
-                if event.topic != OUTBOX_TOPIC:
+                if event.topic not in {OUTBOX_TOPIC, LLM_METADATA_OUTBOX_TOPIC}:
                     await release(
                         session_factory,
                         event_id=event.id,
@@ -114,11 +118,10 @@ async def dispatch_forever() -> None:
                     )
                     continue
                 try:
-                    await to_thread.run_sync(
-                        _send_attempt,
-                        celery,
-                        event.aggregate_id,
-                    )
+                    if event.topic == OUTBOX_TOPIC:
+                        await to_thread.run_sync(_send_attempt, celery, event.aggregate_id)
+                    else:
+                        await to_thread.run_sync(_send_metadata, celery, event.aggregate_id)
                 except (OSError, OperationalError) as error:
                     await release(
                         session_factory,
@@ -140,6 +143,14 @@ def _send_attempt(celery: Celery, attempt_id: uuid.UUID) -> None:
     _ = celery.send_task(
         PROCESS_LLM_CONFIGURATION_ATTEMPT_TASK_NAME,
         args=[str(attempt_id)],
+        queue="platform",
+    )
+
+
+def _send_metadata(celery: Celery, call_id: uuid.UUID) -> None:
+    _ = celery.send_task(
+        FETCH_LLM_CALL_METADATA_TASK_NAME,
+        args=[str(call_id)],
         queue="platform",
     )
 

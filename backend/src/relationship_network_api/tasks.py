@@ -5,18 +5,24 @@ from email.message import EmailMessage
 from typing import TYPE_CHECKING, Final, Literal, TypedDict, cast
 
 import anyio
+from sqlalchemy import text
 from sqlalchemy.exc import SQLAlchemyError
 
 from relationship_network_api import tenant_context, usage_service
 from relationship_network_api.celery_app import celery_app
 from relationship_network_api.config import load_app_settings, load_database_settings
-from relationship_network_api.db import create_engine_from_settings, create_session_factory
+from relationship_network_api.db import (
+    LLM_MAINTENANCE_DATABASE_ROLE,
+    create_engine_from_settings,
+    create_session_factory,
+)
 from relationship_network_api.llm_configuration_worker import (
     process_attempt,
     recover_expired_attempt_leases,
     run_scheduled_operation,
     schedule_due_attempts,
 )
+from relationship_network_api.llm_metadata_worker import fetch_platform_call_metadata
 
 if TYPE_CHECKING:
     from celery import Task
@@ -37,6 +43,10 @@ SCHEDULE_DUE_LLM_CONFIGURATION_ATTEMPTS_TASK_NAME: Final = (
 )
 RECOVER_EXPIRED_LLM_CONFIGURATION_LEASES_TASK_NAME: Final = (
     "relationship_network.recover_expired_llm_configuration_leases"
+)
+FETCH_LLM_CALL_METADATA_TASK_NAME: Final = "relationship_network.fetch_llm_call_metadata"
+CLEANUP_EXPIRED_LLM_RAW_RESPONSES_TASK_NAME: Final = (
+    "relationship_network.cleanup_expired_llm_raw_responses"
 )
 
 
@@ -173,6 +183,37 @@ def recover_expired_llm_configuration_leases_payload() -> int:
     return anyio.run(run_scheduled_operation, recover_expired_attempt_leases)
 
 
+def fetch_llm_call_metadata_payload(call_id: str) -> None:
+    """Fetch delayed generation facts for one platform-scoped call."""
+    anyio.run(fetch_platform_call_metadata, uuid.UUID(call_id))
+
+
+def cleanup_expired_llm_raw_responses_payload() -> int:
+    """Delete one bounded batch through the maintenance-only database function."""
+    return anyio.run(_cleanup_expired_llm_raw_responses)
+
+
+async def _cleanup_expired_llm_raw_responses() -> int:
+    settings = load_database_settings()
+    engine = create_engine_from_settings(
+        settings,
+        database_role=LLM_MAINTENANCE_DATABASE_ROLE,
+    )
+    try:
+        factory = create_session_factory(engine)
+        async with factory() as session:
+            deleted = (
+                await session.execute(
+                    text("SELECT cleanup_expired_llm_raw_responses(:batch_size)"),
+                    {"batch_size": 1000},
+                )
+            ).scalar_one()
+            await session.commit()
+            return int(deleted)
+    finally:
+        await engine.dispose()
+
+
 process_llm_configuration_attempt = cast(
     "Task",
     celery_app.task(
@@ -191,5 +232,19 @@ recover_expired_llm_configuration_leases = cast(
     "Task",
     celery_app.task(name=RECOVER_EXPIRED_LLM_CONFIGURATION_LEASES_TASK_NAME)(
         recover_expired_llm_configuration_leases_payload
+    ),
+)
+fetch_llm_call_metadata = cast(
+    "Task",
+    celery_app.task(
+        name=FETCH_LLM_CALL_METADATA_TASK_NAME,
+        acks_late=True,
+        reject_on_worker_lost=True,
+    )(fetch_llm_call_metadata_payload),
+)
+cleanup_expired_llm_raw_responses = cast(
+    "Task",
+    celery_app.task(name=CLEANUP_EXPIRED_LLM_RAW_RESPONSES_TASK_NAME)(
+        cleanup_expired_llm_raw_responses_payload
     ),
 )

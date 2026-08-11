@@ -141,6 +141,10 @@ export default async function AdminPage({ searchParams }: AdminPageProps) {
               >
                 管理 LLM 配置
               </Link>
+              <span aria-hidden="true"> · </span>
+              <Link className="font-medium underline underline-offset-4" href="/admin/llm-calls">
+                查看 LLM 调用
+              </Link>
             </p>
             {tenantsResult.tenants.length === 0 ? (
               <p className="text-sm text-muted-foreground">没有符合条件的租户。</p>

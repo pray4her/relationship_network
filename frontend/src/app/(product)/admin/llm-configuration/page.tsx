@@ -1,16 +1,19 @@
 import type { Metadata } from "next"
+import Link from "next/link"
 import { redirect } from "next/navigation"
 
 import { AdminGateNotice } from "@/components/admin/admin-gate-notice"
 import { LlmConfigurationWorkbench } from "@/components/admin/llm-configuration-workbench"
 import {
   Page,
+  PageActions,
   PageDescription,
   PageEyebrow,
   PageHeader,
   PageHeaderContent,
   PageTitle,
 } from "@/components/layout/page"
+import { Button } from "@/components/ui/button"
 import { requireAdminView } from "@/lib/admin-guard"
 import { createLlmConfigurationTransport, loadLlmWorkspace } from "@/lib/llm-configuration-client"
 
@@ -45,6 +48,11 @@ export default async function LlmConfigurationPage() {
             在线提交 OpenRouter 候选配置。平台完成固定最小探测后，原子创建并启用新的不可变版本。
           </PageDescription>
         </PageHeaderContent>
+        <PageActions>
+          <Button render={<Link href="/admin/llm-calls" />} variant="secondary">
+            查看调用记录
+          </Button>
+        </PageActions>
       </PageHeader>
       <LlmConfigurationWorkbench workspace={result.workspace} />
     </Page>

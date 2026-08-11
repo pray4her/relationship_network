@@ -5,10 +5,13 @@ from typing import Final, Literal, final
 from sqlalchemy import (
     Boolean,
     CheckConstraint,
+    Computed,
     DateTime,
     ForeignKey,
+    ForeignKeyConstraint,
     Index,
     Integer,
+    LargeBinary,
     Numeric,
     String,
     Text,
@@ -115,6 +118,21 @@ LLM_CONFIGURATION_TERMINAL_STATUSES: Final = (
     "failed",
     "conflicted",
     "cancelled",
+)
+LLM_CALL_RECORD_SCOPE_CHECK: Final = " ".join(  # noqa: FLY002
+    (
+        "(scope = 'platform' AND tenant_id IS NULL AND call_type = 'config_probe'",
+        "AND platform_attempt_id IS NOT NULL AND job_requirement_parsing_task_id IS NULL) OR",
+        "(scope = 'tenant' AND tenant_id IS NOT NULL",
+        "AND call_type = 'job_requirement_parsing' AND platform_attempt_id IS NULL",
+        "AND job_requirement_parsing_task_id IS NOT NULL)",
+    )
+)
+LLM_CALL_CHILD_SCOPE_CHECK: Final = " ".join(  # noqa: FLY002
+    (
+        "(scope = 'platform' AND tenant_id IS NULL) OR",
+        "(scope = 'tenant' AND tenant_id IS NOT NULL)",
+    )
 )
 
 
@@ -613,32 +631,61 @@ class LlmCallRecord(Base):
     __table_args__ = (
         CheckConstraint("scope IN ('platform', 'tenant')", name="ck_llm_call_records_scope"),
         CheckConstraint(
-            "call_type IN ('config_probe')",
+            "call_type IN ('config_probe', 'job_requirement_parsing')",
             name="ck_llm_call_records_type",
         ),
         CheckConstraint(
-            "(scope = 'platform' AND tenant_id IS NULL AND platform_attempt_id IS NOT NULL)",
+            LLM_CALL_RECORD_SCOPE_CHECK,
             name="ck_llm_call_records_scope_key",
         ),
+        CheckConstraint("request_number > 0", name="ck_llm_call_records_request_number"),
+        CheckConstraint("input_length >= 0", name="ck_llm_call_records_input_length"),
         UniqueConstraint(
             "platform_attempt_id",
             "request_number",
             name="uq_llm_call_records_attempt_request",
+        ),
+        UniqueConstraint("id", "scope_key", name="uq_llm_call_records_id_scope_key"),
+        Index(
+            "uq_llm_call_records_tenant_task_request",
+            "tenant_id",
+            "job_requirement_parsing_task_id",
+            "request_number",
+            unique=True,
+            postgresql_where=text("scope = 'tenant'"),
         ),
     )
 
     id: Mapped[uuid.UUID] = mapped_column(Uuid, primary_key=True, default=uuid.uuid4)
     scope: Mapped[str] = mapped_column(String(20), server_default="platform")
     tenant_id: Mapped[uuid.UUID | None] = mapped_column(Uuid, nullable=True)
+    scope_key: Mapped[str] = mapped_column(
+        String(50),
+        Computed("CASE WHEN scope = 'platform' THEN 'platform' ELSE tenant_id::text END"),
+    )
     call_type: Mapped[str] = mapped_column(String(30), server_default="config_probe")
-    platform_attempt_id: Mapped[uuid.UUID] = mapped_column(
+    platform_attempt_id: Mapped[uuid.UUID | None] = mapped_column(
         Uuid,
         ForeignKey("llm_configuration_attempts.id"),
+        nullable=True,
     )
+    job_requirement_parsing_task_id: Mapped[uuid.UUID | None] = mapped_column(Uuid, nullable=True)
+    configuration_version_id: Mapped[uuid.UUID | None] = mapped_column(
+        Uuid,
+        ForeignKey("llm_configuration_versions.id"),
+        nullable=True,
+    )
+    input_snapshot_id: Mapped[uuid.UUID | None] = mapped_column(Uuid, nullable=True)
+    correlation_call_id: Mapped[uuid.UUID | None] = mapped_column(Uuid, nullable=True)
     request_number: Mapped[int] = mapped_column(Integer)
     model: Mapped[str] = mapped_column(String(200))
     prompt_version_id: Mapped[str] = mapped_column(String(100))
+    prompt_sha256: Mapped[str] = mapped_column(String(64))
     requirement_schema_version_id: Mapped[str] = mapped_column(String(100))
+    requirement_schema_sha256: Mapped[str] = mapped_column(String(64))
+    input_sources_summary: Mapped[dict[str, object]] = mapped_column(JSONB)
+    input_sha256: Mapped[str] = mapped_column(String(64))
+    input_length: Mapped[int] = mapped_column(Integer)
     parameters: Mapped[dict[str, object]] = mapped_column(JSONB)
     request_hash: Mapped[str] = mapped_column(String(64))
     created_at: Mapped[datetime] = mapped_column(
@@ -658,12 +705,31 @@ class LlmCallOutcomeEvent(Base):
             "outcome IN ('succeeded', 'failed', 'outcome_unknown', 'late_response')",
             name="ck_llm_call_outcomes_outcome",
         ),
+        CheckConstraint(
+            LLM_CALL_CHILD_SCOPE_CHECK,
+            name="ck_llm_call_outcomes_scope",
+        ),
+        CheckConstraint(
+            "duration_ms IS NULL OR duration_ms >= 0",
+            name="ck_llm_call_outcomes_duration",
+        ),
+        ForeignKeyConstraint(
+            ["call_id", "scope_key"],
+            ["llm_call_records.id", "llm_call_records.scope_key"],
+            ondelete="CASCADE",
+            name="fk_llm_call_outcomes_call_scope",
+        ),
     )
 
     call_id: Mapped[uuid.UUID] = mapped_column(
         Uuid,
-        ForeignKey("llm_call_records.id", ondelete="CASCADE"),
         primary_key=True,
+    )
+    scope: Mapped[str] = mapped_column(String(20))
+    tenant_id: Mapped[uuid.UUID | None] = mapped_column(Uuid, nullable=True)
+    scope_key: Mapped[str] = mapped_column(
+        String(50),
+        Computed("CASE WHEN scope = 'platform' THEN 'platform' ELSE tenant_id::text END"),
     )
     sequence_number: Mapped[int] = mapped_column(Integer, primary_key=True)
     outcome: Mapped[str] = mapped_column(String(30))
@@ -671,10 +737,115 @@ class LlmCallOutcomeEvent(Base):
     provider_request_id: Mapped[str | None] = mapped_column(String(200), nullable=True)
     actual_model: Mapped[str | None] = mapped_column(String(200), nullable=True)
     actual_provider: Mapped[str | None] = mapped_column(String(200), nullable=True)
+    http_status: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    duration_ms: Mapped[int | None] = mapped_column(Integer, nullable=True)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
         server_default=func.now(),
     )
+
+
+@final
+class LlmCallMetadataEvent(Base):
+    """Append-only delayed usage, cost, and provider fact for one LLM call."""
+
+    __tablename__ = "llm_call_metadata_events"
+    __table_args__ = (
+        CheckConstraint("sequence_number > 0", name="ck_llm_call_metadata_sequence"),
+        CheckConstraint(
+            "status IN ('available', 'retry_scheduled', 'unavailable')",
+            name="ck_llm_call_metadata_status",
+        ),
+        CheckConstraint(
+            LLM_CALL_CHILD_SCOPE_CHECK,
+            name="ck_llm_call_metadata_scope",
+        ),
+        CheckConstraint(
+            "prompt_tokens IS NULL OR prompt_tokens >= 0",
+            name="ck_llm_call_metadata_prompt_tokens",
+        ),
+        CheckConstraint(
+            "completion_tokens IS NULL OR completion_tokens >= 0",
+            name="ck_llm_call_metadata_completion_tokens",
+        ),
+        CheckConstraint(
+            "total_tokens IS NULL OR total_tokens >= 0",
+            name="ck_llm_call_metadata_total_tokens",
+        ),
+        CheckConstraint("cost IS NULL OR cost >= 0", name="ck_llm_call_metadata_cost"),
+        ForeignKeyConstraint(
+            ["call_id", "scope_key"],
+            ["llm_call_records.id", "llm_call_records.scope_key"],
+            ondelete="CASCADE",
+            name="fk_llm_call_metadata_call_scope",
+        ),
+    )
+
+    call_id: Mapped[uuid.UUID] = mapped_column(Uuid, primary_key=True)
+    sequence_number: Mapped[int] = mapped_column(Integer, primary_key=True)
+    scope: Mapped[str] = mapped_column(String(20))
+    tenant_id: Mapped[uuid.UUID | None] = mapped_column(Uuid, nullable=True)
+    scope_key: Mapped[str] = mapped_column(
+        String(50),
+        Computed("CASE WHEN scope = 'platform' THEN 'platform' ELSE tenant_id::text END"),
+    )
+    status: Mapped[str] = mapped_column(String(30))
+    generation_id: Mapped[str | None] = mapped_column(String(200), nullable=True)
+    actual_model: Mapped[str | None] = mapped_column(String(200), nullable=True)
+    actual_provider: Mapped[str | None] = mapped_column(String(200), nullable=True)
+    prompt_tokens: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    completion_tokens: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    total_tokens: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    cost: Mapped[float | None] = mapped_column(Numeric(18, 9, asdecimal=False), nullable=True)
+    source: Mapped[str] = mapped_column(String(30))
+    next_retry_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    error_category: Mapped[str] = mapped_column(String(100), server_default="", default="")
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        server_default=func.now(),
+    )
+
+
+@final
+class LlmRawResponse(Base):
+    """Short-lived AES-GCM encrypted raw provider response."""
+
+    __tablename__ = "llm_raw_responses"
+    __table_args__ = (
+        CheckConstraint("response_sequence > 0", name="ck_llm_raw_responses_sequence"),
+        CheckConstraint("octet_length(nonce) = 12", name="ck_llm_raw_responses_nonce"),
+        CheckConstraint(
+            LLM_CALL_CHILD_SCOPE_CHECK,
+            name="ck_llm_raw_responses_scope",
+        ),
+        UniqueConstraint("call_id", "response_sequence", name="uq_llm_raw_responses_call_sequence"),
+        ForeignKeyConstraint(
+            ["call_id", "scope_key"],
+            ["llm_call_records.id", "llm_call_records.scope_key"],
+            ondelete="CASCADE",
+            name="fk_llm_raw_responses_call_scope",
+        ),
+    )
+
+    id: Mapped[uuid.UUID] = mapped_column(Uuid, primary_key=True, default=uuid.uuid4)
+    call_id: Mapped[uuid.UUID] = mapped_column(Uuid)
+    response_sequence: Mapped[int] = mapped_column(Integer, default=1)
+    scope: Mapped[str] = mapped_column(String(20))
+    tenant_id: Mapped[uuid.UUID | None] = mapped_column(Uuid, nullable=True)
+    scope_key: Mapped[str] = mapped_column(
+        String(50),
+        Computed("CASE WHEN scope = 'platform' THEN 'platform' ELSE tenant_id::text END"),
+    )
+    key_id: Mapped[str] = mapped_column(String(100))
+    nonce: Mapped[bytes] = mapped_column(LargeBinary)
+    ciphertext: Mapped[bytes] = mapped_column(LargeBinary)
+    http_status: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    response_headers: Mapped[dict[str, object]] = mapped_column(JSONB)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        server_default=func.now(),
+    )
+    expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
 
 
 @final

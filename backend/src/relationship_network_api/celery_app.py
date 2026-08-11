@@ -40,6 +40,11 @@ def create_celery_app(settings: WorkerSettings) -> Celery:
                 "schedule": 30.0,
                 "options": {"queue": "platform"},
             },
+            "cleanup-expired-llm-raw-responses": {
+                "task": "relationship_network.cleanup_expired_llm_raw_responses",
+                "schedule": 86400.0,
+                "options": {"queue": "maintenance"},
+            },
         },
     )
     return app

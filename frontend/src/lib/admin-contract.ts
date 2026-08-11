@@ -51,7 +51,7 @@ export const adminTenantDetailSchema = z
 export const adminAuditEventSchema = z
   .object({
     id: z.string(),
-    actor_id: z.string(),
+    actor_id: z.string().nullable(),
     action: z.string(),
     target_type: z.string(),
     target_id: z.string(),

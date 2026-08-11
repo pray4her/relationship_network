@@ -7,6 +7,22 @@ from fastapi.responses import JSONResponse
 app = FastAPI()
 
 
+@app.get("/api/v1/generation")
+async def generation(id: str) -> JSONResponse:  # noqa: A002
+    return JSONResponse(
+        content={
+            "data": {
+                "id": id,
+                "model": "test/success",
+                "provider_name": "fake-zdr-provider",
+                "tokens_prompt": 12,
+                "tokens_completion": 4,
+                "total_cost": 0.000012,
+            }
+        }
+    )
+
+
 @app.post("/api/v1/chat/completions")
 async def chat_completions(request: Request) -> JSONResponse:
     payload = cast("dict[str, object]", await request.json())

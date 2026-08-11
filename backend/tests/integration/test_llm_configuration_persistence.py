@@ -7,7 +7,6 @@ from sqlalchemy.ext.asyncio import create_async_engine
 
 from relationship_network_api.config import load_database_settings
 
-CURRENT_ID = "00000000-0000-0000-0000-000000000110"
 INSERT_ATTEMPT_SQL = """
 INSERT INTO llm_configuration_attempts
     (id, status, candidate_snapshot, expected_current_version_id)
@@ -29,11 +28,14 @@ INSERT INTO llm_configuration_versions
      requirement_schema_version_id, temperature, max_output_tokens,
      request_timeout_seconds, privacy_routing, source)
 VALUES
-    (:id, 2, 'openrouter', 'test/model', 'job-requirement-prompt-v1',
+    (:id, :version_number, 'openrouter', 'test/model', 'job-requirement-prompt-v1',
      'job-requirement-schema-v1', 0, 8192, 180,
      jsonb_build_object('zdr', true, 'data_collection', 'deny',
                         'require_parameters', true), 'probe')
 """
+NEXT_VERSION_NUMBER_SQL = (
+    "SELECT coalesce(max(version_number), 0) + 1 FROM llm_configuration_versions"
+)
 
 
 @pytest.mark.anyio
@@ -48,10 +50,15 @@ async def test_llm_configuration_database_invariants_and_restricted_roles() -> N
         async with engine.connect() as connection:
             transaction = await connection.begin()
             try:
+                current_id = (
+                    await connection.execute(
+                        text("SELECT version_id FROM llm_configuration_current WHERE singleton")
+                    )
+                ).scalar_one()
                 _ = await connection.execute(text("SET LOCAL ROLE relationship_app"))
                 _ = await connection.execute(
                     text(INSERT_ATTEMPT_SQL),
-                    {"current_id": CURRENT_ID, "id": attempt_id},
+                    {"current_id": current_id, "id": attempt_id},
                 )
                 _ = await connection.execute(
                     text(INSERT_EVENT_SQL),
@@ -69,7 +76,7 @@ async def test_llm_configuration_database_invariants_and_restricted_roles() -> N
                     async with connection.begin_nested():
                         _ = await connection.execute(
                             text(INSERT_EMPTY_ATTEMPT_SQL),
-                            {"current_id": CURRENT_ID, "id": second_attempt_id},
+                            {"current_id": current_id, "id": second_attempt_id},
                         )
             finally:
                 await transaction.rollback()
@@ -77,14 +84,17 @@ async def test_llm_configuration_database_invariants_and_restricted_roles() -> N
             transaction = await connection.begin()
             try:
                 _ = await connection.execute(text("SET LOCAL ROLE relationship_platform_worker"))
+                version_number = (
+                    await connection.execute(text(NEXT_VERSION_NUMBER_SQL))
+                ).scalar_one()
                 _ = await connection.execute(
                     text(INSERT_VERSION_SQL),
-                    {"id": version_id},
+                    {"id": version_id, "version_number": version_number},
                 )
                 activated = (
                     await connection.execute(
                         text("SELECT activate_llm_configuration_version(:current_id, :new_id)"),
-                        {"current_id": CURRENT_ID, "new_id": version_id},
+                        {"current_id": current_id, "new_id": version_id},
                     )
                 ).scalar_one()
                 pointer = (

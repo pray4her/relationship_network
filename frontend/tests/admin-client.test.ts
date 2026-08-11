@@ -160,6 +160,15 @@ test("parses the audit event list", async () => {
   expect(result).toEqual({ kind: "ok", events: [auditEventBody] })
 })
 
+test("accepts an audit event whose deleted actor is no longer available", async () => {
+  const eventWithoutActor = { ...auditEventBody, actor_id: null }
+  const transport = fixedTransport({ body: { events: [eventWithoutActor] }, status: 200 })
+
+  const result = await loadAdminAuditEvents(transport, "session-token")
+
+  expect(result).toEqual({ kind: "ok", events: [eventWithoutActor] })
+})
+
 test("treats an out-of-contract success body as unreachable", async () => {
   const transport = fixedTransport({ body: { status: "unexpected" }, status: 200 })
 

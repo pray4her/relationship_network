@@ -442,7 +442,11 @@ async def test_rls_blocks_cross_tenant_ledger_inserts(stack: Stack, client: Asyn
     async with stack.session_factory() as session:
         await set_platform_admin_context(session)
         count = (
-            await session.execute(select(func.count()).select_from(UsageLedgerEntry))
+            await session.execute(
+                select(func.count())
+                .select_from(UsageLedgerEntry)
+                .where(UsageLedgerEntry.idempotency_key.in_(("cross-a-to-b", "cross-b-to-a")))
+            )
         ).scalar_one()
     assert count == 0
 

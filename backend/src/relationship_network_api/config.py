@@ -43,6 +43,8 @@ class AppSettings(DatabaseSettings):
     openrouter_base_url: str = "https://openrouter.ai/api/v1"
     openrouter_site_url: str = ""
     openrouter_site_name: str = "Relationship Network"
+    llm_raw_response_keys: SecretStr = SecretStr("{}")
+    llm_raw_response_active_key_id: str = ""
 
 
 def load_app_settings() -> AppSettings:
@@ -68,6 +70,8 @@ class PlatformLlmSettings(DatabaseSettings):
     openrouter_base_url: str = "https://openrouter.ai/api/v1"
     openrouter_site_url: str = ""
     openrouter_site_name: str = "Relationship Network"
+    llm_raw_response_keys: SecretStr = SecretStr("{}")
+    llm_raw_response_active_key_id: str = ""
 
 
 def load_platform_llm_settings() -> PlatformLlmSettings:

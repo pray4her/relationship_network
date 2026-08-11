@@ -3,6 +3,7 @@ from __future__ import annotations
 import hashlib
 import json
 import secrets
+import time
 import uuid
 from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
@@ -12,6 +13,7 @@ import anyio
 from sqlalchemy import func, select, text
 
 from relationship_network_api import audit_service
+from relationship_network_api import llm_call_audit_service as call_audit
 from relationship_network_api import llm_configuration_service as service
 from relationship_network_api.config import PlatformLlmSettings, load_platform_llm_settings
 from relationship_network_api.db import (
@@ -87,6 +89,19 @@ async def process_attempt(
             )
             return
         try:
+            key_ring = call_audit.RawResponseKeyRing.parse(
+                resolved_settings.llm_raw_response_keys.get_secret_value(),
+                resolved_settings.llm_raw_response_active_key_id,
+            )
+            _ = key_ring.require_active_key()
+        except call_audit.RawResponseKeyConfigurationError:
+            await fail_without_call(
+                session_factory,
+                claim=claim,
+                error_code="raw_response_encryption_not_configured",
+            )
+            return
+        try:
             prepared = await prepare_call(session_factory, claim=claim)
         except service.IncompatibleLlmAssetsError:
             await fail_without_call(
@@ -113,23 +128,30 @@ async def process_attempt(
                 claim,
                 stop_heartbeat,
             )
+            started_ns = time.monotonic_ns()
             try:
                 result = await adapter.probe(claim.candidate)
             except OpenRouterAdapterError as error:
+                duration_ms = max((time.monotonic_ns() - started_ns) // 1_000_000, 0)
                 stop_heartbeat.set()
                 await handle_probe_error(
                     session_factory,
                     claim=claim,
                     prepared=prepared,
                     error=error,
+                    key_ring=key_ring,
+                    duration_ms=duration_ms,
                 )
             else:
+                duration_ms = max((time.monotonic_ns() - started_ns) // 1_000_000, 0)
                 stop_heartbeat.set()
                 await handle_probe_success(
                     session_factory,
                     claim=claim,
                     prepared=prepared,
                     result=result,
+                    key_ring=key_ring,
+                    duration_ms=duration_ms,
                 )
     finally:
         await engine.dispose()
@@ -173,7 +195,7 @@ async def prepare_call(
         attempt = await _locked_attempt(session, claim.id)
         if attempt is None or not _holds_running_lease(attempt, claim.lease_token):
             return None
-        _prompt, schema = await service.validate_candidate_assets(session, claim.candidate)
+        prompt, schema = await service.validate_candidate_assets(session, claim.candidate)
         request_number = attempt.external_call_count + 1
         if request_number > MAX_EXTERNAL_CALLS:
             attempt.status = "failed"
@@ -186,16 +208,31 @@ async def prepare_call(
             )
             return None
         request_hash = _probe_request_hash(claim.candidate)
+        input_sha256, input_length = _probe_input_fingerprint(claim.candidate)
+        previous_call_id = await _previous_unknown_call_id(
+            session,
+            attempt_id=attempt.id,
+            request_number=request_number,
+        )
         call = LlmCallRecord(
             id=uuid.uuid4(),
             scope="platform",
             tenant_id=None,
             call_type="config_probe",
             platform_attempt_id=attempt.id,
+            job_requirement_parsing_task_id=None,
+            configuration_version_id=None,
+            input_snapshot_id=None,
+            correlation_call_id=previous_call_id,
             request_number=request_number,
             model=claim.candidate.model,
             prompt_version_id=claim.candidate.prompt_version_id,
+            prompt_sha256=prompt.sha256,
             requirement_schema_version_id=schema.id,
+            requirement_schema_sha256=schema.sha256,
+            input_sources_summary={"kind": "fixed_platform_probe", "contains_business_data": False},
+            input_sha256=input_sha256,
+            input_length=input_length,
             parameters={
                 "max_output_tokens": claim.candidate.max_output_tokens,
                 "request_timeout_seconds": claim.candidate.request_timeout_seconds,
@@ -232,20 +269,27 @@ async def heartbeat_loop(
             attempt.lease_expires_at = now + timedelta(seconds=LEASE_SECONDS)
 
 
-async def handle_probe_success(
+async def handle_probe_success(  # noqa: PLR0913
     session_factory: async_sessionmaker[AsyncSession],
     *,
     claim: ClaimedAttempt,
     prepared: PreparedCall,
     result: OpenRouterProbeResult,
+    key_ring: call_audit.RawResponseKeyRing,
+    duration_ms: int,
 ) -> None:
-    await record_call_outcome(
+    persisted = await call_audit.persist_call_response(
         session_factory,
-        prepared.call_id,
-        outcome="succeeded",
+        call_id=prepared.call_id,
+        key_ring=key_ring,
+        requested_outcome="succeeded",
         category="",
+        exchange=result.exchange,
         result=result,
+        duration_ms=duration_ms,
     )
+    if persisted.is_late_response:
+        return
     async with session_factory() as session:
         async with session.begin():
             attempt = await _locked_attempt(session, claim.id)
@@ -325,20 +369,27 @@ async def handle_probe_success(
         await mark_conflicted(session_factory, claim=claim)
 
 
-async def handle_probe_error(
+async def handle_probe_error(  # noqa: PLR0913
     session_factory: async_sessionmaker[AsyncSession],
     *,
     claim: ClaimedAttempt,
     prepared: PreparedCall,
     error: OpenRouterAdapterError,
+    key_ring: call_audit.RawResponseKeyRing,
+    duration_ms: int,
 ) -> None:
-    await record_call_outcome(
+    persisted = await call_audit.persist_call_response(
         session_factory,
-        prepared.call_id,
-        outcome="outcome_unknown" if error.outcome_unknown else "failed",
+        call_id=prepared.call_id,
+        key_ring=key_ring,
+        requested_outcome="outcome_unknown" if error.outcome_unknown else "failed",
         category=error.category,
+        exchange=error.exchange,
         result=None,
+        duration_ms=duration_ms,
     )
+    if persisted.is_late_response:
+        return
     async with session_factory() as session, session.begin():
         attempt = await _locked_attempt(session, claim.id)
         if attempt is None:
@@ -427,28 +478,6 @@ async def mark_conflicted(
             session,
             attempt=attempt,
             payload={"error_code": service.STALE_CURRENT_CONFIGURATION, "retryable": False},
-        )
-
-
-async def record_call_outcome(
-    session_factory: async_sessionmaker[AsyncSession],
-    call_id: uuid.UUID,
-    *,
-    outcome: str,
-    category: str,
-    result: OpenRouterProbeResult | None,
-) -> None:
-    async with session_factory() as session, session.begin():
-        session.add(
-            LlmCallOutcomeEvent(
-                call_id=call_id,
-                sequence_number=1,
-                outcome=outcome,
-                category=category,
-                provider_request_id=None if result is None else result.provider_request_id,
-                actual_model=None if result is None else result.actual_model,
-                actual_provider=None if result is None else result.actual_provider,
-            )
         )
 
 
@@ -566,6 +595,38 @@ def _probe_request_hash(candidate: CandidateConfiguration) -> str:
     return hashlib.sha256(serialized.encode()).hexdigest()
 
 
+def _probe_input_fingerprint(candidate: CandidateConfiguration) -> tuple[str, int]:
+    payload = OpenRouterAdapter(
+        OpenRouterClientConfig(api_key="not-persisted")
+    ).build_probe_payload(candidate)
+    messages = cast("list[dict[str, str]]", payload["messages"])
+    serialized = json.dumps(messages, ensure_ascii=False, separators=(",", ":"), sort_keys=True)
+    content_length = sum(len(message["content"]) for message in messages)
+    return hashlib.sha256(serialized.encode()).hexdigest(), content_length
+
+
+async def _previous_unknown_call_id(
+    session: AsyncSession,
+    *,
+    attempt_id: uuid.UUID,
+    request_number: int,
+) -> uuid.UUID | None:
+    if request_number <= 1:
+        return None
+    return (
+        await session.execute(
+            select(LlmCallRecord.id)
+            .join(LlmCallOutcomeEvent, LlmCallOutcomeEvent.call_id == LlmCallRecord.id)
+            .where(
+                LlmCallRecord.platform_attempt_id == attempt_id,
+                LlmCallRecord.request_number == request_number - 1,
+                LlmCallOutcomeEvent.sequence_number == 1,
+                LlmCallOutcomeEvent.outcome == "outcome_unknown",
+            )
+        )
+    ).scalar_one_or_none()
+
+
 async def _record_missing_outcome_unknown(session: AsyncSession, attempt_id: uuid.UUID) -> None:
     call = (
         await session.execute(
@@ -587,6 +648,8 @@ async def _record_missing_outcome_unknown(session: AsyncSession, attempt_id: uui
             LlmCallOutcomeEvent(
                 call_id=call.id,
                 sequence_number=1,
+                scope=call.scope,
+                tenant_id=call.tenant_id,
                 outcome="outcome_unknown",
                 category="lease_expired",
             )
