@@ -40,6 +40,16 @@ def create_celery_app(settings: WorkerSettings) -> Celery:
                 "schedule": 30.0,
                 "options": {"queue": "platform"},
             },
+            "schedule-due-job-requirement-tasks": {
+                "task": "relationship_network.schedule_due_job_requirement_tasks",
+                "schedule": 10.0,
+                "options": {"queue": "tenant"},
+            },
+            "recover-expired-job-requirement-leases": {
+                "task": "relationship_network.recover_expired_job_requirement_leases",
+                "schedule": 30.0,
+                "options": {"queue": "tenant"},
+            },
             "cleanup-expired-llm-raw-responses": {
                 "task": "relationship_network.cleanup_expired_llm_raw_responses",
                 "schedule": 86400.0,

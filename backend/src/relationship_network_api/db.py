@@ -17,12 +17,14 @@ APP_DATABASE_ROLE: Final = "relationship_app"
 PLATFORM_WORKER_DATABASE_ROLE: Final = "relationship_platform_worker"
 OUTBOX_DISPATCHER_DATABASE_ROLE: Final = "relationship_outbox_dispatcher"
 LLM_MAINTENANCE_DATABASE_ROLE: Final = "relationship_llm_maintenance"
+REQUIREMENT_SCHEDULER_DATABASE_ROLE: Final = "relationship_requirement_scheduler"
 _ALLOWED_DATABASE_ROLES: Final = frozenset(
     {
         APP_DATABASE_ROLE,
         PLATFORM_WORKER_DATABASE_ROLE,
         OUTBOX_DISPATCHER_DATABASE_ROLE,
         LLM_MAINTENANCE_DATABASE_ROLE,
+        REQUIREMENT_SCHEDULER_DATABASE_ROLE,
     }
 )
 

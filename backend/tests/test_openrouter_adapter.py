@@ -106,6 +106,73 @@ async def test_probe_rejects_extra_structured_output_properties() -> None:
 
 
 @pytest.mark.anyio
+async def test_requirement_generation_sends_strict_v2_schema_and_deterministic_sources() -> None:
+    captured: dict[str, object] = {}
+    structured = {
+        "hard_conditions": [],
+        "preference_conditions": [],
+        "research_topic_query": "人工智能",
+        "unsupported_conditions": [],
+        "source_conflicts": [],
+    }
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        captured["body"] = json.loads(request.content)
+        return httpx.Response(
+            200,
+            json={
+                "id": "gen-requirement-1",
+                "model": "x-ai/grok-4.5",
+                "provider": "provider-a",
+                "choices": [{"message": {"content": json.dumps(structured)}}],
+            },
+        )
+
+    schema: dict[str, object] = {"type": "object", "additionalProperties": False}
+    sources = [
+        {"source_id": "job-description", "content": "职位描述"},
+        {"source_id": "job-material:2", "content": "第二份材料"},
+    ]
+    async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+        adapter = OpenRouterAdapter(
+            OpenRouterClientConfig(api_key="secret", base_url="https://openrouter.test/api/v1"),
+            client=client,
+        )
+        result = await adapter.generate_requirement(
+            candidate(),
+            system_prompt="只输出 JSON",
+            schema=schema,
+            sources=sources,
+        )
+
+    body = captured["body"]
+    assert isinstance(body, dict)
+    assert body["stream"] is False
+    assert body["provider"] == {
+        "data_collection": "deny",
+        "require_parameters": True,
+        "zdr": True,
+    }
+    assert body["response_format"] == {
+        "type": "json_schema",
+        "json_schema": {
+            "name": "relationship_network_job_requirement",
+            "schema": schema,
+            "strict": True,
+        },
+    }
+    messages = body["messages"]
+    assert isinstance(messages, list)
+    assert messages[0] == {"content": "只输出 JSON", "role": "system"}
+    assert messages[1] == {
+        "content": json.dumps({"sources": sources}, ensure_ascii=False, separators=(",", ":")),
+        "role": "user",
+    }
+    assert result.content == structured
+    assert result.provider_request_id == "gen-requirement-1"
+
+
+@pytest.mark.anyio
 async def test_probe_classifies_throttling_and_retry_after() -> None:
     def handler(_request: httpx.Request) -> httpx.Response:
         return httpx.Response(429, headers={"Retry-After": "12"}, json={"error": "limited"})

@@ -16,13 +16,26 @@ from relationship_network_api.db import (
     create_engine_from_settings,
     create_session_factory,
 )
+from relationship_network_api.job_requirement_worker import (
+    process_task as process_requirement_task,
+)
+from relationship_network_api.job_requirement_worker import (
+    recover_expired_task_leases,
+    schedule_due_tasks,
+)
+from relationship_network_api.job_requirement_worker import (
+    run_scheduled_operation as run_requirement_scheduled_operation,
+)
 from relationship_network_api.llm_configuration_worker import (
     process_attempt,
     recover_expired_attempt_leases,
     run_scheduled_operation,
     schedule_due_attempts,
 )
-from relationship_network_api.llm_metadata_worker import fetch_platform_call_metadata
+from relationship_network_api.llm_metadata_worker import (
+    fetch_platform_call_metadata,
+    fetch_tenant_call_metadata,
+)
 
 if TYPE_CHECKING:
     from celery import Task
@@ -47,6 +60,16 @@ RECOVER_EXPIRED_LLM_CONFIGURATION_LEASES_TASK_NAME: Final = (
 FETCH_LLM_CALL_METADATA_TASK_NAME: Final = "relationship_network.fetch_llm_call_metadata"
 CLEANUP_EXPIRED_LLM_RAW_RESPONSES_TASK_NAME: Final = (
     "relationship_network.cleanup_expired_llm_raw_responses"
+)
+PROCESS_JOB_REQUIREMENT_TASK_NAME: Final = "relationship_network.process_job_requirement_task"
+FETCH_TENANT_LLM_CALL_METADATA_TASK_NAME: Final = (
+    "relationship_network.fetch_tenant_llm_call_metadata"
+)
+SCHEDULE_DUE_JOB_REQUIREMENT_TASKS_TASK_NAME: Final = (
+    "relationship_network.schedule_due_job_requirement_tasks"
+)
+RECOVER_EXPIRED_JOB_REQUIREMENT_LEASES_TASK_NAME: Final = (
+    "relationship_network.recover_expired_job_requirement_leases"
 )
 
 
@@ -193,6 +216,26 @@ def cleanup_expired_llm_raw_responses_payload() -> int:
     return anyio.run(_cleanup_expired_llm_raw_responses)
 
 
+def process_job_requirement_task_payload(tenant_id: str, task_id: str) -> None:
+    """Run one idempotently claimed tenant parsing task under tenant RLS."""
+    anyio.run(process_requirement_task, uuid.UUID(tenant_id), uuid.UUID(task_id))
+
+
+def fetch_tenant_llm_call_metadata_payload(tenant_id: str, call_id: str) -> None:
+    """Fetch delayed generation facts for one tenant-scoped LLM call."""
+    anyio.run(fetch_tenant_call_metadata, uuid.UUID(tenant_id), uuid.UUID(call_id))
+
+
+def schedule_due_job_requirement_tasks_payload() -> int:
+    """Atomically enqueue due tenant retry plans through the restricted scheduler role."""
+    return anyio.run(run_requirement_scheduled_operation, schedule_due_tasks)
+
+
+def recover_expired_job_requirement_leases_payload() -> int:
+    """Recover expired tenant leases without granting the scheduler arbitrary table access."""
+    return anyio.run(run_requirement_scheduled_operation, recover_expired_task_leases)
+
+
 async def _cleanup_expired_llm_raw_responses() -> int:
     settings = load_database_settings()
     engine = create_engine_from_settings(
@@ -246,5 +289,33 @@ cleanup_expired_llm_raw_responses = cast(
     "Task",
     celery_app.task(name=CLEANUP_EXPIRED_LLM_RAW_RESPONSES_TASK_NAME)(
         cleanup_expired_llm_raw_responses_payload
+    ),
+)
+process_job_requirement_task = cast(
+    "Task",
+    celery_app.task(
+        name=PROCESS_JOB_REQUIREMENT_TASK_NAME,
+        acks_late=True,
+        reject_on_worker_lost=True,
+    )(process_job_requirement_task_payload),
+)
+fetch_tenant_llm_call_metadata = cast(
+    "Task",
+    celery_app.task(
+        name=FETCH_TENANT_LLM_CALL_METADATA_TASK_NAME,
+        acks_late=True,
+        reject_on_worker_lost=True,
+    )(fetch_tenant_llm_call_metadata_payload),
+)
+schedule_due_job_requirement_tasks = cast(
+    "Task",
+    celery_app.task(name=SCHEDULE_DUE_JOB_REQUIREMENT_TASKS_TASK_NAME)(
+        schedule_due_job_requirement_tasks_payload
+    ),
+)
+recover_expired_job_requirement_leases = cast(
+    "Task",
+    celery_app.task(name=RECOVER_EXPIRED_JOB_REQUIREMENT_LEASES_TASK_NAME)(
+        recover_expired_job_requirement_leases_payload
     ),
 )

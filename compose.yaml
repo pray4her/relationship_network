@@ -136,7 +136,7 @@ services:
         "worker",
         "--loglevel=INFO",
         "--concurrency=2",
-        "--queues=celery,platform",
+        "--queues=celery,platform,tenant",
       ]
     depends_on:
       postgres:

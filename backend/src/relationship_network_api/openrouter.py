@@ -18,6 +18,8 @@ MIN_OUTPUT_TOKENS: Final = 1024
 MAX_OUTPUT_TOKENS: Final = 16384
 MIN_TIMEOUT_SECONDS: Final = 30
 MAX_TIMEOUT_SECONDS: Final = 300
+INPUT_CHARACTER_LIMIT: Final = 100_000
+MAX_REQUIREMENT_RESPONSE_BYTES: Final = 2_000_000
 HTTP_BAD_REQUEST: Final = 400
 HTTP_UNAUTHORIZED: Final = 401
 HTTP_PAYMENT_REQUIRED: Final = 402
@@ -36,6 +38,7 @@ class CandidateConfiguration:
     temperature: float = 0
     max_output_tokens: int = 8192
     request_timeout_seconds: int = 180
+    input_character_limit: int = INPUT_CHARACTER_LIMIT
 
     def __post_init__(self) -> None:
         """Validate the deliberately small online configuration surface."""
@@ -53,6 +56,9 @@ class CandidateConfiguration:
             raise ValueError(message)
         if not MIN_TIMEOUT_SECONDS <= self.request_timeout_seconds <= MAX_TIMEOUT_SECONDS:
             message = "request_timeout_seconds must be between 30 and 300"
+            raise ValueError(message)
+        if self.input_character_limit != INPUT_CHARACTER_LIMIT:
+            message = "input_character_limit is a frozen system value"
             raise ValueError(message)
 
     def sanitized_snapshot(self) -> dict[str, object]:
@@ -78,6 +84,15 @@ class OpenRouterProbeResult:
     provider_request_id: str | None
     actual_model: str | None
     actual_provider: str | None
+    exchange: OpenRouterResponseExchange
+
+
+@dataclass(frozen=True)
+class OpenRouterRequirementResult:
+    provider_request_id: str | None
+    actual_model: str | None
+    actual_provider: str | None
+    content: dict[str, object]
     exchange: OpenRouterResponseExchange
 
 
@@ -155,6 +170,40 @@ class OpenRouterAdapter:
         if response.status_code >= HTTP_BAD_REQUEST:
             raise self._classify_http_error(response)
         return self._parse_probe_response(response)
+
+    async def generate_requirement(
+        self,
+        candidate: CandidateConfiguration,
+        *,
+        system_prompt: str,
+        schema: dict[str, object],
+        sources: list[dict[str, str]],
+    ) -> OpenRouterRequirementResult:
+        payload = self.build_requirement_payload(
+            candidate,
+            system_prompt=system_prompt,
+            schema=schema,
+            sources=sources,
+        )
+        try:
+            response = await self._post(payload, timeout_seconds=candidate.request_timeout_seconds)
+        except httpx.TimeoutException as error:
+            category = "timeout"
+            raise OpenRouterAdapterError(
+                category,
+                retryable=True,
+                outcome_unknown=True,
+            ) from error
+        except httpx.NetworkError as error:
+            category = "network_error"
+            raise OpenRouterAdapterError(
+                category,
+                retryable=True,
+                outcome_unknown=True,
+            ) from error
+        if response.status_code >= HTTP_BAD_REQUEST:
+            raise self._classify_http_error(response)
+        return self._parse_requirement_response(response)
 
     async def fetch_generation(
         self,
@@ -252,6 +301,43 @@ class OpenRouterAdapter:
             "temperature": candidate.temperature,
         }
 
+    def build_requirement_payload(
+        self,
+        candidate: CandidateConfiguration,
+        *,
+        system_prompt: str,
+        schema: dict[str, object],
+        sources: list[dict[str, str]],
+    ) -> dict[str, object]:
+        source_payload = json.dumps(
+            {"sources": sources},
+            ensure_ascii=False,
+            separators=(",", ":"),
+        )
+        return {
+            "max_tokens": candidate.max_output_tokens,
+            "messages": [
+                {"content": system_prompt, "role": "system"},
+                {"content": source_payload, "role": "user"},
+            ],
+            "model": candidate.model,
+            "provider": {
+                "data_collection": "deny",
+                "require_parameters": True,
+                "zdr": True,
+            },
+            "response_format": {
+                "json_schema": {
+                    "name": "relationship_network_job_requirement",
+                    "schema": schema,
+                    "strict": True,
+                },
+                "type": "json_schema",
+            },
+            "stream": False,
+            "temperature": candidate.temperature,
+        }
+
     async def _post(self, payload: dict[str, object], *, timeout_seconds: int) -> httpx.Response:
         headers = {
             "Authorization": f"Bearer {self._config.api_key}",
@@ -333,6 +419,39 @@ class OpenRouterAdapter:
             provider_request_id=_optional_string(body.get("id")),
             actual_model=_optional_string(body.get("model")),
             actual_provider=_optional_string(body.get("provider")),
+            exchange=exchange,
+        )
+
+    @staticmethod
+    def _parse_requirement_response(response: httpx.Response) -> OpenRouterRequirementResult:
+        exchange = _response_exchange(response)
+        if len(exchange.raw_body) > MAX_REQUIREMENT_RESPONSE_BYTES:
+            category = "invalid_structured_output"
+            raise OpenRouterAdapterError(
+                category,
+                retryable=True,
+                exchange=exchange,
+            )
+        try:
+            body = _object_mapping(json.loads(exchange.raw_body))
+            choices = cast("list[object]", body["choices"])
+            choice = _object_mapping(choices[0])
+            message = _object_mapping(choice["message"])
+            raw_content = message["content"]
+            content = json.loads(raw_content) if isinstance(raw_content, str) else raw_content
+            parsed_content = _object_mapping(content)
+        except (IndexError, KeyError, TypeError, ValueError, json.JSONDecodeError) as error:
+            category = "invalid_structured_output"
+            raise OpenRouterAdapterError(
+                category,
+                retryable=True,
+                exchange=exchange,
+            ) from error
+        return OpenRouterRequirementResult(
+            provider_request_id=_optional_string(body.get("id")),
+            actual_model=_optional_string(body.get("model")),
+            actual_provider=_optional_string(body.get("provider")),
+            content=parsed_content,
             exchange=exchange,
         )
 

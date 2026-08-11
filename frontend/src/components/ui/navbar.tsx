@@ -61,7 +61,7 @@ function NavbarInner({ className, ...props }: React.ComponentProps<"div">) {
   return (
     <div
       className={cn(
-        "mx-auto flex h-[var(--space-16)] w-full max-w-[1400px] items-center gap-[var(--space-6)] px-[var(--space-6)]",
+        "mx-auto flex h-[var(--space-16)] w-full max-w-[1400px] items-center gap-[var(--space-6)] px-[var(--space-6)] max-md:gap-[var(--space-2)] max-md:px-[var(--space-4)]",
         className,
       )}
       data-slot="navbar-inner"

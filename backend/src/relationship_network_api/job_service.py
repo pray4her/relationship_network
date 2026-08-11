@@ -8,7 +8,7 @@ from dataclasses import dataclass
 from datetime import UTC, datetime
 from typing import TYPE_CHECKING, Final, cast, final
 
-from sqlalchemy import select, update
+from sqlalchemy import func, select, update
 from sqlalchemy.exc import SQLAlchemyError
 
 from relationship_network_api import (
@@ -28,6 +28,8 @@ from relationship_network_api.models import (
     DocumentScanStatus,
     Job,
     JobMaterial,
+    JobRequirementParsingTask,
+    JobRequirementParsingTaskEvent,
     JobStatus,
 )
 from relationship_network_api.tenant_audit_service import (
@@ -339,6 +341,11 @@ async def archive_job(
     """Archive a draft or closed job; archived is terminal and holds no seat."""
     job = await _load_job(session, tenant_id=tenant_id, job_id=job_id, for_update=True)
     _ensure_transition(job.status, to=JOB_STATUS_ARCHIVED)
+    await _transition_requirement_task_for_archive(
+        session,
+        tenant_id=tenant_id,
+        job_id=job_id,
+    )
     now = datetime.now(UTC)
     job.status = JOB_STATUS_ARCHIVED
     job.archived_at = now
@@ -356,6 +363,57 @@ async def archive_job(
     await _commit(session)
     await tenant_context.set_tenant_context(session, tenant_id)
     return await get_job(session, tenant_id=tenant_id, job_id=job_id)
+
+
+async def _transition_requirement_task_for_archive(
+    session: AsyncSession,
+    *,
+    tenant_id: uuid.UUID,
+    job_id: uuid.UUID,
+) -> None:
+    task = (
+        await session.execute(
+            select(JobRequirementParsingTask)
+            .where(
+                JobRequirementParsingTask.tenant_id == tenant_id,
+                JobRequirementParsingTask.job_id == job_id,
+                JobRequirementParsingTask.status.in_(
+                    ("queued", "running", "retry_scheduled", "cancel_requested")
+                ),
+            )
+            .with_for_update()
+        )
+    ).scalar_one_or_none()
+    if task is None or task.status == "cancel_requested":
+        return
+    if task.status == "running":
+        task.status = "cancel_requested"
+    else:
+        task.status = "cancelled"
+        task.completed_at = datetime.now(UTC)
+        task.next_attempt_at = None
+    await session.flush()
+    sequence_number = (
+        int(
+            (
+                await session.execute(
+                    select(
+                        func.coalesce(func.max(JobRequirementParsingTaskEvent.sequence_number), 0)
+                    ).where(JobRequirementParsingTaskEvent.task_id == task.id)
+                )
+            ).scalar_one()
+        )
+        + 1
+    )
+    session.add(
+        JobRequirementParsingTaskEvent(
+            task_id=task.id,
+            sequence_number=sequence_number,
+            tenant_id=tenant_id,
+            event_type=task.status,
+            payload={},
+        )
+    )
 
 
 async def upload_material(  # noqa: PLR0913

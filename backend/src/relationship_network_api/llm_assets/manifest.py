@@ -65,8 +65,27 @@ JOB_REQUIREMENT_PROMPT_V1: Final = PromptAsset(
     compatible_schema_version_id=JOB_REQUIREMENT_SCHEMA_V1.id,
 )
 
-REQUIREMENT_SCHEMA_ASSETS: Final = (JOB_REQUIREMENT_SCHEMA_V1,)
-PROMPT_ASSETS: Final = (JOB_REQUIREMENT_PROMPT_V1,)
+JOB_REQUIREMENT_SCHEMA_V2: Final = RequirementSchemaAsset(
+    id="job-requirement-schema-v2",
+    package="relationship_network_api.llm_assets.job_requirement",
+    path="schema_v2.json",
+    sha256="66c29d52731513a2a6a398774af5ac9ca9c461b868b99f9a66b70a59cf6b946c",
+    schema_id="urn:relationship-network:job-requirement-schema:v2",
+    field_catalog=JOB_REQUIREMENT_SCHEMA_V1.field_catalog,
+    chinese_identity_values=JOB_REQUIREMENT_SCHEMA_V1.chinese_identity_values,
+    output_limits=JOB_REQUIREMENT_SCHEMA_V1.output_limits,
+)
+
+JOB_REQUIREMENT_PROMPT_V2: Final = PromptAsset(
+    id="job-requirement-prompt-v2",
+    package="relationship_network_api.llm_assets.job_requirement",
+    path="prompt_v2.txt",
+    sha256="b7170479abdc088eccbeec73798a3e6ac7e1c637a37cefaa7c74d3ec498d6101",
+    compatible_schema_version_id=JOB_REQUIREMENT_SCHEMA_V2.id,
+)
+
+REQUIREMENT_SCHEMA_ASSETS: Final = (JOB_REQUIREMENT_SCHEMA_V1, JOB_REQUIREMENT_SCHEMA_V2)
+PROMPT_ASSETS: Final = (JOB_REQUIREMENT_PROMPT_V1, JOB_REQUIREMENT_PROMPT_V2)
 
 
 def _read_asset(package: str, path: str) -> bytes:

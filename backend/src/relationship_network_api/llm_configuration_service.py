@@ -93,6 +93,7 @@ class LlmConfigurationVersionView:
     temperature: float
     max_output_tokens: int
     request_timeout_seconds: int
+    input_character_limit: int
     privacy_routing: dict[str, object]
     source_version_id: uuid.UUID | None
     source: str
@@ -148,6 +149,7 @@ def _version_view(version: LlmConfigurationVersion) -> LlmConfigurationVersionVi
         temperature=float(version.temperature),
         max_output_tokens=version.max_output_tokens,
         request_timeout_seconds=version.request_timeout_seconds,
+        input_character_limit=version.input_character_limit,
         privacy_routing=version.privacy_routing,
         source_version_id=version.source_version_id,
         source=version.source,
@@ -157,10 +159,12 @@ def _version_view(version: LlmConfigurationVersion) -> LlmConfigurationVersionVi
 
 
 def _attempt_view(attempt: LlmConfigurationAttempt) -> LlmConfigurationAttemptView:
+    candidate = dict(attempt.candidate_snapshot)
+    _ = candidate.setdefault("input_character_limit", 100_000)
     return LlmConfigurationAttemptView(
         id=attempt.id,
         status=attempt.status,
-        candidate=attempt.candidate_snapshot,
+        candidate=candidate,
         expected_current_version_id=attempt.expected_current_version_id,
         source_version_id=attempt.source_version_id,
         external_call_count=attempt.external_call_count,
@@ -308,6 +312,7 @@ async def copy_version_as_attempt(
         temperature=float(version.temperature),
         max_output_tokens=version.max_output_tokens,
         request_timeout_seconds=version.request_timeout_seconds,
+        input_character_limit=version.input_character_limit,
     )
     return await create_attempt(
         session,

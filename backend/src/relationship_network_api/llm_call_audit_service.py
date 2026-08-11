@@ -13,12 +13,14 @@ from cryptography.exceptions import InvalidTag
 from cryptography.hazmat.primitives.ciphers.aead import AESGCM
 from sqlalchemy import func, insert, select, text
 
+from relationship_network_api import tenant_context
 from relationship_network_api.models import (
     LlmCallMetadataEvent,
     LlmCallOutcomeEvent,
     LlmCallRecord,
     LlmRawResponse,
     PlatformOutboxEvent,
+    TenantOutboxEvent,
 )
 
 if TYPE_CHECKING:
@@ -26,6 +28,7 @@ if TYPE_CHECKING:
 
     from relationship_network_api.openrouter import (
         OpenRouterProbeResult,
+        OpenRouterRequirementResult,
         OpenRouterResponseExchange,
     )
 
@@ -198,11 +201,14 @@ async def persist_call_response(  # noqa: PLR0913
     requested_outcome: str,
     category: str,
     exchange: OpenRouterResponseExchange | None,
-    result: OpenRouterProbeResult | None,
+    result: OpenRouterProbeResult | OpenRouterRequirementResult | None,
     duration_ms: int,
+    tenant_id: uuid.UUID | None = None,
 ) -> PersistedCallResponse:
     """Atomically retain raw bytes, outcome, and initial metadata before business commit."""
     async with session_factory() as session, session.begin():
+        if tenant_id is not None:
+            await tenant_context.set_tenant_context(session, tenant_id)
         await acquire_call_transaction_lock(session, call_id)
         call = (
             await session.execute(select(LlmCallRecord).where(LlmCallRecord.id == call_id))
@@ -286,7 +292,7 @@ async def _append_initial_metadata(
     *,
     call: LlmCallRecord,
     exchange: OpenRouterResponseExchange | None,
-    result: OpenRouterProbeResult | None,
+    result: OpenRouterProbeResult | OpenRouterRequirementResult | None,
 ) -> None:
     existing = (
         await session.execute(
@@ -343,7 +349,7 @@ async def _append_initial_metadata(
             error_category=error_category,
         )
     )
-    if next_retry_at is not None:
+    if next_retry_at is not None and call.scope == "platform":
         _ = await session.execute(
             insert(PlatformOutboxEvent)
             .inline()
@@ -351,6 +357,21 @@ async def _append_initial_metadata(
                 id=uuid.uuid4(),
                 topic=LLM_METADATA_OUTBOX_TOPIC,
                 aggregate_id=call.id,
+                available_at=next_retry_at,
+            )
+        )
+    elif next_retry_at is not None:
+        task_id = call.job_requirement_parsing_task_id
+        if task_id is None or call.tenant_id is None:
+            message = "tenant metadata Outbox requires tenant task identity"
+            raise RuntimeError(message)
+        session.add(
+            TenantOutboxEvent(
+                id=uuid.uuid4(),
+                tenant_id=call.tenant_id,
+                topic=LLM_METADATA_OUTBOX_TOPIC,
+                aggregate_id=call.id,
+                job_requirement_parsing_task_id=task_id,
                 available_at=next_retry_at,
             )
         )

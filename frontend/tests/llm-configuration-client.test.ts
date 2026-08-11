@@ -12,6 +12,7 @@ const version = {
   created_at: "2026-08-11T08:00:00+00:00",
   created_by: null,
   id: "00000000-0000-0000-0000-000000000110",
+  input_character_limit: 100_000,
   max_output_tokens: 8192,
   model: "x-ai/grok-4.5",
   privacy_routing: { data_collection: "deny", require_parameters: true, zdr: true },

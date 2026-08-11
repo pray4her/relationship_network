@@ -19,7 +19,7 @@ INSERT INTO llm_call_records
      input_sha256, input_length, parameters, request_hash)
 VALUES
     (:id, :scope, :tenant_id, :call_type, :platform_attempt_id,
-     :parsing_task_id, :configuration_version_id, NULL, :correlation_call_id,
+     :parsing_task_id, :configuration_version_id, :input_snapshot_id, :correlation_call_id,
      :request_number, 'test/model', 'job-requirement-prompt-v1', repeat('a', 64),
      'job-requirement-schema-v1', repeat('b', 64),
      jsonb_build_object('kind', 'integration'), repeat('c', 64), 12,
@@ -38,6 +38,9 @@ async def test_llm_call_scope_state_machine_rls_and_restricted_cleanup() -> None
     tenant_id = uuid.uuid4()
     other_tenant_id = uuid.uuid4()
     parsing_task_id = uuid.uuid4()
+    company_id = uuid.uuid4()
+    job_id = uuid.uuid4()
+    snapshot_id = uuid.uuid4()
     try:
         async with engine.connect() as connection:
             transaction = await connection.begin()
@@ -56,6 +59,46 @@ async def test_llm_call_scope_state_machine_rls_and_restricted_cleanup() -> None
                     ),
                     {"current": current_version_id, "id": attempt_id},
                 )
+                seed_parameters = {
+                    "company_id": company_id,
+                    "configuration_id": current_version_id,
+                    "idempotency_key": str(parsing_task_id),
+                    "job_id": job_id,
+                    "slug": f"llm-integration-{tenant_id.hex}",
+                    "snapshot_id": snapshot_id,
+                    "task_id": parsing_task_id,
+                    "tenant_id": tenant_id,
+                }
+                for statement in (
+                    (
+                        "INSERT INTO tenants (id, name, slug) VALUES "
+                        "(:tenant_id, 'LLM integration tenant', :slug)"
+                    ),
+                    (
+                        "INSERT INTO companies (id, tenant_id, name) VALUES "
+                        "(:company_id, :tenant_id, 'LLM integration company')"
+                    ),
+                    (
+                        "INSERT INTO jobs (id, tenant_id, company_id, title, description) VALUES "
+                        "(:job_id, :tenant_id, :company_id, 'LLM integration job', 'input body')"
+                    ),
+                    (
+                        "INSERT INTO job_requirement_input_snapshots "
+                        "(id, tenant_id, job_id, configuration_version_id, total_characters, "
+                        "content_sha256) VALUES "
+                        "(:snapshot_id, :tenant_id, :job_id, :configuration_id, 12, "
+                        "repeat('c', 64))"
+                    ),
+                    (
+                        "INSERT INTO job_requirement_parsing_tasks "
+                        "(id, tenant_id, job_id, input_snapshot_id, configuration_version_id, "
+                        "idempotency_key, effective_request_sha256) "
+                        "VALUES "
+                        "(:task_id, :tenant_id, :job_id, :snapshot_id, :configuration_id, "
+                        ":idempotency_key, repeat('d', 64))"
+                    ),
+                ):
+                    _ = await connection.execute(text(statement), seed_parameters)
 
                 _ = await connection.execute(text("SET LOCAL ROLE relationship_platform_worker"))
                 for call_id, request_number, correlation_call_id in (
@@ -69,6 +112,7 @@ async def test_llm_call_scope_state_machine_rls_and_restricted_cleanup() -> None
                             "configuration_version_id": None,
                             "correlation_call_id": correlation_call_id,
                             "id": call_id,
+                            "input_snapshot_id": None,
                             "parsing_task_id": None,
                             "platform_attempt_id": attempt_id,
                             "request_number": request_number,
@@ -147,6 +191,7 @@ async def test_llm_call_scope_state_machine_rls_and_restricted_cleanup() -> None
                         "configuration_version_id": current_version_id,
                         "correlation_call_id": None,
                         "id": tenant_call_id,
+                        "input_snapshot_id": snapshot_id,
                         "parsing_task_id": parsing_task_id,
                         "platform_attempt_id": None,
                         "request_number": 1,
@@ -158,6 +203,32 @@ async def test_llm_call_scope_state_machine_rls_and_restricted_cleanup() -> None
                     await connection.execute(text("SELECT array_agg(id) FROM llm_call_records"))
                 ).scalar_one()
                 assert visible == [tenant_call_id]
+                with pytest.raises(DBAPIError):
+                    async with connection.begin_nested():
+                        _ = await connection.execute(
+                            text(
+                                "UPDATE job_requirement_input_snapshots "
+                                "SET total_characters = 13 WHERE id = :snapshot_id"
+                            ),
+                            {"snapshot_id": snapshot_id},
+                        )
+                with pytest.raises(DBAPIError):
+                    async with connection.begin_nested():
+                        _ = await connection.execute(
+                            text(
+                                "INSERT INTO job_requirement_parsing_tasks "
+                                "(id, tenant_id, job_id, input_snapshot_id, "
+                                "configuration_version_id) VALUES "
+                                "(:id, :tenant_id, :job_id, :snapshot_id, :configuration_id)"
+                            ),
+                            {
+                                "configuration_id": current_version_id,
+                                "id": uuid.uuid4(),
+                                "job_id": job_id,
+                                "snapshot_id": snapshot_id,
+                                "tenant_id": tenant_id,
+                            },
+                        )
                 _ = await connection.execute(
                     text("SELECT set_config('app.tenant_id', :tenant_id, true)"),
                     {"tenant_id": str(other_tenant_id)},
@@ -174,6 +245,24 @@ async def test_llm_call_scope_state_machine_rls_and_restricted_cleanup() -> None
                                 "configuration_version_id": current_version_id,
                                 "correlation_call_id": None,
                                 "id": uuid.uuid4(),
+                                "input_snapshot_id": snapshot_id,
+                                "parsing_task_id": parsing_task_id,
+                                "platform_attempt_id": None,
+                                "request_number": 1,
+                                "scope": "tenant",
+                                "tenant_id": other_tenant_id,
+                            },
+                        )
+                with pytest.raises(DBAPIError):
+                    async with connection.begin_nested():
+                        _ = await connection.execute(
+                            text(INSERT_CALL_SQL),
+                            {
+                                "call_type": "job_requirement_parsing",
+                                "configuration_version_id": current_version_id,
+                                "correlation_call_id": None,
+                                "id": uuid.uuid4(),
+                                "input_snapshot_id": snapshot_id,
                                 "parsing_task_id": uuid.uuid4(),
                                 "platform_attempt_id": None,
                                 "request_number": 1,

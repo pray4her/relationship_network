@@ -15,6 +15,7 @@ import { JobArchiveButton } from "@/components/jobs/job-archive-button"
 import { JobCloseButton } from "@/components/jobs/job-close-button"
 import { JobEditForm } from "@/components/jobs/job-edit-form"
 import { JobMaterialUpload } from "@/components/jobs/job-material-upload"
+import { JobRequirementGenerator } from "@/components/jobs/requirement-generator"
 import {
   DataRegion,
   DataRegionContent,
@@ -57,6 +58,7 @@ import {
 import { apiPublicBaseUrl } from "@/lib/api-url"
 import { createAuthTransport, loadAuthSession, SESSION_COOKIE_NAME } from "@/lib/auth-client"
 import { createCompaniesTransport, loadCompanies } from "@/lib/companies-client"
+import { createRequirementTransport, loadRequirementWorkspace } from "@/lib/job-requirement-client"
 import { createJobsTransport, loadJobDetail } from "@/lib/jobs-client"
 import type { JobStatus } from "@/lib/jobs-contract"
 
@@ -142,7 +144,14 @@ export default async function JobDetailPage({ params }: JobDetailPageProps) {
     return <NoticePage>你没有查看职位的权限。</NoticePage>
   }
 
-  const detail = await loadJobDetail(createJobsTransport(), session, id)
+  const permissions = auth.view.permissions
+  const [detail, requirement, companiesResult] = await Promise.all([
+    loadJobDetail(createJobsTransport(), session, id),
+    loadRequirementWorkspace(createRequirementTransport(), session, id),
+    permissions.includes("companies:read")
+      ? loadCompanies(createCompaniesTransport(), session)
+      : Promise.resolve(null),
+  ])
   if (detail.kind === "mfaRequired") {
     redirect("/settings/security")
   }
@@ -153,21 +162,20 @@ export default async function JobDetailPage({ params }: JobDetailPageProps) {
     return <NoticePage>职位详情暂时不可用，请稍后再试。</NoticePage>
   }
 
+  if (requirement.kind === "mfaRequired") {
+    redirect("/settings/security")
+  }
+
   const { job, materials, events } = detail
-  const permissions = auth.view.permissions
   const canManage = permissions.includes("jobs:manage")
   const isDraft = job.status === "draft"
   const isActive = job.status === "active"
   const isClosed = job.status === "closed"
 
-  let companyName: string | null = null
-  if (permissions.includes("companies:read")) {
-    const companiesResult = await loadCompanies(createCompaniesTransport(), session)
-    if (companiesResult.kind === "ok") {
-      companyName =
-        companiesResult.companies.find((company) => company.id === job.company_id)?.name ?? null
-    }
-  }
+  const companyName =
+    companiesResult?.kind === "ok"
+      ? (companiesResult.companies.find((company) => company.id === job.company_id)?.name ?? null)
+      : null
 
   return (
     <Page>
@@ -229,6 +237,28 @@ export default async function JobDetailPage({ params }: JobDetailPageProps) {
         </FormSection>
       ) : null}
 
+      <PageSection aria-labelledby="requirement-generation-heading">
+        <PageSectionHeader>
+          <PageSectionHeaderContent>
+            <PageSectionTitle id="requirement-generation-heading">职位需求草稿</PageSectionTitle>
+          </PageSectionHeaderContent>
+        </PageSectionHeader>
+        {requirement.kind === "ok" ? (
+          <JobRequirementGenerator
+            archived={job.status === "archived"}
+            canManage={canManage}
+            jobId={job.id}
+            workspace={requirement.workspace}
+          />
+        ) : (
+          <Alert>
+            <AlertDescription>
+              职位需求工作区暂时不可用。职位详情和已有材料仍可继续查看。
+            </AlertDescription>
+          </Alert>
+        )}
+      </PageSection>
+
       <PageSection aria-labelledby="materials-heading">
         <PageSectionHeader>
           <PageSectionHeaderContent>
@@ -263,7 +293,7 @@ export default async function JobDetailPage({ params }: JobDetailPageProps) {
                       <TableCell>{material.original_filename}</TableCell>
                       <TableCell className="tabular-nums">{material.byte_size} B</TableCell>
                       <TableCell className="max-w-md truncate">
-                        {material.extracted_text.slice(0, 120) || "—"}
+                        {material.extracted_text.slice(0, 120) || "暂无提取文本"}
                       </TableCell>
                       <TableCell className="tabular-nums">
                         {formatDateTime(material.created_at)}
@@ -322,7 +352,7 @@ export default async function JobDetailPage({ params }: JobDetailPageProps) {
                       </TableCell>
                       <TableCell>{eventLabels[event.action] ?? event.action}</TableCell>
                       <TableCell>{event.result}</TableCell>
-                      <TableCell>{event.detail || "—"}</TableCell>
+                      <TableCell>{event.detail || "无补充信息"}</TableCell>
                     </TableRow>
                   ))}
                 </TableBody>

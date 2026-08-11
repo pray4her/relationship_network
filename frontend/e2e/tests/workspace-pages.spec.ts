@@ -135,9 +135,39 @@ test("creates, activates, and uploads a material for a job", async ({ page }, te
     page.getByRole("region", { name: "职位材料" }).getByRole("cell", { name: "jd.txt" }),
   ).toBeVisible()
   await expect(page.getByRole("link", { name: "下载" }).first()).toBeVisible()
+  const requirementRegion = page.getByRole("region", { name: "职位需求草稿" })
+  await expect(requirementRegion.getByRole("group", { name: "职位描述" })).toBeVisible()
+  await expect(requirementRegion.getByRole("group", { name: "jd.txt" })).toBeVisible()
+  await expect(requirementRegion.getByText("生成配置尚未就绪")).toBeVisible()
+  await expect(requirementRegion.getByRole("button", { name: "生成职位需求草稿" })).toHaveCount(0)
+  for (const width of [390, 1440]) {
+    await page.setViewportSize({ width, height: 900 })
+    const overflow = await page.evaluate(() => ({
+      documentWidth: document.documentElement.scrollWidth,
+      offenders: Array.from(document.querySelectorAll("body *"))
+        .filter((element) => element.getBoundingClientRect().right > window.innerWidth + 1)
+        .slice(0, 5)
+        .map((element) => ({
+          className: element.className.toString(),
+          right: Math.round(element.getBoundingClientRect().right),
+          tag: element.tagName,
+        })),
+      viewportWidth: window.innerWidth,
+    }))
+    expect(overflow.documentWidth, JSON.stringify(overflow.offenders)).toBeLessThanOrEqual(
+      overflow.viewportWidth,
+    )
+  }
 
+  const jobDetailUrl = page.url()
+  const activationResponse = page.waitForResponse(
+    (response) =>
+      response.url() === jobDetailUrl &&
+      response.request().method() === "POST" &&
+      response.status() === 200,
+  )
   await page.getByRole("button", { name: "启用职位" }).click()
-  await page.waitForLoadState("networkidle")
+  await activationResponse
   await page.reload()
   await page.waitForLoadState("networkidle")
   await expect(page.getByText("活跃", { exact: true })).toBeVisible()

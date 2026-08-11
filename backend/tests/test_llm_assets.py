@@ -1,6 +1,8 @@
 from dataclasses import replace
+from typing import cast
 
 import pytest
+from jsonschema import Draft202012Validator
 
 from relationship_network_api.llm_assets import manifest
 
@@ -22,6 +24,43 @@ def test_deployed_job_requirement_assets_are_hash_verified_and_compatible() -> N
         "海外华人",
         "外国人",
     )
+
+
+def test_v2_schema_uses_closed_condition_objects_and_rejects_extra_fields() -> None:
+    schema = manifest.read_requirement_schema(manifest.JOB_REQUIREMENT_SCHEMA_V2.id)
+    prompt = manifest.read_prompt(manifest.JOB_REQUIREMENT_PROMPT_V2.id)
+    result = {
+        "hard_conditions": [
+            {
+                "field": "h_index",
+                "operator": "gte",
+                "value": 30,
+                "description": "H 指数至少 30",
+                "evidence": [
+                    {
+                        "source_id": "job-description",
+                        "start_offset": 0,
+                        "end_offset": 2,
+                        "quote": "指数",
+                    }
+                ],
+            }
+        ],
+        "preference_conditions": [],
+        "research_topic_query": "人工智能",
+        "unsupported_conditions": [],
+        "source_conflicts": [],
+    }
+
+    validator = Draft202012Validator(schema)
+    assert list(validator.iter_errors(result)) == []
+    conditions = cast("list[dict[str, object]]", result["hard_conditions"])
+    conditions[0]["unexpected"] = True
+    assert list(validator.iter_errors(result))
+    assert manifest.JOB_REQUIREMENT_PROMPT_V2.compatible_schema_version_id == (
+        manifest.JOB_REQUIREMENT_SCHEMA_V2.id
+    )
+    assert "source_id" in prompt
 
 
 def test_deployed_asset_validation_rejects_declared_hash_drift(

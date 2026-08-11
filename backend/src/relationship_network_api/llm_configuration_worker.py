@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import hashlib
 import json
-import secrets
 import time
 import uuid
 from dataclasses import dataclass
@@ -12,14 +11,27 @@ from typing import TYPE_CHECKING, Final, cast, final
 import anyio
 from sqlalchemy import func, select, text
 
-from relationship_network_api import audit_service
-from relationship_network_api import llm_call_audit_service as call_audit
-from relationship_network_api import llm_configuration_service as service
+from relationship_network_api import (
+    audit_service,
+    durable_task,
+)
+from relationship_network_api import (
+    llm_call_audit_service as call_audit,
+)
+from relationship_network_api import (
+    llm_configuration_service as service,
+)
 from relationship_network_api.config import PlatformLlmSettings, load_platform_llm_settings
 from relationship_network_api.db import (
     PLATFORM_WORKER_DATABASE_ROLE,
     create_engine_from_settings,
     create_session_factory,
+)
+from relationship_network_api.durable_task import (
+    HEARTBEAT_SECONDS,
+    MAX_EXTERNAL_CALLS,
+    MAX_STRUCTURED_INVALID_CALLS,
+    lease_seconds_for_timeout,
 )
 from relationship_network_api.models import (
     LlmCallOutcomeEvent,
@@ -40,11 +52,15 @@ if TYPE_CHECKING:
 
     from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
-LEASE_SECONDS: Final = 360
-HEARTBEAT_SECONDS: Final = 15
-MAX_EXTERNAL_CALLS: Final = 3
-MAX_STRUCTURED_INVALID_CALLS: Final = 2
+LEASE_SECONDS: Final = lease_seconds_for_timeout(300)
 ACTIVATION_ACTION: Final = "llm_configuration.activate"
+
+
+def retry_delay_seconds(request_number: int) -> int:
+    """Preserve the worker API while sharing the durable-task backoff policy."""
+    return durable_task.retry_delay_seconds(request_number)
+
+
 ATTEMPT_RESULT_ACTION: Final = "llm_configuration_attempt.finish"
 ACTIVATE_VERSION_FUNCTION: Final = "activate_llm_configuration_version"
 ACTIVATE_VERSION_SQL: Final = f"SELECT {ACTIVATE_VERSION_FUNCTION}(:expected_version, :new_version)"
@@ -181,6 +197,9 @@ async def claim_attempt(
             max_output_tokens=cast("int", attempt.candidate_snapshot["max_output_tokens"]),
             request_timeout_seconds=cast(
                 "int", attempt.candidate_snapshot["request_timeout_seconds"]
+            ),
+            input_character_limit=cast(
+                "int", attempt.candidate_snapshot.get("input_character_limit", 100_000)
             ),
         )
         return ClaimedAttempt(id=attempt.id, lease_token=token, candidate=candidate)
@@ -324,6 +343,7 @@ async def handle_probe_success(  # noqa: PLR0913
                 temperature=claim.candidate.temperature,
                 max_output_tokens=claim.candidate.max_output_tokens,
                 request_timeout_seconds=claim.candidate.request_timeout_seconds,
+                input_character_limit=claim.candidate.input_character_limit,
                 privacy_routing={
                     "data_collection": "deny",
                     "require_parameters": True,
@@ -554,11 +574,6 @@ async def run_scheduled_operation(
             return await operation(session)
     finally:
         await engine.dispose()
-
-
-def retry_delay_seconds(request_number: int) -> int:
-    exponential = min(2 ** max(request_number, 1), 30)
-    return exponential + secrets.randbelow(2)
 
 
 async def _locked_attempt(

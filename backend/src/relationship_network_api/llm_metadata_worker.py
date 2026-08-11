@@ -6,7 +6,13 @@ from typing import TYPE_CHECKING, Final
 
 from sqlalchemy import insert, select
 
-from relationship_network_api.config import PlatformLlmSettings, load_platform_llm_settings
+from relationship_network_api import tenant_context
+from relationship_network_api.config import (
+    AppSettings,
+    PlatformLlmSettings,
+    load_app_settings,
+    load_platform_llm_settings,
+)
 from relationship_network_api.db import (
     PLATFORM_WORKER_DATABASE_ROLE,
     create_engine_from_settings,
@@ -20,6 +26,7 @@ from relationship_network_api.models import (
     LlmCallMetadataEvent,
     LlmCallRecord,
     PlatformOutboxEvent,
+    TenantOutboxEvent,
 )
 from relationship_network_api.openrouter import (
     OpenRouterAdapter,
@@ -61,15 +68,19 @@ async def fetch_platform_call_metadata(
     factory = create_session_factory(engine)
     try:
         async with factory() as session:
-            current = await _load_pending(session, call_id)
+            current = await _load_pending(session, call_id, tenant_id=None)
         if current is None:
             return
         call, metadata = current
         if resolved.openrouter_api_key is None or metadata.generation_id is None:
-            await _append_unavailable(factory, call_id, "generation_metadata_not_configured")
+            await _append_unavailable(
+                factory, call_id, "generation_metadata_not_configured", tenant_id=None
+            )
             return
         if metadata.sequence_number >= len(_RETRY_DELAYS_SECONDS) + 2:
-            await _append_unavailable(factory, call_id, "metadata_deadline_exceeded")
+            await _append_unavailable(
+                factory, call_id, "metadata_deadline_exceeded", tenant_id=None
+            )
             return
         adapter = OpenRouterAdapter(
             OpenRouterClientConfig(
@@ -82,9 +93,11 @@ async def fetch_platform_call_metadata(
         try:
             result = await adapter.fetch_generation(metadata.generation_id)
         except OpenRouterAdapterError as error:
-            await _append_retry_or_unavailable(factory, call, metadata, error.category)
+            await _append_retry_or_unavailable(
+                factory, call, metadata, error.category, tenant_id=None
+            )
         else:
-            await _append_available(factory, call_id, result)
+            await _append_available(factory, call_id, result, tenant_id=None)
     finally:
         await engine.dispose()
 
@@ -92,12 +105,17 @@ async def fetch_platform_call_metadata(
 async def _load_pending(
     session: AsyncSession,
     call_id: uuid.UUID,
+    *,
+    tenant_id: uuid.UUID | None,
 ) -> tuple[LlmCallRecord, LlmCallMetadataEvent] | None:
+    if tenant_id is not None:
+        await tenant_context.set_tenant_context(session, tenant_id)
+    scope = "platform" if tenant_id is None else "tenant"
     row = (
         await session.execute(
             select(LlmCallRecord, LlmCallMetadataEvent)
             .join(LlmCallMetadataEvent, LlmCallMetadataEvent.call_id == LlmCallRecord.id)
-            .where(LlmCallRecord.id == call_id, LlmCallRecord.scope == "platform")
+            .where(LlmCallRecord.id == call_id, LlmCallRecord.scope == scope)
             .order_by(LlmCallMetadataEvent.sequence_number.desc())
             .limit(1)
         )
@@ -111,9 +129,11 @@ async def _append_available(
     factory: async_sessionmaker[AsyncSession],
     call_id: uuid.UUID,
     result: OpenRouterGenerationMetadata,
+    *,
+    tenant_id: uuid.UUID | None,
 ) -> None:
     async with factory() as session, session.begin():
-        call, current = await _locked_pending(session, call_id)
+        call, current = await _locked_pending(session, call_id, tenant_id=tenant_id)
         if call is None or current is None:
             return
         session.add(
@@ -142,6 +162,8 @@ async def _append_retry_or_unavailable(
     call: LlmCallRecord,
     current: LlmCallMetadataEvent,
     category: str,
+    *,
+    tenant_id: uuid.UUID | None,
 ) -> None:
     now = datetime.now(UTC)
     next_retry_at = next_metadata_retry_at(
@@ -150,10 +172,15 @@ async def _append_retry_or_unavailable(
         now=now,
     )
     if next_retry_at is None:
-        await _append_unavailable(factory, call.id, "metadata_deadline_exceeded")
+        await _append_unavailable(
+            factory,
+            call.id,
+            "metadata_deadline_exceeded",
+            tenant_id=tenant_id,
+        )
         return
     async with factory() as session, session.begin():
-        locked_call, locked_current = await _locked_pending(session, call.id)
+        locked_call, locked_current = await _locked_pending(session, call.id, tenant_id=tenant_id)
         if locked_call is None or locked_current is None:
             return
         session.add(
@@ -175,25 +202,43 @@ async def _append_retry_or_unavailable(
                 error_category=category,
             )
         )
-        _ = await session.execute(
-            insert(PlatformOutboxEvent)
-            .inline()
-            .values(
-                id=uuid.uuid4(),
-                topic=LLM_METADATA_OUTBOX_TOPIC,
-                aggregate_id=locked_call.id,
-                available_at=next_retry_at,
+        if tenant_id is None:
+            _ = await session.execute(
+                insert(PlatformOutboxEvent)
+                .inline()
+                .values(
+                    id=uuid.uuid4(),
+                    topic=LLM_METADATA_OUTBOX_TOPIC,
+                    aggregate_id=locked_call.id,
+                    available_at=next_retry_at,
+                )
             )
-        )
+        else:
+            task_id = locked_call.job_requirement_parsing_task_id
+            if task_id is None:
+                message = "tenant metadata retry requires a parsing task"
+                raise RuntimeError(message)
+            session.add(
+                TenantOutboxEvent(
+                    id=uuid.uuid4(),
+                    tenant_id=tenant_id,
+                    topic=LLM_METADATA_OUTBOX_TOPIC,
+                    aggregate_id=locked_call.id,
+                    job_requirement_parsing_task_id=task_id,
+                    available_at=next_retry_at,
+                )
+            )
 
 
 async def _append_unavailable(
     factory: async_sessionmaker[AsyncSession],
     call_id: uuid.UUID,
     category: str,
+    *,
+    tenant_id: uuid.UUID | None,
 ) -> None:
     async with factory() as session, session.begin():
-        call, current = await _locked_pending(session, call_id)
+        call, current = await _locked_pending(session, call_id, tenant_id=tenant_id)
         if call is None or current is None:
             return
         session.add(
@@ -220,7 +265,11 @@ async def _append_unavailable(
 async def _locked_pending(
     session: AsyncSession,
     call_id: uuid.UUID,
+    *,
+    tenant_id: uuid.UUID | None,
 ) -> tuple[LlmCallRecord | None, LlmCallMetadataEvent | None]:
+    if tenant_id is not None:
+        await tenant_context.set_tenant_context(session, tenant_id)
     await acquire_call_transaction_lock(session, call_id)
     call = (
         await session.execute(select(LlmCallRecord).where(LlmCallRecord.id == call_id))
@@ -238,3 +287,51 @@ async def _locked_pending(
     if current is None or current.status != "retry_scheduled":
         return call, None
     return call, current
+
+
+async def fetch_tenant_call_metadata(
+    tenant_id: uuid.UUID,
+    call_id: uuid.UUID,
+    *,
+    settings: AppSettings | None = None,
+) -> None:
+    """Fetch delayed facts for a tenant call under the ordinary app role and RLS."""
+    resolved = settings or load_app_settings()
+    engine = create_engine_from_settings(resolved)
+    factory = create_session_factory(engine)
+    try:
+        async with factory() as session:
+            current = await _load_pending(session, call_id, tenant_id=tenant_id)
+        if current is None:
+            return
+        call, metadata = current
+        if resolved.openrouter_api_key is None or metadata.generation_id is None:
+            await _append_unavailable(
+                factory,
+                call_id,
+                "generation_metadata_not_configured",
+                tenant_id=tenant_id,
+            )
+            return
+        adapter = OpenRouterAdapter(
+            OpenRouterClientConfig(
+                api_key=resolved.openrouter_api_key.get_secret_value(),
+                base_url=resolved.openrouter_base_url,
+                site_url=resolved.openrouter_site_url,
+                site_name=resolved.openrouter_site_name,
+            )
+        )
+        try:
+            result = await adapter.fetch_generation(metadata.generation_id)
+        except OpenRouterAdapterError as error:
+            await _append_retry_or_unavailable(
+                factory,
+                call,
+                metadata,
+                error.category,
+                tenant_id=tenant_id,
+            )
+        else:
+            await _append_available(factory, call_id, result, tenant_id=tenant_id)
+    finally:
+        await engine.dispose()

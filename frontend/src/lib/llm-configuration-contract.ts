@@ -29,6 +29,7 @@ export const llmConfigurationVersionSchema = llmCandidateSchema.extend({
   created_at: z.iso.datetime({ offset: true }),
   created_by: databaseUuidSchema.nullable(),
   id: databaseUuidSchema,
+  input_character_limit: z.literal(100_000),
   privacy_routing: z.record(z.string(), z.unknown()),
   provider: z.string(),
   requirement_schema_version_id: z.string(),

@@ -122,10 +122,12 @@ LLM_CONFIGURATION_TERMINAL_STATUSES: Final = (
 LLM_CALL_RECORD_SCOPE_CHECK: Final = " ".join(  # noqa: FLY002
     (
         "(scope = 'platform' AND tenant_id IS NULL AND call_type = 'config_probe'",
-        "AND platform_attempt_id IS NOT NULL AND job_requirement_parsing_task_id IS NULL) OR",
+        "AND platform_attempt_id IS NOT NULL AND job_requirement_parsing_task_id IS NULL",
+        "AND configuration_version_id IS NULL AND input_snapshot_id IS NULL) OR",
         "(scope = 'tenant' AND tenant_id IS NOT NULL",
         "AND call_type = 'job_requirement_parsing' AND platform_attempt_id IS NULL",
-        "AND job_requirement_parsing_task_id IS NOT NULL)",
+        "AND job_requirement_parsing_task_id IS NOT NULL",
+        "AND configuration_version_id IS NOT NULL AND input_snapshot_id IS NOT NULL)",
     )
 )
 LLM_CALL_CHILD_SCOPE_CHECK: Final = " ".join(  # noqa: FLY002
@@ -134,6 +136,23 @@ LLM_CALL_CHILD_SCOPE_CHECK: Final = " ".join(  # noqa: FLY002
         "(scope = 'tenant' AND tenant_id IS NOT NULL)",
     )
 )
+REQUIREMENT_SOURCE_DESCRIPTION_CHECK: Final = (
+    "(source_kind = 'job-description' AND material_id IS NULL)"
+)
+REQUIREMENT_SOURCE_MATERIAL_CHECK: Final = (
+    "(source_kind = 'job-material' AND material_id IS NOT NULL)"
+)
+REQUIREMENT_SOURCE_LINK_CHECK: Final = (
+    f"{REQUIREMENT_SOURCE_DESCRIPTION_CHECK} OR {REQUIREMENT_SOURCE_MATERIAL_CHECK}"
+)
+REQUIREMENT_TASK_STATUS_CHECK: Final = (
+    f"status IN ({LLM_CONFIGURATION_NONTERMINAL_STATUS_SQL}, 'succeeded', 'failed', 'cancelled')"
+)
+REQUIREMENT_TASK_LEASE_FIELDS_CHECK: Final = """
+    ((status IN ('running', 'cancel_requested')) =
+    (lease_token IS NOT NULL AND lease_expires_at IS NOT NULL
+    AND last_heartbeat_at IS NOT NULL))
+    """
 
 
 class Base(DeclarativeBase):
@@ -443,6 +462,10 @@ class LlmConfigurationVersion(Base):
             "request_timeout_seconds BETWEEN 30 AND 300",
             name="ck_llm_configuration_versions_timeout",
         ),
+        CheckConstraint(
+            "input_character_limit = 100000",
+            name="ck_llm_configuration_versions_input_limit",
+        ),
     )
 
     id: Mapped[uuid.UUID] = mapped_column(Uuid, primary_key=True, default=uuid.uuid4)
@@ -460,6 +483,11 @@ class LlmConfigurationVersion(Base):
     temperature: Mapped[float] = mapped_column(Numeric(4, 3, asdecimal=False))
     max_output_tokens: Mapped[int] = mapped_column(Integer)
     request_timeout_seconds: Mapped[int] = mapped_column(Integer)
+    input_character_limit: Mapped[int] = mapped_column(
+        Integer,
+        server_default="100000",
+        default=100_000,
+    )
     privacy_routing: Mapped[dict[str, object]] = mapped_column(JSONB)
     source_version_id: Mapped[uuid.UUID | None] = mapped_column(
         Uuid,
@@ -646,6 +674,16 @@ class LlmCallRecord(Base):
             name="uq_llm_call_records_attempt_request",
         ),
         UniqueConstraint("id", "scope_key", name="uq_llm_call_records_id_scope_key"),
+        ForeignKeyConstraint(
+            ["job_requirement_parsing_task_id", "tenant_id"],
+            ["job_requirement_parsing_tasks.id", "job_requirement_parsing_tasks.tenant_id"],
+            name="fk_llm_call_records_tenant_task",
+        ),
+        ForeignKeyConstraint(
+            ["input_snapshot_id", "tenant_id"],
+            ["job_requirement_input_snapshots.id", "job_requirement_input_snapshots.tenant_id"],
+            name="fk_llm_call_records_tenant_snapshot",
+        ),
         Index(
             "uq_llm_call_records_tenant_task_request",
             "tenant_id",
@@ -1106,6 +1144,7 @@ class Job(Base):
         ),
         Index("ix_jobs_tenant_status", "tenant_id", "status"),
         Index("ix_jobs_tenant_company", "tenant_id", "company_id"),
+        UniqueConstraint("id", "tenant_id", name="uq_jobs_id_tenant"),
     )
 
     id: Mapped[uuid.UUID] = mapped_column(Uuid, primary_key=True, default=uuid.uuid4)
@@ -1151,6 +1190,7 @@ class JobMaterial(Base):
             name="ck_job_materials_scan_status",
         ),
         UniqueConstraint("storage_key", name="uq_job_materials_storage_key"),
+        UniqueConstraint("id", "tenant_id", "job_id", name="uq_job_materials_id_tenant_job"),
     )
 
     id: Mapped[uuid.UUID] = mapped_column(Uuid, primary_key=True, default=uuid.uuid4)
@@ -1180,6 +1220,342 @@ class JobMaterial(Base):
         ForeignKey("users.id", ondelete="SET NULL"),
         nullable=True,
     )
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        server_default=func.now(),
+    )
+
+
+@final
+class JobRequirementInputSnapshot(Base):
+    """Immutable tenant input frozen before requirement parsing is dispatched."""
+
+    __tablename__ = "job_requirement_input_snapshots"
+    __table_args__ = (
+        CheckConstraint("total_characters >= 0", name="ck_requirement_snapshots_length"),
+        ForeignKeyConstraint(
+            ["job_id", "tenant_id"],
+            ["jobs.id", "jobs.tenant_id"],
+            name="fk_requirement_snapshots_job_tenant",
+            ondelete="CASCADE",
+        ),
+        UniqueConstraint("id", "tenant_id", name="uq_requirement_snapshots_id_tenant"),
+        Index("ix_requirement_snapshots_tenant_job", "tenant_id", "job_id"),
+    )
+
+    id: Mapped[uuid.UUID] = mapped_column(Uuid, primary_key=True, default=uuid.uuid4)
+    tenant_id: Mapped[uuid.UUID] = mapped_column(Uuid, index=True)
+    job_id: Mapped[uuid.UUID] = mapped_column(Uuid, index=True)
+    configuration_version_id: Mapped[uuid.UUID] = mapped_column(
+        Uuid,
+        ForeignKey("llm_configuration_versions.id"),
+    )
+    total_characters: Mapped[int] = mapped_column(Integer)
+    content_sha256: Mapped[str] = mapped_column(String(64))
+    created_by: Mapped[uuid.UUID | None] = mapped_column(
+        Uuid,
+        ForeignKey("users.id", ondelete="SET NULL"),
+        nullable=True,
+    )
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        server_default=func.now(),
+    )
+
+
+@final
+class JobRequirementInputSource(Base):
+    """One immutable, source-addressable segment of a requirement input snapshot."""
+
+    __tablename__ = "job_requirement_input_sources"
+    __table_args__ = (
+        CheckConstraint("position >= 0", name="ck_requirement_sources_position"),
+        CheckConstraint("unicode_characters > 0", name="ck_requirement_sources_length"),
+        CheckConstraint(
+            "source_kind IN ('job-description', 'job-material')",
+            name="ck_requirement_sources_kind",
+        ),
+        CheckConstraint(
+            REQUIREMENT_SOURCE_LINK_CHECK,
+            name="ck_requirement_sources_material",
+        ),
+        ForeignKeyConstraint(
+            ["snapshot_id", "tenant_id"],
+            ["job_requirement_input_snapshots.id", "job_requirement_input_snapshots.tenant_id"],
+            name="fk_requirement_sources_snapshot_tenant",
+            ondelete="CASCADE",
+        ),
+        ForeignKeyConstraint(
+            ["material_id", "tenant_id", "job_id"],
+            ["job_materials.id", "job_materials.tenant_id", "job_materials.job_id"],
+            name="fk_requirement_sources_material_tenant_job",
+        ),
+        UniqueConstraint("snapshot_id", "source_id", name="uq_requirement_sources_snapshot_source"),
+        UniqueConstraint("snapshot_id", "position", name="uq_requirement_sources_position"),
+        Index("ix_requirement_sources_tenant_snapshot", "tenant_id", "snapshot_id"),
+    )
+
+    id: Mapped[uuid.UUID] = mapped_column(Uuid, primary_key=True, default=uuid.uuid4)
+    tenant_id: Mapped[uuid.UUID] = mapped_column(Uuid, index=True)
+    job_id: Mapped[uuid.UUID] = mapped_column(Uuid, index=True)
+    snapshot_id: Mapped[uuid.UUID] = mapped_column(Uuid, index=True)
+    source_id: Mapped[str] = mapped_column(String(128))
+    source_kind: Mapped[str] = mapped_column(String(30))
+    material_id: Mapped[uuid.UUID | None] = mapped_column(Uuid, nullable=True)
+    position: Mapped[int] = mapped_column(Integer)
+    original_text: Mapped[str] = mapped_column(Text)
+    corrected_text: Mapped[str] = mapped_column(Text)
+    sent_text: Mapped[str] = mapped_column(Text)
+    original_sha256: Mapped[str] = mapped_column(String(64))
+    sent_sha256: Mapped[str] = mapped_column(String(64))
+    unicode_characters: Mapped[int] = mapped_column(Integer)
+    edited_by: Mapped[uuid.UUID | None] = mapped_column(
+        Uuid,
+        ForeignKey("users.id", ondelete="SET NULL"),
+        nullable=True,
+    )
+    edited_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        server_default=func.now(),
+    )
+
+
+@final
+class JobRequirementParsingTask(Base):
+    """Tenant-scoped durable task whose database state is authoritative."""
+
+    __tablename__ = "job_requirement_parsing_tasks"
+    __table_args__ = (
+        CheckConstraint(
+            REQUIREMENT_TASK_STATUS_CHECK,
+            name="ck_requirement_tasks_status",
+        ),
+        CheckConstraint(
+            "external_call_count BETWEEN 0 AND 3",
+            name="ck_requirement_tasks_call_budget",
+        ),
+        CheckConstraint(
+            "structured_invalid_count BETWEEN 0 AND 2",
+            name="ck_requirement_tasks_structured_invalid_budget",
+        ),
+        CheckConstraint(
+            REQUIREMENT_TASK_LEASE_FIELDS_CHECK,
+            name="ck_requirement_tasks_lease_fields",
+        ),
+        CheckConstraint(
+            "((status = 'retry_scheduled') = (next_attempt_at IS NOT NULL))",
+            name="ck_requirement_tasks_retry_fields",
+        ),
+        CheckConstraint(
+            "((status IN ('succeeded', 'failed', 'cancelled')) = (completed_at IS NOT NULL))",
+            name="ck_requirement_tasks_completion_fields",
+        ),
+        ForeignKeyConstraint(
+            ["job_id", "tenant_id"],
+            ["jobs.id", "jobs.tenant_id"],
+            name="fk_requirement_tasks_job_tenant",
+            ondelete="CASCADE",
+        ),
+        ForeignKeyConstraint(
+            ["input_snapshot_id", "tenant_id"],
+            ["job_requirement_input_snapshots.id", "job_requirement_input_snapshots.tenant_id"],
+            name="fk_requirement_tasks_snapshot_tenant",
+        ),
+        UniqueConstraint("id", "tenant_id", name="uq_requirement_tasks_id_tenant"),
+        UniqueConstraint(
+            "tenant_id",
+            "idempotency_key",
+            name="uq_requirement_tasks_tenant_idempotency",
+        ),
+        Index(
+            "uq_requirement_tasks_one_nonterminal",
+            "tenant_id",
+            "job_id",
+            unique=True,
+            postgresql_where=text(
+                "status IN ('queued', 'running', 'retry_scheduled', 'cancel_requested')"
+            ),
+        ),
+        Index("ix_requirement_tasks_tenant_job_created", "tenant_id", "job_id", "created_at"),
+        Index(
+            "ix_requirement_tasks_retry_due",
+            "next_attempt_at",
+            postgresql_where=text("status = 'retry_scheduled'"),
+        ),
+        Index(
+            "ix_requirement_tasks_lease_due",
+            "lease_expires_at",
+            postgresql_where=text("status IN ('running', 'cancel_requested')"),
+        ),
+    )
+
+    id: Mapped[uuid.UUID] = mapped_column(Uuid, primary_key=True, default=uuid.uuid4)
+    tenant_id: Mapped[uuid.UUID] = mapped_column(Uuid, index=True)
+    job_id: Mapped[uuid.UUID] = mapped_column(Uuid, index=True)
+    input_snapshot_id: Mapped[uuid.UUID] = mapped_column(Uuid)
+    configuration_version_id: Mapped[uuid.UUID] = mapped_column(
+        Uuid,
+        ForeignKey("llm_configuration_versions.id"),
+    )
+    idempotency_key: Mapped[str] = mapped_column(String(128))
+    effective_request_sha256: Mapped[str] = mapped_column(String(64))
+    status: Mapped[str] = mapped_column(String(30), server_default="queued", default="queued")
+    error_code: Mapped[str | None] = mapped_column(String(100), nullable=True)
+    external_call_count: Mapped[int] = mapped_column(Integer, server_default="0", default=0)
+    structured_invalid_count: Mapped[int] = mapped_column(Integer, server_default="0", default=0)
+    lease_token: Mapped[uuid.UUID | None] = mapped_column(Uuid, nullable=True)
+    lease_expires_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True),
+        nullable=True,
+    )
+    last_heartbeat_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True),
+        nullable=True,
+    )
+    next_attempt_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    created_by: Mapped[uuid.UUID | None] = mapped_column(
+        Uuid,
+        ForeignKey("users.id", ondelete="SET NULL"),
+        nullable=True,
+    )
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        server_default=func.now(),
+    )
+    started_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    completed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        server_default=func.now(),
+        onupdate=func.now(),
+    )
+
+
+@final
+class JobRequirementParsingTaskEvent(Base):
+    """Append-only, continuously numbered tenant-visible parsing event."""
+
+    __tablename__ = "job_requirement_parsing_task_events"
+    __table_args__ = (
+        CheckConstraint("sequence_number > 0", name="ck_requirement_task_events_sequence"),
+        ForeignKeyConstraint(
+            ["task_id", "tenant_id"],
+            ["job_requirement_parsing_tasks.id", "job_requirement_parsing_tasks.tenant_id"],
+            name="fk_requirement_task_events_task_tenant",
+            ondelete="CASCADE",
+        ),
+        Index("ix_requirement_task_events_tenant_task", "tenant_id", "task_id"),
+    )
+
+    task_id: Mapped[uuid.UUID] = mapped_column(Uuid, primary_key=True)
+    sequence_number: Mapped[int] = mapped_column(Integer, primary_key=True)
+    tenant_id: Mapped[uuid.UUID] = mapped_column(Uuid, index=True)
+    event_type: Mapped[str] = mapped_column(String(30))
+    payload: Mapped[dict[str, object]] = mapped_column(JSONB, default=dict)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        server_default=func.now(),
+    )
+
+
+@final
+class JobRequirementDraft(Base):
+    """A validated, tenant-visible requirement JSON snapshot awaiting later editing."""
+
+    __tablename__ = "job_requirement_drafts"
+    __table_args__ = (
+        CheckConstraint(
+            "status IN ('editable', 'confirmed', 'replaced', 'abandoned')",
+            name="ck_requirement_drafts_status",
+        ),
+        CheckConstraint("revision > 0", name="ck_requirement_drafts_revision"),
+        ForeignKeyConstraint(
+            ["job_id", "tenant_id"],
+            ["jobs.id", "jobs.tenant_id"],
+            name="fk_requirement_drafts_job_tenant",
+            ondelete="CASCADE",
+        ),
+        ForeignKeyConstraint(
+            ["task_id", "tenant_id"],
+            ["job_requirement_parsing_tasks.id", "job_requirement_parsing_tasks.tenant_id"],
+            name="fk_requirement_drafts_task_tenant",
+        ),
+        ForeignKeyConstraint(
+            ["input_snapshot_id", "tenant_id"],
+            ["job_requirement_input_snapshots.id", "job_requirement_input_snapshots.tenant_id"],
+            name="fk_requirement_drafts_snapshot_tenant",
+        ),
+        UniqueConstraint("task_id", name="uq_requirement_drafts_task"),
+        Index(
+            "uq_requirement_drafts_one_editable",
+            "tenant_id",
+            "job_id",
+            unique=True,
+            postgresql_where=text("status = 'editable'"),
+        ),
+    )
+
+    id: Mapped[uuid.UUID] = mapped_column(Uuid, primary_key=True, default=uuid.uuid4)
+    tenant_id: Mapped[uuid.UUID] = mapped_column(Uuid, index=True)
+    job_id: Mapped[uuid.UUID] = mapped_column(Uuid, index=True)
+    task_id: Mapped[uuid.UUID] = mapped_column(Uuid)
+    input_snapshot_id: Mapped[uuid.UUID] = mapped_column(Uuid)
+    requirement_schema_version_id: Mapped[str] = mapped_column(
+        String(100),
+        ForeignKey("job_requirement_schema_versions.id"),
+    )
+    status: Mapped[str] = mapped_column(String(30), server_default="editable", default="editable")
+    revision: Mapped[int] = mapped_column(Integer, server_default="1", default=1)
+    result_json: Mapped[dict[str, object]] = mapped_column(JSONB)
+    created_by: Mapped[uuid.UUID | None] = mapped_column(
+        Uuid,
+        ForeignKey("users.id", ondelete="SET NULL"),
+        nullable=True,
+    )
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        server_default=func.now(),
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        server_default=func.now(),
+        onupdate=func.now(),
+    )
+
+
+@final
+class TenantOutboxEvent(Base):
+    """Tenant-scoped transactional message visible only through claim functions."""
+
+    __tablename__ = "tenant_outbox_events"
+    __table_args__ = (
+        ForeignKeyConstraint(
+            ["job_requirement_parsing_task_id", "tenant_id"],
+            ["job_requirement_parsing_tasks.id", "job_requirement_parsing_tasks.tenant_id"],
+            name="fk_tenant_outbox_task_tenant",
+            ondelete="CASCADE",
+        ),
+        Index(
+            "ix_tenant_outbox_events_ready",
+            "available_at",
+            postgresql_where=text("delivered_at IS NULL"),
+        ),
+    )
+
+    id: Mapped[uuid.UUID] = mapped_column(Uuid, primary_key=True, default=uuid.uuid4)
+    tenant_id: Mapped[uuid.UUID] = mapped_column(Uuid, index=True)
+    topic: Mapped[str] = mapped_column(String(100))
+    aggregate_id: Mapped[uuid.UUID] = mapped_column(Uuid)
+    job_requirement_parsing_task_id: Mapped[uuid.UUID] = mapped_column(Uuid)
+    available_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        server_default=func.now(),
+    )
+    claimed_by: Mapped[uuid.UUID | None] = mapped_column(Uuid, nullable=True)
+    claimed_until: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    delivered_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    delivery_attempts: Mapped[int] = mapped_column(Integer, server_default="0", default=0)
+    last_error: Mapped[str] = mapped_column(String(500), server_default="", default="")
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
         server_default=func.now(),

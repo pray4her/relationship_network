@@ -1,5 +1,4 @@
 import asyncio
-import json
 import time
 import uuid
 from collections.abc import AsyncIterator
@@ -14,6 +13,15 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from relationship_network_api import llm_configuration_service as service
 from relationship_network_api.auth_service import Authentication
 from relationship_network_api.deps import get_db_session, require_platform_admin
+from relationship_network_api.durable_task import (
+    HEARTBEAT_SECONDS,
+    MAX_CONNECTION_SECONDS,
+    POLL_SECONDS,
+    SSE_RESPONSE_HEADERS,
+    encode_sse_event,
+    encode_sse_heartbeat,
+    parse_last_event_id,
+)
 from relationship_network_api.openrouter import CandidateConfiguration
 
 router = APIRouter()
@@ -21,9 +29,6 @@ router = APIRouter()
 DbSession = Annotated[AsyncSession, Depends(get_db_session)]
 PlatformAdminDep = Annotated[Authentication, Depends(require_platform_admin)]
 
-_HEARTBEAT_SECONDS: Final = 15.0
-_MAX_CONNECTION_SECONDS: Final = 60.0
-_POLL_SECONDS: Final = 1.0
 _TERMINAL_EVENTS: Final = frozenset({"succeeded", "failed", "conflicted", "cancelled"})
 
 
@@ -76,6 +81,7 @@ class ConfigurationVersionResponse(BaseModel):
     temperature: float
     max_output_tokens: int
     request_timeout_seconds: int
+    input_character_limit: int
     privacy_routing: dict[str, object]
     source_version_id: uuid.UUID | None
     source: str
@@ -264,17 +270,12 @@ async def stream_llm_configuration_attempt_events(
     last_event_id: Annotated[str | None, Header(alias="Last-Event-ID")] = None,
 ) -> StreamingResponse:
     try:
-        after_sequence = 0 if last_event_id is None else int(last_event_id)
+        after_sequence = parse_last_event_id(last_event_id)
     except ValueError as error:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="invalid_last_event_id",
         ) from error
-    if after_sequence < 0:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="invalid_last_event_id",
-        )
     try:
         _ = await service.get_attempt(session, attempt_id=attempt_id)
     except service.LlmConfigurationAttemptNotFoundError as error:
@@ -284,7 +285,7 @@ async def stream_llm_configuration_attempt_events(
         started_at = time.monotonic()
         last_heartbeat_at = started_at
         cursor = after_sequence
-        while time.monotonic() - started_at < _MAX_CONNECTION_SECONDS:
+        while time.monotonic() - started_at < MAX_CONNECTION_SECONDS:
             if await request.is_disconnected():
                 return
             events = await service.list_attempt_events(
@@ -300,25 +301,21 @@ async def stream_llm_configuration_attempt_events(
                     "payload": event.payload,
                     "status": event.event_type,
                 }
-                yield (
-                    f"id: {event.sequence_number}\n"
-                    f"event: {event.event_type}\n"
-                    f"data: {json.dumps(data, ensure_ascii=False, separators=(',', ':'))}\n\n"
+                yield encode_sse_event(
+                    sequence_number=event.sequence_number,
+                    event_type=event.event_type,
+                    data=data,
                 )
                 if event.event_type in _TERMINAL_EVENTS:
                     return
             now = time.monotonic()
-            if now - last_heartbeat_at >= _HEARTBEAT_SECONDS:
-                yield ": heartbeat\n\n"
+            if now - last_heartbeat_at >= HEARTBEAT_SECONDS:
+                yield encode_sse_heartbeat()
                 last_heartbeat_at = now
-            await asyncio.sleep(_POLL_SECONDS)
+            await asyncio.sleep(POLL_SECONDS)
 
     return StreamingResponse(
         event_stream(),
         media_type="text/event-stream",
-        headers={
-            "Cache-Control": "no-cache, no-transform",
-            "Connection": "keep-alive",
-            "X-Accel-Buffering": "no",
-        },
+        headers=SSE_RESPONSE_HEADERS,
     )

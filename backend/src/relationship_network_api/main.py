@@ -16,6 +16,7 @@ from relationship_network_api.routers.auth import router as auth_router
 from relationship_network_api.routers.billing import router as billing_router
 from relationship_network_api.routers.companies import router as companies_router
 from relationship_network_api.routers.invitations import router as invitations_router
+from relationship_network_api.routers.job_requirements import router as job_requirements_router
 from relationship_network_api.routers.jobs import router as jobs_router
 from relationship_network_api.routers.llm_calls import router as llm_calls_router
 from relationship_network_api.routers.llm_configuration import router as llm_configuration_router
@@ -45,6 +46,7 @@ def create_app(
     app.include_router(members_router)
     app.include_router(companies_router)
     app.include_router(jobs_router)
+    app.include_router(job_requirements_router)
     app.include_router(mfa_router)
     app.include_router(admin_router)
     app.include_router(llm_configuration_router)
