@@ -1,5 +1,6 @@
 import logging
 import smtplib
+import uuid
 from email.message import EmailMessage
 from typing import TYPE_CHECKING, Final, Literal, TypedDict, cast
 
@@ -10,6 +11,12 @@ from relationship_network_api import tenant_context, usage_service
 from relationship_network_api.celery_app import celery_app
 from relationship_network_api.config import load_app_settings, load_database_settings
 from relationship_network_api.db import create_engine_from_settings, create_session_factory
+from relationship_network_api.llm_configuration_worker import (
+    process_attempt,
+    recover_expired_attempt_leases,
+    run_scheduled_operation,
+    schedule_due_attempts,
+)
 
 if TYPE_CHECKING:
     from celery import Task
@@ -22,6 +29,15 @@ RELEASE_EXPIRED_RESERVATIONS_TASK_NAME: Final = (
     "relationship_network.release_expired_usage_reservations"
 )
 EXPIRE_DUE_SUBSCRIPTIONS_TASK_NAME: Final = "relationship_network.expire_due_subscriptions"
+PROCESS_LLM_CONFIGURATION_ATTEMPT_TASK_NAME: Final = (
+    "relationship_network.process_llm_configuration_attempt"
+)
+SCHEDULE_DUE_LLM_CONFIGURATION_ATTEMPTS_TASK_NAME: Final = (
+    "relationship_network.schedule_due_llm_configuration_attempts"
+)
+RECOVER_EXPIRED_LLM_CONFIGURATION_LEASES_TASK_NAME: Final = (
+    "relationship_network.recover_expired_llm_configuration_leases"
+)
 
 
 class SmokeResult(TypedDict):
@@ -139,4 +155,41 @@ expire_due_subscriptions = cast(
         retry_backoff=True,
         max_retries=3,
     )(expire_due_subscriptions_payload),
+)
+
+
+def process_llm_configuration_attempt_payload(attempt_id: str) -> None:
+    """Run one idempotently claimed platform LLM configuration attempt."""
+    anyio.run(process_attempt, uuid.UUID(attempt_id))
+
+
+def schedule_due_llm_configuration_attempts_payload() -> int:
+    """Move due retry plans back to queued and write fresh Outbox events."""
+    return anyio.run(run_scheduled_operation, schedule_due_attempts)
+
+
+def recover_expired_llm_configuration_leases_payload() -> int:
+    """Recover expired platform attempt leases without creating new attempts."""
+    return anyio.run(run_scheduled_operation, recover_expired_attempt_leases)
+
+
+process_llm_configuration_attempt = cast(
+    "Task",
+    celery_app.task(
+        name=PROCESS_LLM_CONFIGURATION_ATTEMPT_TASK_NAME,
+        acks_late=True,
+        reject_on_worker_lost=True,
+    )(process_llm_configuration_attempt_payload),
+)
+schedule_due_llm_configuration_attempts = cast(
+    "Task",
+    celery_app.task(name=SCHEDULE_DUE_LLM_CONFIGURATION_ATTEMPTS_TASK_NAME)(
+        schedule_due_llm_configuration_attempts_payload
+    ),
+)
+recover_expired_llm_configuration_leases = cast(
+    "Task",
+    celery_app.task(name=RECOVER_EXPIRED_LLM_CONFIGURATION_LEASES_TASK_NAME)(
+        recover_expired_llm_configuration_leases_payload
+    ),
 )

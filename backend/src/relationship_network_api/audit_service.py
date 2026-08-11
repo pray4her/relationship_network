@@ -35,7 +35,7 @@ class AuditEventView:
 def record_event(  # noqa: PLR0913
     session: AsyncSession,
     *,
-    actor_id: uuid.UUID,
+    actor_id: uuid.UUID | None,
     action: str,
     target_type: str,
     target_id: str,

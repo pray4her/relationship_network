@@ -101,6 +101,10 @@ services:
       RN_INVITATION_TTL_SECONDS: ${RN_INVITATION_TTL_SECONDS:-604800}
       RN_MFA_CHALLENGE_TTL_SECONDS: ${RN_MFA_CHALLENGE_TTL_SECONDS:-300}
       RN_APP_BASE_URL: ${RN_APP_BASE_URL:-http://localhost:3000}
+      RN_PLATFORM_ADMIN_EMAILS: ${RN_PLATFORM_ADMIN_EMAILS:-}
+      RN_OPENROUTER_BASE_URL: ${RN_OPENROUTER_BASE_URL:-https://openrouter.ai/api/v1}
+      RN_OPENROUTER_SITE_URL: ${RN_OPENROUTER_SITE_URL:-http://localhost:3000}
+      RN_OPENROUTER_SITE_NAME: ${RN_OPENROUTER_SITE_NAME:-Relationship Network}
     healthcheck:
       test:
         [
@@ -130,13 +134,21 @@ services:
         "worker",
         "--loglevel=INFO",
         "--concurrency=2",
+        "--queues=celery,platform",
       ]
     depends_on:
+      postgres:
+        condition: service_healthy
       redis:
         condition: service_healthy
     environment:
       RN_CELERY_BROKER_URL: redis://redis:6379/1
       RN_CELERY_RESULT_BACKEND: redis://redis:6379/2
+      RN_DATABASE_URL: ${RN_DATABASE_URL:?Set RN_DATABASE_URL in .env}
+      RN_OPENROUTER_API_KEY: ${RN_OPENROUTER_API_KEY:-}
+      RN_OPENROUTER_BASE_URL: ${RN_OPENROUTER_BASE_URL:-https://openrouter.ai/api/v1}
+      RN_OPENROUTER_SITE_URL: ${RN_OPENROUTER_SITE_URL:-http://localhost:3000}
+      RN_OPENROUTER_SITE_NAME: ${RN_OPENROUTER_SITE_NAME:-Relationship Network}
       RN_SMTP_HOST: ${RN_SMTP_HOST:-}
       RN_SMTP_PORT: ${RN_SMTP_PORT:-587}
       RN_SMTP_USERNAME: ${RN_SMTP_USERNAME:-}
@@ -153,6 +165,49 @@ services:
       timeout: 8s
       retries: 10
       start_period: 15s
+    restart: unless-stopped
+
+  outbox-dispatcher:
+    build:
+      context: ./backend
+    command:
+      [
+        "poetry",
+        "run",
+        "python",
+        "-m",
+        "relationship_network_api.platform_outbox_dispatcher",
+      ]
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    environment:
+      RN_CELERY_BROKER_URL: redis://redis:6379/1
+      RN_CELERY_RESULT_BACKEND: redis://redis:6379/2
+      RN_DATABASE_URL: ${RN_DATABASE_URL:?Set RN_DATABASE_URL in .env}
+    restart: unless-stopped
+
+  platform-scheduler:
+    build:
+      context: ./backend
+    command:
+      [
+        "poetry",
+        "run",
+        "celery",
+        "-A",
+        "relationship_network_api.tasks:celery_app",
+        "beat",
+        "--loglevel=INFO",
+      ]
+    depends_on:
+      redis:
+        condition: service_healthy
+    environment:
+      RN_CELERY_BROKER_URL: redis://redis:6379/1
+      RN_CELERY_RESULT_BACKEND: redis://redis:6379/2
     restart: unless-stopped
 
   frontend:

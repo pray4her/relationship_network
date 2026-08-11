@@ -1,0 +1,201 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:relationship-network:job-requirement-schema:v1",
+  "title": "职位需求 Schema v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "hard_conditions",
+    "preference_conditions",
+    "research_topic_query",
+    "unsupported_conditions",
+    "source_conflicts"
+  ],
+  "properties": {
+    "hard_conditions": {
+      "type": "array",
+      "maxItems": 100,
+      "items": { "$ref": "#/$defs/executable_condition" }
+    },
+    "preference_conditions": {
+      "type": "array",
+      "maxItems": 100,
+      "items": { "$ref": "#/$defs/executable_condition" }
+    },
+    "research_topic_query": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 4000
+    },
+    "unsupported_conditions": {
+      "type": "array",
+      "maxItems": 100,
+      "items": { "$ref": "#/$defs/unsupported_condition" }
+    },
+    "source_conflicts": {
+      "type": "array",
+      "maxItems": 50,
+      "items": { "$ref": "#/$defs/source_conflict" }
+    }
+  },
+  "$defs": {
+    "evidence": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["source_id", "start_offset", "end_offset", "quote"],
+      "properties": {
+        "source_id": { "type": "string", "minLength": 1, "maxLength": 128 },
+        "start_offset": { "type": "integer", "minimum": 0 },
+        "end_offset": { "type": "integer", "minimum": 1 },
+        "quote": { "type": "string", "minLength": 1, "maxLength": 2000 }
+      }
+    },
+    "condition_common": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["field", "operator", "value", "description", "evidence"],
+      "properties": {
+        "field": { "type": "string" },
+        "operator": { "type": "string" },
+        "value": {},
+        "description": { "type": "string", "minLength": 1, "maxLength": 2000 },
+        "evidence": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 20,
+          "items": { "$ref": "#/$defs/evidence" }
+        }
+      }
+    },
+    "numeric_threshold_condition": {
+      "allOf": [
+        { "$ref": "#/$defs/condition_common" },
+        {
+          "type": "object",
+          "properties": {
+            "field": {
+              "enum": [
+                "qs_top200_rank",
+                "world_top500_rank",
+                "h_index",
+                "total_citations"
+              ]
+            },
+            "operator": { "enum": ["gte", "lte"] },
+            "value": { "type": "number", "minimum": 0 }
+          }
+        }
+      ]
+    },
+    "numeric_between_condition": {
+      "allOf": [
+        { "$ref": "#/$defs/condition_common" },
+        {
+          "type": "object",
+          "properties": {
+            "field": {
+              "enum": [
+                "qs_top200_rank",
+                "world_top500_rank",
+                "h_index",
+                "total_citations"
+              ]
+            },
+            "operator": { "const": "between" },
+            "value": {
+              "type": "array",
+              "prefixItems": [
+                { "type": "number", "minimum": 0 },
+                { "type": "number", "minimum": 0 }
+              ],
+              "minItems": 2,
+              "maxItems": 2
+            }
+          }
+        }
+      ]
+    },
+    "enum_eq_condition": {
+      "allOf": [
+        { "$ref": "#/$defs/condition_common" },
+        {
+          "type": "object",
+          "properties": {
+            "field": { "enum": ["chinese_identity", "country"] },
+            "operator": { "const": "eq" },
+            "value": { "type": "string", "minLength": 1, "maxLength": 200 }
+          }
+        }
+      ]
+    },
+    "enum_in_condition": {
+      "allOf": [
+        { "$ref": "#/$defs/condition_common" },
+        {
+          "type": "object",
+          "properties": {
+            "field": { "enum": ["chinese_identity", "country"] },
+            "operator": { "const": "in" },
+            "value": {
+              "type": "array",
+              "minItems": 1,
+              "maxItems": 50,
+              "uniqueItems": true,
+              "items": { "type": "string", "minLength": 1, "maxLength": 200 }
+            }
+          }
+        }
+      ]
+    },
+    "affiliation_condition": {
+      "allOf": [
+        { "$ref": "#/$defs/condition_common" },
+        {
+          "type": "object",
+          "properties": {
+            "field": { "const": "current_affiliation" },
+            "operator": { "enum": ["match", "match_phrase"] },
+            "value": { "type": "string", "minLength": 1, "maxLength": 500 }
+          }
+        }
+      ]
+    },
+    "executable_condition": {
+      "oneOf": [
+        { "$ref": "#/$defs/numeric_threshold_condition" },
+        { "$ref": "#/$defs/numeric_between_condition" },
+        { "$ref": "#/$defs/enum_eq_condition" },
+        { "$ref": "#/$defs/enum_in_condition" },
+        { "$ref": "#/$defs/affiliation_condition" }
+      ]
+    },
+    "unsupported_condition": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["description", "evidence"],
+      "properties": {
+        "description": { "type": "string", "minLength": 1, "maxLength": 2000 },
+        "evidence": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 20,
+          "items": { "$ref": "#/$defs/evidence" }
+        }
+      }
+    },
+    "source_conflict": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["description", "evidence"],
+      "properties": {
+        "description": { "type": "string", "minLength": 1, "maxLength": 2000 },
+        "evidence": {
+          "type": "array",
+          "minItems": 2,
+          "maxItems": 20,
+          "items": { "$ref": "#/$defs/evidence" }
+        }
+      }
+    }
+  }
+}

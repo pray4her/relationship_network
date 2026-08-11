@@ -9,13 +9,16 @@ from sqlalchemy import (
     ForeignKey,
     Index,
     Integer,
+    Numeric,
     String,
     Text,
     UniqueConstraint,
     false,
     func,
+    text,
     true,
 )
+from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
 from sqlalchemy.types import Uuid
 
@@ -77,6 +80,42 @@ JOB_STATUS_DRAFT: Final[JobStatus] = "draft"
 JOB_STATUS_ACTIVE: Final[JobStatus] = "active"
 JOB_STATUS_CLOSED: Final[JobStatus] = "closed"
 JOB_STATUS_ARCHIVED: Final[JobStatus] = "archived"
+
+LlmConfigurationAttemptStatus = Literal[
+    "queued",
+    "running",
+    "retry_scheduled",
+    "cancel_requested",
+    "succeeded",
+    "failed",
+    "conflicted",
+    "cancelled",
+]
+
+LLM_CONFIGURATION_NONTERMINAL_STATUSES: Final = (
+    "queued",
+    "running",
+    "retry_scheduled",
+    "cancel_requested",
+)
+LLM_CONFIGURATION_TERMINAL_STATUS_SQL: Final = "'succeeded', 'failed', 'conflicted', 'cancelled'"
+LLM_CONFIGURATION_NONTERMINAL_STATUS_SQL: Final = (
+    "'queued', 'running', 'retry_scheduled', 'cancel_requested'"
+)
+LLM_CONFIGURATION_STATUS_CHECK: Final = (
+    f"status IN ({LLM_CONFIGURATION_NONTERMINAL_STATUS_SQL}, "
+    f"{LLM_CONFIGURATION_TERMINAL_STATUS_SQL})"
+)
+LLM_CONFIGURATION_EVENT_TYPE_CHECK: Final = (
+    f"event_type IN ({LLM_CONFIGURATION_NONTERMINAL_STATUS_SQL}, "
+    f"{LLM_CONFIGURATION_TERMINAL_STATUS_SQL})"
+)
+LLM_CONFIGURATION_TERMINAL_STATUSES: Final = (
+    "succeeded",
+    "failed",
+    "conflicted",
+    "cancelled",
+)
 
 
 class Base(DeclarativeBase):
@@ -321,6 +360,317 @@ class PlatformAuditEvent(Base):
     target_id: Mapped[str] = mapped_column(String(64))
     result: Mapped[str] = mapped_column(String(20))
     detail: Mapped[str] = mapped_column(String(1000), server_default="", default="")
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        server_default=func.now(),
+    )
+
+
+@final
+class JobRequirementSchemaVersion(Base):
+    """Immutable deployed job requirement Schema asset."""
+
+    __tablename__ = "job_requirement_schema_versions"
+
+    id: Mapped[str] = mapped_column(String(100), primary_key=True)
+    schema_id: Mapped[str] = mapped_column(String(200), unique=True)
+    asset_path: Mapped[str] = mapped_column(String(300), unique=True)
+    sha256: Mapped[str] = mapped_column(String(64), unique=True)
+    schema_json: Mapped[dict[str, object]] = mapped_column(JSONB)
+    field_catalog: Mapped[dict[str, object]] = mapped_column(JSONB)
+    chinese_identity_values: Mapped[list[str]] = mapped_column(JSONB)
+    output_limits: Mapped[dict[str, int]] = mapped_column(JSONB)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        server_default=func.now(),
+    )
+
+
+@final
+class PromptVersion(Base):
+    """Immutable deployed prompt asset with one compatible Schema version."""
+
+    __tablename__ = "prompt_versions"
+
+    id: Mapped[str] = mapped_column(String(100), primary_key=True)
+    compatible_schema_version_id: Mapped[str] = mapped_column(
+        String(100),
+        ForeignKey("job_requirement_schema_versions.id"),
+    )
+    asset_path: Mapped[str] = mapped_column(String(300), unique=True)
+    sha256: Mapped[str] = mapped_column(String(64), unique=True)
+    content: Mapped[str] = mapped_column(Text)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        server_default=func.now(),
+    )
+
+
+@final
+class LlmConfigurationVersion(Base):
+    """Immutable LLM configuration enabled after a successful capability probe."""
+
+    __tablename__ = "llm_configuration_versions"
+    __table_args__ = (
+        CheckConstraint("version_number > 0", name="ck_llm_configuration_versions_number"),
+        CheckConstraint(
+            "temperature >= 0 AND temperature <= 1",
+            name="ck_llm_configuration_versions_temperature",
+        ),
+        CheckConstraint(
+            "max_output_tokens BETWEEN 1024 AND 16384",
+            name="ck_llm_configuration_versions_max_output_tokens",
+        ),
+        CheckConstraint(
+            "request_timeout_seconds BETWEEN 30 AND 300",
+            name="ck_llm_configuration_versions_timeout",
+        ),
+    )
+
+    id: Mapped[uuid.UUID] = mapped_column(Uuid, primary_key=True, default=uuid.uuid4)
+    version_number: Mapped[int] = mapped_column(Integer, unique=True)
+    provider: Mapped[str] = mapped_column(String(50), server_default="openrouter")
+    model: Mapped[str] = mapped_column(String(200))
+    prompt_version_id: Mapped[str] = mapped_column(
+        String(100),
+        ForeignKey("prompt_versions.id"),
+    )
+    requirement_schema_version_id: Mapped[str] = mapped_column(
+        String(100),
+        ForeignKey("job_requirement_schema_versions.id"),
+    )
+    temperature: Mapped[float] = mapped_column(Numeric(4, 3, asdecimal=False))
+    max_output_tokens: Mapped[int] = mapped_column(Integer)
+    request_timeout_seconds: Mapped[int] = mapped_column(Integer)
+    privacy_routing: Mapped[dict[str, object]] = mapped_column(JSONB)
+    source_version_id: Mapped[uuid.UUID | None] = mapped_column(
+        Uuid,
+        ForeignKey("llm_configuration_versions.id"),
+        nullable=True,
+    )
+    created_by: Mapped[uuid.UUID | None] = mapped_column(
+        Uuid,
+        ForeignKey("users.id", ondelete="SET NULL"),
+        nullable=True,
+    )
+    source: Mapped[str] = mapped_column(String(30), server_default="probe")
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        server_default=func.now(),
+    )
+
+
+@final
+class LlmConfigurationCurrent(Base):
+    """Singleton pointer to the current immutable LLM configuration version."""
+
+    __tablename__ = "llm_configuration_current"
+    __table_args__ = (CheckConstraint("singleton", name="ck_llm_configuration_current_singleton"),)
+
+    singleton: Mapped[bool] = mapped_column(Boolean, primary_key=True, default=True)
+    version_id: Mapped[uuid.UUID] = mapped_column(
+        Uuid,
+        ForeignKey("llm_configuration_versions.id"),
+        unique=True,
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        server_default=func.now(),
+    )
+
+
+@final
+class LlmConfigurationAttempt(Base):
+    """Persisted asynchronous attempt to probe and enable a candidate configuration."""
+
+    __tablename__ = "llm_configuration_attempts"
+    __table_args__ = (
+        CheckConstraint(
+            LLM_CONFIGURATION_STATUS_CHECK,
+            name="ck_llm_configuration_attempts_status",
+        ),
+        CheckConstraint(
+            "external_call_count BETWEEN 0 AND 3",
+            name="ck_llm_configuration_attempts_call_budget",
+        ),
+        CheckConstraint(
+            "structured_invalid_count BETWEEN 0 AND 2",
+            name="ck_llm_configuration_attempts_invalid_budget",
+        ),
+        Index(
+            "uq_llm_configuration_attempts_one_nonterminal",
+            text("(1)"),
+            unique=True,
+            postgresql_where=text(
+                "status IN ('queued', 'running', 'retry_scheduled', 'cancel_requested')"
+            ),
+        ),
+    )
+
+    id: Mapped[uuid.UUID] = mapped_column(Uuid, primary_key=True, default=uuid.uuid4)
+    status: Mapped[LlmConfigurationAttemptStatus] = mapped_column(
+        String(30),
+        server_default="queued",
+        default="queued",
+    )
+    candidate_snapshot: Mapped[dict[str, object]] = mapped_column(JSONB)
+    expected_current_version_id: Mapped[uuid.UUID] = mapped_column(
+        Uuid,
+        ForeignKey("llm_configuration_versions.id"),
+    )
+    source_version_id: Mapped[uuid.UUID | None] = mapped_column(
+        Uuid,
+        ForeignKey("llm_configuration_versions.id"),
+        nullable=True,
+    )
+    created_by: Mapped[uuid.UUID | None] = mapped_column(
+        Uuid,
+        ForeignKey("users.id", ondelete="SET NULL"),
+        nullable=True,
+    )
+    external_call_count: Mapped[int] = mapped_column(Integer, server_default="0", default=0)
+    structured_invalid_count: Mapped[int] = mapped_column(
+        Integer,
+        server_default="0",
+        default=0,
+    )
+    lease_token: Mapped[uuid.UUID | None] = mapped_column(Uuid, nullable=True)
+    lease_expires_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+    last_heartbeat_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+    next_attempt_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    error_code: Mapped[str | None] = mapped_column(String(100), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        server_default=func.now(),
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        server_default=func.now(),
+        onupdate=func.now(),
+    )
+
+
+@final
+class LlmConfigurationAttemptEvent(Base):
+    """Append-only, continuously numbered business event for one configuration attempt."""
+
+    __tablename__ = "llm_configuration_attempt_events"
+    __table_args__ = (
+        CheckConstraint("sequence_number > 0", name="ck_llm_attempt_events_sequence"),
+        CheckConstraint(
+            LLM_CONFIGURATION_EVENT_TYPE_CHECK,
+            name="ck_llm_attempt_events_type",
+        ),
+    )
+
+    attempt_id: Mapped[uuid.UUID] = mapped_column(
+        Uuid,
+        ForeignKey("llm_configuration_attempts.id", ondelete="CASCADE"),
+        primary_key=True,
+    )
+    sequence_number: Mapped[int] = mapped_column(Integer, primary_key=True)
+    event_type: Mapped[LlmConfigurationAttemptStatus] = mapped_column(String(30))
+    payload: Mapped[dict[str, object]] = mapped_column(JSONB, default=dict)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        server_default=func.now(),
+    )
+
+
+@final
+class PlatformOutboxEvent(Base):
+    """Transactional platform message awaiting restricted dispatch."""
+
+    __tablename__ = "platform_outbox_events"
+
+    id: Mapped[uuid.UUID] = mapped_column(Uuid, primary_key=True, default=uuid.uuid4)
+    topic: Mapped[str] = mapped_column(String(100))
+    aggregate_id: Mapped[uuid.UUID] = mapped_column(Uuid, index=True)
+    available_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        server_default=func.now(),
+    )
+    claimed_by: Mapped[uuid.UUID | None] = mapped_column(Uuid, nullable=True)
+    claimed_until: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    delivered_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    delivery_attempts: Mapped[int] = mapped_column(Integer, server_default="0", default=0)
+    last_error: Mapped[str] = mapped_column(String(500), server_default="", default="")
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        server_default=func.now(),
+    )
+
+
+@final
+class LlmCallRecord(Base):
+    """Immutable core written before each actual LLM request."""
+
+    __tablename__ = "llm_call_records"
+    __table_args__ = (
+        CheckConstraint("scope IN ('platform', 'tenant')", name="ck_llm_call_records_scope"),
+        CheckConstraint(
+            "call_type IN ('config_probe')",
+            name="ck_llm_call_records_type",
+        ),
+        CheckConstraint(
+            "(scope = 'platform' AND tenant_id IS NULL AND platform_attempt_id IS NOT NULL)",
+            name="ck_llm_call_records_scope_key",
+        ),
+        UniqueConstraint(
+            "platform_attempt_id",
+            "request_number",
+            name="uq_llm_call_records_attempt_request",
+        ),
+    )
+
+    id: Mapped[uuid.UUID] = mapped_column(Uuid, primary_key=True, default=uuid.uuid4)
+    scope: Mapped[str] = mapped_column(String(20), server_default="platform")
+    tenant_id: Mapped[uuid.UUID | None] = mapped_column(Uuid, nullable=True)
+    call_type: Mapped[str] = mapped_column(String(30), server_default="config_probe")
+    platform_attempt_id: Mapped[uuid.UUID] = mapped_column(
+        Uuid,
+        ForeignKey("llm_configuration_attempts.id"),
+    )
+    request_number: Mapped[int] = mapped_column(Integer)
+    model: Mapped[str] = mapped_column(String(200))
+    prompt_version_id: Mapped[str] = mapped_column(String(100))
+    requirement_schema_version_id: Mapped[str] = mapped_column(String(100))
+    parameters: Mapped[dict[str, object]] = mapped_column(JSONB)
+    request_hash: Mapped[str] = mapped_column(String(64))
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        server_default=func.now(),
+    )
+
+
+@final
+class LlmCallOutcomeEvent(Base):
+    """Append-only outcome fact for an LLM call; raw responses are intentionally absent."""
+
+    __tablename__ = "llm_call_outcome_events"
+    __table_args__ = (
+        CheckConstraint("sequence_number > 0", name="ck_llm_call_outcomes_sequence"),
+        CheckConstraint(
+            "outcome IN ('succeeded', 'failed', 'outcome_unknown', 'late_response')",
+            name="ck_llm_call_outcomes_outcome",
+        ),
+    )
+
+    call_id: Mapped[uuid.UUID] = mapped_column(
+        Uuid,
+        ForeignKey("llm_call_records.id", ondelete="CASCADE"),
+        primary_key=True,
+    )
+    sequence_number: Mapped[int] = mapped_column(Integer, primary_key=True)
+    outcome: Mapped[str] = mapped_column(String(30))
+    category: Mapped[str] = mapped_column(String(100), server_default="", default="")
+    provider_request_id: Mapped[str | None] = mapped_column(String(200), nullable=True)
+    actual_model: Mapped[str | None] = mapped_column(String(200), nullable=True)
+    actual_provider: Mapped[str | None] = mapped_column(String(200), nullable=True)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
         server_default=func.now(),

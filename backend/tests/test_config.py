@@ -105,3 +105,25 @@ def test_settings_parse_runtime_environment(monkeypatch: MonkeyPatch) -> None:
     assert settings.object_storage_endpoint == "minio:9000"
     assert settings.object_storage_secret_key.get_secret_value() == "local-secret"
     assert "local-secret" not in repr(settings)
+
+
+def test_openrouter_settings_are_environment_only_and_secret_safe(
+    monkeypatch: MonkeyPatch,
+) -> None:
+    monkeypatch.setenv(
+        "RN_DATABASE_URL",
+        "postgresql+asyncpg://app:password@postgres:5432/relationship_network",
+    )
+    monkeypatch.setenv("RN_OBJECT_STORAGE_ACCESS_KEY", "local-access")
+    monkeypatch.setenv("RN_OBJECT_STORAGE_SECRET_KEY", "local-secret")
+    monkeypatch.setenv("RN_OPENROUTER_API_KEY", "openrouter-secret")
+    monkeypatch.setenv("RN_OPENROUTER_BASE_URL", "https://openrouter.test/api/v1")
+    monkeypatch.setenv("RN_OPENROUTER_SITE_URL", "https://relationship.test")
+
+    settings = load_app_settings()
+
+    assert settings.openrouter_api_key is not None
+    assert settings.openrouter_api_key.get_secret_value() == "openrouter-secret"
+    assert settings.openrouter_base_url == "https://openrouter.test/api/v1"
+    assert settings.openrouter_site_url == "https://relationship.test"
+    assert "openrouter-secret" not in repr(settings)

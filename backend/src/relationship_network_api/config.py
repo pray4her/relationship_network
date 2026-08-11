@@ -39,6 +39,10 @@ class AppSettings(DatabaseSettings):
     smtp_password: SecretStr | None = None
     smtp_from: str = "no-reply@relationship-network.local"
     smtp_use_tls: bool = True
+    openrouter_api_key: SecretStr | None = None
+    openrouter_base_url: str = "https://openrouter.ai/api/v1"
+    openrouter_site_url: str = ""
+    openrouter_site_name: str = "Relationship Network"
 
 
 def load_app_settings() -> AppSettings:
@@ -53,6 +57,21 @@ def parse_platform_admin_emails(raw: str) -> frozenset[str]:
 
 def load_database_settings() -> DatabaseSettings:
     settings_factory = cast("Callable[[], DatabaseSettings]", DatabaseSettings)
+    return settings_factory()
+
+
+@final
+class PlatformLlmSettings(DatabaseSettings):
+    """Database and OpenRouter settings required by the restricted platform Worker."""
+
+    openrouter_api_key: SecretStr | None = None
+    openrouter_base_url: str = "https://openrouter.ai/api/v1"
+    openrouter_site_url: str = ""
+    openrouter_site_name: str = "Relationship Network"
+
+
+def load_platform_llm_settings() -> PlatformLlmSettings:
+    settings_factory = cast("Callable[[], PlatformLlmSettings]", PlatformLlmSettings)
     return settings_factory()
 
 

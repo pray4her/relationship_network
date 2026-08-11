@@ -70,6 +70,12 @@ async def test_platform_admin_flow(  # noqa: PLR0915
         challenged = await admin.get("/admin/tenants")
         assert challenged.status_code == 200
 
+        # And the LLM configuration workbench uses the same global MFA gate
+        llm_workspace = await admin.get("/admin/llm-configuration")
+        assert llm_workspace.status_code == 200
+        assert llm_workspace.json()["current"]["model"] == "x-ai/grok-4.5"
+        assert llm_workspace.json()["active_attempt"] is None
+
         # And disabling MFA is refused for platform administrators
         disable = await admin.post(
             "/auth/mfa/disable",
@@ -91,6 +97,9 @@ async def test_platform_admin_flow(  # noqa: PLR0915
         # Then tenant roles cannot derive platform admin rights
         assert probe.status_code == 403
         assert probe.json() == {"detail": "platform_admin_required"}
+        llm_probe = await tenant_user.get("/admin/llm-configuration")
+        assert llm_probe.status_code == 403
+        assert llm_probe.json() == {"detail": "platform_admin_required"}
 
         # When the admin lists tenants
         listing = await admin.get("/admin/tenants")

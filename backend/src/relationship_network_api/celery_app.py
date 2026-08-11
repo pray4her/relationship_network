@@ -30,6 +30,16 @@ def create_celery_app(settings: WorkerSettings) -> Celery:
                 "task": "relationship_network.expire_due_subscriptions",
                 "schedule": 86400.0,
             },
+            "schedule-due-llm-configuration-attempts": {
+                "task": "relationship_network.schedule_due_llm_configuration_attempts",
+                "schedule": 10.0,
+                "options": {"queue": "platform"},
+            },
+            "recover-expired-llm-configuration-leases": {
+                "task": "relationship_network.recover_expired_llm_configuration_leases",
+                "schedule": 30.0,
+                "options": {"queue": "platform"},
+            },
         },
     )
     return app

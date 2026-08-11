@@ -17,6 +17,7 @@ from relationship_network_api.routers.billing import router as billing_router
 from relationship_network_api.routers.companies import router as companies_router
 from relationship_network_api.routers.invitations import router as invitations_router
 from relationship_network_api.routers.jobs import router as jobs_router
+from relationship_network_api.routers.llm_configuration import router as llm_configuration_router
 from relationship_network_api.routers.members import router as members_router
 from relationship_network_api.routers.mfa import router as mfa_router
 from relationship_network_api.routers.rbac import router as rbac_router
@@ -45,6 +46,7 @@ def create_app(
     app.include_router(jobs_router)
     app.include_router(mfa_router)
     app.include_router(admin_router)
+    app.include_router(llm_configuration_router)
     app.include_router(billing_router)
 
     @app.get("/health/live", tags=["health"])

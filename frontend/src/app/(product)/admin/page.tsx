@@ -134,6 +134,13 @@ export default async function AdminPage({ searchParams }: AdminPageProps) {
               <Link className="font-medium underline underline-offset-4" href="/admin/orders">
                 前往线下订单审核
               </Link>
+              <span aria-hidden="true"> · </span>
+              <Link
+                className="font-medium underline underline-offset-4"
+                href="/admin/llm-configuration"
+              >
+                管理 LLM 配置
+              </Link>
             </p>
             {tenantsResult.tenants.length === 0 ? (
               <p className="text-sm text-muted-foreground">没有符合条件的租户。</p>
