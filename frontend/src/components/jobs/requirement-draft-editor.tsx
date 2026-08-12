@@ -1,6 +1,6 @@
 "use client"
 
-import { PlusIcon, Trash2Icon } from "lucide-react"
+import { ChevronDownIcon, PlusIcon, Trash2Icon } from "lucide-react"
 import { useRouter } from "next/navigation"
 import {
   createContext,
@@ -20,12 +20,18 @@ import {
   type RequirementDraftActionState,
   saveRequirementDraftAction,
 } from "@/app/actions/job-requirements"
-import { DataRegion, DataRegionContent, DataRegionFooter } from "@/components/layout/page"
+import {
+  DataRegion,
+  DataRegionContent,
+  DataRegionFooter,
+  FormSectionDescription,
+  FormSectionTitle,
+  PageSectionTitle,
+} from "@/components/layout/page"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import {
   AlertDialog,
   AlertDialogAction,
-  AlertDialogBody,
   AlertDialogCancel,
   AlertDialogContent,
   AlertDialogDescription,
@@ -36,13 +42,21 @@ import {
 } from "@/components/ui/alert-dialog"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
+import { Card, CardAction, CardContent, CardDescription, CardHeader } from "@/components/ui/card"
 import { Checkbox } from "@/components/ui/checkbox"
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible"
+import {
+  Empty,
+  EmptyContent,
+  EmptyDescription,
+  EmptyHeader,
+  EmptyTitle,
+} from "@/components/ui/empty"
 import {
   Field,
   FieldDescription,
   FieldError,
   FieldGroup,
-  FieldHeader,
   FieldLabel,
   FieldLegend,
   FieldSet,
@@ -58,6 +72,7 @@ import {
 } from "@/components/ui/select"
 import { Spinner } from "@/components/ui/spinner"
 import { Textarea } from "@/components/ui/textarea"
+import { truncateLabel } from "@/lib/job-detail-tabs"
 import type {
   EditableExecutableCondition,
   EditableUnsupportedCondition,
@@ -603,7 +618,7 @@ function EditorFrame({ children }: { readonly children: React.ReactNode }) {
   return (
     <form
       action={meta.formAction}
-      className="flex min-w-0 flex-col gap-[var(--space-5)]"
+      className="flex min-w-0 flex-col gap-8"
       onSubmit={actions.validateBeforeSubmit}
     >
       <input name="expected_revision" type="hidden" value={meta.draft.revision} />
@@ -616,17 +631,21 @@ function EditorFrame({ children }: { readonly children: React.ReactNode }) {
 function EditorHeader() {
   const { meta, state } = useRequirementDraftEditor()
   const unresolved = state.sourceConflicts.filter((conflict) => !conflict.resolved).length
+  const hasNotices =
+    meta.draft.read_only_reason === "replacement_in_progress" ||
+    meta.draft.read_only_reason === "job_archived" ||
+    (!meta.canEdit && meta.draft.read_only_reason === null)
   return (
-    <DataRegion>
-      <DataRegionContent>
-        <div className="flex flex-wrap items-start justify-between gap-[var(--space-4)]">
-          <div className="min-w-0">
-            <h3 className="m-0 text-lg font-medium text-balance">审阅职位需求草稿</h3>
-            <p className="m-0 text-sm text-muted-foreground tabular-nums">
-              Schema {meta.draft.requirement_schema_version_id}，修订 {meta.draft.revision}
-            </p>
-          </div>
-          <div className="flex flex-wrap gap-[var(--space-2)]">
+    <Card size="sm">
+      <CardHeader className={hasNotices ? "border-b" : undefined}>
+        <div className="min-w-0">
+          <PageSectionTitle>审阅职位需求草稿</PageSectionTitle>
+          <CardDescription className="tabular-nums" translate="no">
+            Schema {meta.draft.requirement_schema_version_id}，修订 {meta.draft.revision}
+          </CardDescription>
+        </div>
+        <CardAction>
+          <div className="flex flex-wrap gap-2">
             {meta.dirty ? <Badge variant="warning">有未保存修改</Badge> : <Badge>已保存</Badge>}
             {unresolved > 0 ? (
               <Badge variant="warning">{unresolved} 个冲突未解决</Badge>
@@ -634,40 +653,45 @@ function EditorHeader() {
               <Badge variant="success">冲突已处理</Badge>
             )}
           </div>
-        </div>
-        {meta.draft.read_only_reason === "replacement_in_progress" ? (
-          <Alert>
-            <AlertTitle>重新解析正在进行</AlertTitle>
-            <AlertDescription>
-              当前草稿暂时只读。任务成功后会切换到新草稿，失败或取消后恢复编辑。
-            </AlertDescription>
-          </Alert>
-        ) : null}
-        {meta.draft.read_only_reason === "job_archived" ? (
-          <Alert>
-            <AlertTitle>职位已归档</AlertTitle>
-            <AlertDescription>归档职位只能查看历史草稿，不能编辑或放弃。</AlertDescription>
-          </Alert>
-        ) : null}
-        {!meta.canEdit && meta.draft.read_only_reason === null ? (
-          <p className="m-0 text-sm text-muted-foreground">你可以查看完整草稿，但没有管理权限。</p>
-        ) : null}
-      </DataRegionContent>
-    </DataRegion>
+        </CardAction>
+      </CardHeader>
+      {hasNotices ? (
+        <CardContent className="flex flex-col gap-3">
+          {meta.draft.read_only_reason === "replacement_in_progress" ? (
+            <Alert>
+              <AlertTitle>重新解析正在进行</AlertTitle>
+              <AlertDescription>
+                当前草稿暂时只读。任务成功后会切换到新草稿，失败或取消后恢复编辑。
+              </AlertDescription>
+            </Alert>
+          ) : null}
+          {meta.draft.read_only_reason === "job_archived" ? (
+            <Alert>
+              <AlertTitle>职位已归档</AlertTitle>
+              <AlertDescription>归档职位只能查看历史草稿，不能编辑或放弃。</AlertDescription>
+            </Alert>
+          ) : null}
+          {!meta.canEdit && meta.draft.read_only_reason === null ? (
+            <p className="m-0 text-sm text-muted-foreground">
+              你可以查看完整草稿，但没有管理权限。
+            </p>
+          ) : null}
+        </CardContent>
+      ) : null}
+    </Card>
   )
 }
 
 function ResearchTopicSection() {
   const { actions, meta, state } = useRequirementDraftEditor()
   const error = meta.errors["research_topic_query"]
+  const modelValue = meta.draft.result.research_topic_query.model_value
   return (
-    <DataRegion>
-      <DataRegionContent>
+    <Card size="sm">
+      <CardContent>
         <Field data-invalid={error ? true : undefined}>
-          <FieldHeader>
-            <FieldLabel htmlFor="draft-field-research_topic_query">研究主题查询</FieldLabel>
-            <Badge variant="outline">用于论文召回与相关性评分</Badge>
-          </FieldHeader>
+          <FieldLabel htmlFor="draft-field-research_topic_query">研究主题查询</FieldLabel>
+          <FieldDescription>用于论文召回与相关性评分。</FieldDescription>
           <Textarea
             aria-invalid={error ? true : undefined}
             autoComplete="off"
@@ -680,13 +704,21 @@ function ResearchTopicSection() {
             required
             value={state.researchTopicQuery}
           />
-          <FieldDescription>
-            模型原值：{meta.draft.result.research_topic_query.model_value}
-          </FieldDescription>
+          <Collapsible className="flex min-w-0 flex-col gap-2">
+            <CollapsibleTrigger
+              render={<Button className="w-fit justify-start px-0" size="sm" variant="link" />}
+            >
+              查看模型原值
+              <ChevronDownIcon data-icon="inline-end" />
+            </CollapsibleTrigger>
+            <CollapsibleContent>
+              <FieldDescription className="break-words">{modelValue}</FieldDescription>
+            </CollapsibleContent>
+          </Collapsible>
           <FieldError>{error}</FieldError>
         </Field>
-      </DataRegionContent>
-    </DataRegion>
+      </CardContent>
+    </Card>
   )
 }
 
@@ -702,23 +734,20 @@ function ConditionsSection({
     section === "hard_conditions" ? state.hardConditions : state.preferenceConditions
   const conditionLimitReached =
     state.hardConditions.length + state.preferenceConditions.length >= 100
+  const isPreference = section === "preference_conditions"
+  const showHeaderAdd = isPreference && meta.canEdit && conditions.length > 0
   return (
-    <section
-      aria-labelledby={`draft-${section}-heading`}
-      className="flex min-w-0 flex-col gap-[var(--space-3)]"
-    >
-      <div className="flex flex-wrap items-center justify-between gap-[var(--space-3)]">
-        <div>
-          <h3 className="m-0 text-base font-medium text-balance" id={`draft-${section}-heading`}>
-            {title}
-          </h3>
-          <p className="m-0 text-sm text-muted-foreground">
+    <section aria-labelledby={`draft-${section}-heading`} className="flex min-w-0 flex-col gap-4">
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div className="min-w-0">
+          <FormSectionTitle id={`draft-${section}-heading`}>{title}</FormSectionTitle>
+          <FormSectionDescription>
             {section === "hard_conditions"
               ? "所有条件同时满足，否则排除。"
               : "不排除人才，仅参与确定性评分。"}
-          </p>
+          </FormSectionDescription>
         </div>
-        {section === "preference_conditions" && meta.canEdit ? (
+        {showHeaderAdd ? (
           <Button
             disabled={conditionLimitReached}
             onClick={actions.addPreferenceCondition}
@@ -732,9 +761,31 @@ function ConditionsSection({
         ) : null}
       </div>
       {conditions.length === 0 ? (
-        <p className="m-0 text-sm text-muted-foreground">暂无条件。</p>
+        <Empty>
+          <EmptyHeader>
+            <EmptyTitle>{isPreference ? "暂无偏好条件" : "暂无硬条件"}</EmptyTitle>
+            <EmptyDescription>
+              {isPreference
+                ? "添加偏好条件后，它们只参与确定性评分，不会排除人才。"
+                : "硬条件会排除不满足的人才。可从偏好条件迁移，或等待重新解析生成。"}
+            </EmptyDescription>
+          </EmptyHeader>
+          {isPreference && meta.canEdit ? (
+            <EmptyContent>
+              <Button
+                disabled={conditionLimitReached}
+                onClick={actions.addPreferenceCondition}
+                size="sm"
+                type="button"
+              >
+                <PlusIcon aria-hidden="true" data-icon="inline-start" />
+                添加条件
+              </Button>
+            </EmptyContent>
+          ) : null}
+        </Empty>
       ) : (
-        <div className="flex flex-col gap-[var(--space-3)]">
+        <div className="flex flex-col gap-3">
           {conditions.map((condition) => (
             <ConditionEditor condition={condition} key={condition.localId} section={section} />
           ))}
@@ -756,13 +807,13 @@ function ConditionEditor({
   const operators = meta.draft.field_catalog[condition.field] ?? []
   return (
     <DataRegion>
-      <DataRegionContent>
+      <DataRegionContent className="flex flex-col gap-4 px-5 py-4">
         <FieldSet disabled={!meta.canEdit}>
-          <FieldLegend className="flex flex-wrap items-center gap-[var(--space-2)]">
+          <FieldLegend className="flex flex-wrap items-center gap-2">
             {condition.origin === "model" ? "模型提取条件" : "成员新增条件"}
             {condition.lastModifiedBy ? <Badge variant="outline">已人工修改</Badge> : null}
           </FieldLegend>
-          <FieldGroup className="grid grid-cols-1 gap-[var(--space-4)] md:grid-cols-2">
+          <FieldGroup className="grid grid-cols-1 gap-4 md:grid-cols-2">
             <Field>
               <FieldLabel htmlFor={`draft-field-${condition.localId}`}>字段</FieldLabel>
               <Select
@@ -818,7 +869,12 @@ function ConditionEditor({
           </FieldGroup>
           <ConditionValueEditor condition={condition} section={section} />
           <Field data-invalid={error ? true : undefined}>
-            <FieldLabel htmlFor={`draft-description-${condition.localId}`}>条件说明</FieldLabel>
+            <FieldLabel htmlFor={`draft-description-${condition.localId}`}>
+              条件说明 ·{" "}
+              {truncateLabel(
+                condition.description || fieldLabels[condition.field] || condition.field,
+              )}
+            </FieldLabel>
             <Input
               aria-invalid={error ? true : undefined}
               autoComplete="off"
@@ -839,7 +895,7 @@ function ConditionEditor({
         </FieldSet>
       </DataRegionContent>
       {meta.canEdit ? (
-        <DataRegionFooter className="flex flex-wrap gap-[var(--space-2)]">
+        <DataRegionFooter className="flex flex-wrap gap-2">
           <Button
             onClick={() => actions.moveCondition(section, condition.localId)}
             size="sm"
@@ -879,7 +935,7 @@ function ConditionValueEditor({
         ? condition.value
         : [condition.value, condition.value]
       return (
-        <FieldGroup className="grid grid-cols-1 gap-[var(--space-4)] sm:grid-cols-2">
+        <FieldGroup className="grid grid-cols-1 gap-4 sm:grid-cols-2">
           {[0, 1].map((index) => (
             <Field key={index}>
               <FieldLabel htmlFor={`draft-value-${condition.localId}-${index}`}>
@@ -1020,9 +1076,14 @@ function ConditionValueEditor({
 
 function Provenance({ condition }: { readonly condition: DraftConditionState }) {
   return (
-    <details>
-      <summary className="cursor-pointer text-sm font-medium">查看原始模型值与来源证据</summary>
-      <div className="mt-[var(--space-2)] flex flex-col gap-[var(--space-2)] text-sm text-muted-foreground">
+    <Collapsible className="flex min-w-0 flex-col gap-2">
+      <CollapsibleTrigger
+        render={<Button className="w-fit justify-start px-0" size="sm" variant="link" />}
+      >
+        查看原始模型值与来源证据
+        <ChevronDownIcon data-icon="inline-end" />
+      </CollapsibleTrigger>
+      <CollapsibleContent className="flex flex-col gap-2 text-sm text-muted-foreground">
         {condition.modelSnapshot ? (
           <p className="m-0 break-words">
             模型原值：{formatConditionValue(condition.modelSnapshot.value)}，
@@ -1032,62 +1093,104 @@ function Provenance({ condition }: { readonly condition: DraftConditionState }) 
           <p className="m-0">成员新增条件，没有模型证据。</p>
         )}
         <EvidenceList evidence={condition.evidence} />
-      </div>
-    </details>
+      </CollapsibleContent>
+    </Collapsible>
   )
 }
 
 function UnsupportedSection() {
   const { actions, meta, state } = useRequirementDraftEditor()
+  const count = state.unsupportedConditions.length
+  const hasErrors = state.unsupportedConditions.some((item) => meta.errors[item.localId])
+  const [expanded, setExpanded] = useState(false)
+  const open = hasErrors || expanded
+
   return (
-    <section
-      aria-labelledby="draft-unsupported-heading"
-      className="flex min-w-0 flex-col gap-[var(--space-3)]"
-    >
-      <div>
-        <h3 className="m-0 text-base font-medium text-balance" id="draft-unsupported-heading">
-          未支持条件
-        </h3>
-        <p className="m-0 text-sm text-muted-foreground">
-          保留给成员知情，不参与匹配，也不阻止后续确认。
-        </p>
-      </div>
-      {state.unsupportedConditions.length === 0 ? (
-        <p className="m-0 text-sm text-muted-foreground">暂无未支持条件。</p>
+    <section aria-labelledby="draft-unsupported-heading" className="flex min-w-0 flex-col gap-4">
+      {count === 0 ? (
+        <>
+          <div className="min-w-0">
+            <FormSectionTitle id="draft-unsupported-heading">未支持条件</FormSectionTitle>
+            <FormSectionDescription>
+              保留给成员知情，不参与匹配，也不阻止后续确认。
+            </FormSectionDescription>
+          </div>
+          <Empty>
+            <EmptyHeader>
+              <EmptyTitle>暂无未支持条件</EmptyTitle>
+              <EmptyDescription>
+                模型未能映射的条件会出现在这里，供成员知情，不参与匹配。
+              </EmptyDescription>
+            </EmptyHeader>
+          </Empty>
+        </>
       ) : (
-        state.unsupportedConditions.map((item) => (
-          <DataRegion key={item.localId}>
-            <DataRegionContent>
-              <Field data-invalid={meta.errors[item.localId] ? true : undefined}>
-                <FieldLabel htmlFor={`draft-field-${item.localId}`}>条件说明</FieldLabel>
-                <Textarea
-                  aria-invalid={meta.errors[item.localId] ? true : undefined}
-                  autoComplete="off"
-                  disabled={!meta.canEdit}
-                  id={`draft-field-${item.localId}`}
-                  name={`unsupported-description-${item.localId}`}
-                  onChange={(event) => actions.updateUnsupported(item.localId, event.target.value)}
-                  value={item.description}
-                />
-                <FieldError>{meta.errors[item.localId]}</FieldError>
-                <EvidenceList evidence={item.evidence} />
-              </Field>
-            </DataRegionContent>
-            {meta.canEdit ? (
-              <DataRegionFooter>
-                <Button
-                  onClick={() => actions.removeUnsupported(item.localId)}
-                  size="sm"
-                  type="button"
-                  variant="ghost"
-                >
-                  <Trash2Icon aria-hidden="true" data-icon="inline-start" />
-                  删除
-                </Button>
-              </DataRegionFooter>
-            ) : null}
-          </DataRegion>
-        ))
+        <Collapsible
+          className="flex min-w-0 flex-col gap-3"
+          onOpenChange={(next) => {
+            if (hasErrors) return
+            setExpanded(next)
+          }}
+          open={open}
+        >
+          <div className="flex min-w-0 flex-col gap-2">
+            <div className="min-w-0">
+              <FormSectionTitle id="draft-unsupported-heading">
+                未支持条件 · {count.toLocaleString("zh-CN")} 条 · 不参与匹配
+              </FormSectionTitle>
+              <FormSectionDescription>
+                保留给成员知情，不参与匹配，也不阻止后续确认。
+                {hasErrors ? " 存在校验错误，已自动展开。" : null}
+              </FormSectionDescription>
+            </div>
+            <CollapsibleTrigger
+              disabled={hasErrors}
+              render={<Button className="w-fit" size="sm" type="button" variant="outline" />}
+            >
+              {open ? "收起未支持条件" : "展开未支持条件"}
+              <ChevronDownIcon data-icon="inline-end" />
+            </CollapsibleTrigger>
+          </div>
+          <CollapsibleContent className="flex min-w-0 flex-col gap-3">
+            {state.unsupportedConditions.map((item) => (
+              <DataRegion key={item.localId}>
+                <DataRegionContent className="flex flex-col gap-3 px-5 py-4">
+                  <Field data-invalid={meta.errors[item.localId] ? true : undefined}>
+                    <FieldLabel htmlFor={`draft-field-${item.localId}`}>
+                      未支持 · {truncateLabel(item.description || "条件说明")}
+                    </FieldLabel>
+                    <Textarea
+                      aria-invalid={meta.errors[item.localId] ? true : undefined}
+                      autoComplete="off"
+                      disabled={!meta.canEdit}
+                      id={`draft-field-${item.localId}`}
+                      name={`unsupported-description-${item.localId}`}
+                      onChange={(event) =>
+                        actions.updateUnsupported(item.localId, event.target.value)
+                      }
+                      value={item.description}
+                    />
+                    <FieldError>{meta.errors[item.localId]}</FieldError>
+                    <EvidenceList evidence={item.evidence} />
+                  </Field>
+                </DataRegionContent>
+                {meta.canEdit ? (
+                  <DataRegionFooter>
+                    <Button
+                      onClick={() => actions.removeUnsupported(item.localId)}
+                      size="sm"
+                      type="button"
+                      variant="ghost"
+                    >
+                      <Trash2Icon aria-hidden="true" data-icon="inline-start" />
+                      删除
+                    </Button>
+                  </DataRegionFooter>
+                ) : null}
+              </DataRegion>
+            ))}
+          </CollapsibleContent>
+        </Collapsible>
       )}
     </section>
   )
@@ -1096,24 +1199,26 @@ function UnsupportedSection() {
 function ConflictsSection() {
   const { actions, meta, state } = useRequirementDraftEditor()
   return (
-    <section
-      aria-labelledby="draft-conflicts-heading"
-      className="flex min-w-0 flex-col gap-[var(--space-3)]"
-    >
-      <div>
-        <h3 className="m-0 text-base font-medium text-balance" id="draft-conflicts-heading">
-          来源冲突
-        </h3>
-        <p className="m-0 text-sm text-muted-foreground">
+    <section aria-labelledby="draft-conflicts-heading" className="flex min-w-0 flex-col gap-4">
+      <div className="min-w-0">
+        <FormSectionTitle id="draft-conflicts-heading">来源冲突</FormSectionTitle>
+        <FormSectionDescription>
           解决冲突时必须填写处理说明；清除解决状态可重新打开。
-        </p>
+        </FormSectionDescription>
       </div>
       {state.sourceConflicts.length === 0 ? (
-        <p className="m-0 text-sm text-muted-foreground">没有来源冲突。</p>
+        <Empty>
+          <EmptyHeader>
+            <EmptyTitle>没有来源冲突</EmptyTitle>
+            <EmptyDescription>
+              多来源提取结果一致时，这里会保持为空。出现冲突后再逐条处理。
+            </EmptyDescription>
+          </EmptyHeader>
+        </Empty>
       ) : (
         state.sourceConflicts.map((conflict) => (
           <DataRegion key={conflict.itemId}>
-            <DataRegionContent>
+            <DataRegionContent className="flex flex-col gap-3 px-5 py-4">
               <p className="m-0 break-words font-medium">{conflict.description}</p>
               <EvidenceList evidence={conflict.evidence} />
               <Field orientation="horizontal">
@@ -1188,19 +1293,18 @@ function EditorActions() {
         ) : null}
       </DataRegionContent>
       {meta.canEdit ? (
-        <DataRegionFooter className="flex flex-wrap justify-between gap-[var(--space-3)]">
+        <DataRegionFooter className="flex flex-wrap justify-between gap-3">
           <AlertDialog>
             <AlertDialogTrigger render={<Button disabled={busy} type="button" variant="ghost" />}>
               放弃草稿
             </AlertDialogTrigger>
-            <AlertDialogContent size="sm" variant="destructive">
-              <AlertDialogHeader showCloseButton={false}>
+            <AlertDialogContent size="sm">
+              <AlertDialogHeader>
                 <AlertDialogTitle>放弃当前职位需求草稿？</AlertDialogTitle>
                 <AlertDialogDescription>
-                  草稿会进入终态，当前职位需求版本不会改变。
+                  草稿会进入终态，当前职位需求版本不会改变。 该操作保留历史草稿，但不能继续编辑。
                 </AlertDialogDescription>
               </AlertDialogHeader>
-              <AlertDialogBody>该操作保留历史草稿，但不能继续编辑。</AlertDialogBody>
               <AlertDialogFooter>
                 <AlertDialogCancel disabled={meta.abandoning}>继续编辑</AlertDialogCancel>
                 <AlertDialogAction
@@ -1215,7 +1319,7 @@ function EditorActions() {
               </AlertDialogFooter>
             </AlertDialogContent>
           </AlertDialog>
-          <div className="flex flex-wrap gap-[var(--space-3)]">
+          <div className="flex flex-wrap gap-3">
             <Button disabled={busy || !meta.dirty} type="submit" variant="outline">
               {meta.pending ? <Spinner aria-hidden="true" data-icon="inline-start" /> : null}
               {meta.pending ? "正在保存…" : "保存草稿"}
@@ -1229,15 +1333,13 @@ function EditorActions() {
                 确认版本
               </AlertDialogTrigger>
               <AlertDialogContent size="sm">
-                <AlertDialogHeader showCloseButton={false}>
+                <AlertDialogHeader>
                   <AlertDialogTitle>确认当前职位需求草稿？</AlertDialogTitle>
                   <AlertDialogDescription>
                     将创建不可变职位需求版本并切换为当前版本，历史匹配仍引用旧版本。
+                    确认后此草稿会结束，后续修改需新建草稿或复制版本。
                   </AlertDialogDescription>
                 </AlertDialogHeader>
-                <AlertDialogBody>
-                  确认后此草稿会结束，后续修改需新建草稿或复制版本。
-                </AlertDialogBody>
                 <AlertDialogFooter>
                   <AlertDialogCancel disabled={meta.confirming}>继续编辑</AlertDialogCancel>
                   <AlertDialogAction
@@ -1263,19 +1365,30 @@ function EditorActions() {
 function EvidenceList({ evidence }: { readonly evidence: readonly RequirementEvidence[] }) {
   if (evidence.length === 0) return null
   return (
-    <ul className="m-0 flex list-none flex-col gap-[var(--space-1)] p-0">
-      {evidence.map((item) => (
-        <li
-          className="break-words text-sm text-muted-foreground"
-          key={`${item.source_id}:${item.start_offset}:${item.end_offset}`}
-        >
-          <span className="font-mono text-xs" translate="no">
-            {item.source_id} [{item.start_offset}, {item.end_offset})
-          </span>
-          ：“{item.quote}”
-        </li>
-      ))}
-    </ul>
+    <Collapsible className="mt-2 flex min-w-0 flex-col gap-2">
+      <CollapsibleTrigger
+        render={<Button className="h-auto w-fit justify-start px-0" size="sm" variant="link" />}
+      >
+        来源证据 · {evidence.length.toLocaleString("zh-CN")}
+        {evidence[0] ? ` · ${truncateLabel(evidence[0].quote, 32)}` : null}
+        <ChevronDownIcon data-icon="inline-end" />
+      </CollapsibleTrigger>
+      <CollapsibleContent>
+        <ul className="m-0 flex list-none flex-col gap-1 p-0">
+          {evidence.map((item) => (
+            <li
+              className="break-words text-sm text-muted-foreground"
+              key={`${item.source_id}:${item.start_offset}:${item.end_offset}`}
+            >
+              <span className="font-mono text-xs" translate="no">
+                {item.source_id} [{item.start_offset}, {item.end_offset})
+              </span>
+              ：“{item.quote}”
+            </li>
+          ))}
+        </ul>
+      </CollapsibleContent>
+    </Collapsible>
   )
 }
 

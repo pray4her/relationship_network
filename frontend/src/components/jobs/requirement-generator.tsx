@@ -1,6 +1,6 @@
 "use client"
 
-import { RefreshCwIcon } from "lucide-react"
+import { ChevronDownIcon, RefreshCwIcon } from "lucide-react"
 import { useRouter } from "next/navigation"
 import { createContext, use, useEffect, useMemo, useRef, useState, useTransition } from "react"
 
@@ -14,7 +14,6 @@ import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import {
   AlertDialog,
   AlertDialogAction,
-  AlertDialogBody,
   AlertDialogCancel,
   AlertDialogContent,
   AlertDialogDescription,
@@ -26,14 +25,13 @@ import {
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Checkbox } from "@/components/ui/checkbox"
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible"
 import {
   Field,
   FieldContent,
-  FieldCount,
   FieldDescription,
   FieldError,
   FieldGroup,
-  FieldHeader,
   FieldLabel,
   FieldLegend,
   FieldSet,
@@ -431,26 +429,50 @@ function SourceEditors() {
                   </FieldContent>
                 </Field>
                 <Field>
-                  <FieldLabel htmlFor={`requirement-original-${source.source_id}`}>
-                    原始提取文本
-                  </FieldLabel>
-                  <Textarea
-                    className="min-h-28 break-words"
-                    id={`requirement-original-${source.source_id}`}
-                    readOnly
-                    value={source.original_text}
-                  />
-                  <FieldDescription>原文会与实际发送的修正文案分别保留。</FieldDescription>
+                  {editor?.selected ? (
+                    <>
+                      <FieldLabel htmlFor={`requirement-original-${source.source_id}`}>
+                        原始提取文本
+                      </FieldLabel>
+                      <Textarea
+                        className="min-h-28 break-words"
+                        id={`requirement-original-${source.source_id}`}
+                        readOnly
+                        value={source.original_text}
+                      />
+                      <FieldDescription>原文会与实际发送的修正文案分别保留。</FieldDescription>
+                    </>
+                  ) : (
+                    <Collapsible className="flex min-w-0 flex-col gap-2">
+                      <CollapsibleTrigger
+                        render={
+                          <Button className="w-fit justify-start px-0" size="sm" variant="link" />
+                        }
+                      >
+                        原始提取文本（已折叠）
+                        <ChevronDownIcon data-icon="inline-end" />
+                      </CollapsibleTrigger>
+                      <CollapsibleContent className="flex flex-col gap-2">
+                        <Textarea
+                          className="min-h-28 break-words"
+                          id={`requirement-original-${source.source_id}`}
+                          readOnly
+                          value={source.original_text}
+                        />
+                        <FieldDescription>原文会与实际发送的修正文案分别保留。</FieldDescription>
+                      </CollapsibleContent>
+                    </Collapsible>
+                  )}
                 </Field>
                 <Field data-invalid={editor?.selected && emptyCorrection ? true : undefined}>
-                  <FieldHeader>
+                  <div className="flex items-center justify-between gap-2">
                     <FieldLabel htmlFor={`requirement-correction-${source.source_id}`}>
                       修正文案
                     </FieldLabel>
-                    <FieldCount>
+                    <span className="text-sm text-muted-foreground tabular-nums">
                       {unicodeLength(correctedText).toLocaleString("zh-CN")} 字符
-                    </FieldCount>
-                  </FieldHeader>
+                    </span>
+                  </div>
                   <Textarea
                     aria-invalid={editor?.selected && emptyCorrection ? true : undefined}
                     autoComplete="off"
@@ -481,7 +503,7 @@ function Summary() {
   return (
     <DataRegion aria-live="polite" ref={meta.summaryRef} tabIndex={-1}>
       <DataRegionContent>
-        <div className="flex flex-wrap items-center justify-between gap-[var(--space-4)]">
+        <div className="flex flex-wrap items-center justify-between gap-4">
           <div className="min-w-0">
             <p className="m-0 font-medium">提交汇总</p>
             <p className="m-0 text-sm text-muted-foreground tabular-nums">
@@ -536,16 +558,14 @@ function Summary() {
               >
                 重新解析并替换草稿
               </AlertDialogTrigger>
-              <AlertDialogContent size="sm" variant="destructive">
-                <AlertDialogHeader showCloseButton={false}>
+              <AlertDialogContent size="sm">
+                <AlertDialogHeader>
                   <AlertDialogTitle>重新解析职位需求？</AlertDialogTitle>
                   <AlertDialogDescription>
-                    任务成功后会用新草稿替换当前草稿；失败或取消不会修改当前草稿。
+                    任务成功后会用新草稿替换当前草稿；失败或取消不会修改当前草稿。 当前修订{" "}
+                    {meta.draft.revision} 会保持可编辑，直到新任务成功完成。
                   </AlertDialogDescription>
                 </AlertDialogHeader>
-                <AlertDialogBody>
-                  当前修订 {meta.draft.revision} 会保持可编辑，直到新任务成功完成。
-                </AlertDialogBody>
                 <AlertDialogFooter>
                   <AlertDialogCancel disabled={state.pending}>继续编辑</AlertDialogCancel>
                   <AlertDialogAction
@@ -598,14 +618,14 @@ function CancelTaskOperation() {
       <AlertDialogTrigger render={<Button size="sm" type="button" variant="outline" />}>
         取消任务
       </AlertDialogTrigger>
-      <AlertDialogContent size="sm" variant="destructive">
-        <AlertDialogHeader showCloseButton={false}>
+      <AlertDialogContent size="sm">
+        <AlertDialogHeader>
           <AlertDialogTitle>取消职位需求解析任务？</AlertDialogTitle>
           <AlertDialogDescription>
             已发出的模型调用可能继续完成，但迟到结果不会写入职位需求草稿。
+            取消不会修改已经存在的职位需求草稿。
           </AlertDialogDescription>
         </AlertDialogHeader>
-        <AlertDialogBody>取消不会修改已经存在的职位需求草稿。</AlertDialogBody>
         <AlertDialogFooter>
           <AlertDialogCancel disabled={state.pending}>继续等待</AlertDialogCancel>
           <AlertDialogAction
@@ -631,7 +651,7 @@ function TaskStatusBadge({ status }: { readonly status: RequirementTaskStatus })
         ? "destructive"
         : status === "retry_scheduled" || status === "cancel_requested"
           ? "warning"
-          : "info"
+          : "secondary"
   return <Badge variant={variant}>{statusLabels[status]}</Badge>
 }
 
@@ -642,7 +662,7 @@ function ActiveTask() {
   return (
     <DataRegion aria-live="polite">
       <DataRegionContent>
-        <div className="flex flex-wrap items-center justify-between gap-[var(--space-4)]">
+        <div className="flex flex-wrap items-center justify-between gap-4">
           <div className="min-w-0">
             <p className="m-0 font-medium">草稿生成状态</p>
             <p className="m-0 break-words font-mono text-xs text-muted-foreground">
@@ -678,7 +698,7 @@ function ActiveTask() {
         </p>
         <ConnectionStatus />
       </DataRegionContent>
-      <DataRegionFooter className="flex flex-wrap gap-[var(--space-3)]">
+      <DataRegionFooter className="flex flex-wrap gap-3">
         <CancelTaskOperation />
         <Button
           disabled={state.pending}
@@ -705,7 +725,7 @@ function TerminalTask() {
   return (
     <DataRegion aria-live="polite">
       <DataRegionContent>
-        <div className="flex flex-wrap items-center justify-between gap-[var(--space-4)]">
+        <div className="flex flex-wrap items-center justify-between gap-4">
           <div className="min-w-0">
             <p className="m-0 font-medium">草稿生成状态</p>
             <p className="m-0 break-words font-mono text-xs text-muted-foreground">
@@ -789,7 +809,7 @@ export function JobRequirementGenerator({
       onDraftDirtyChange={setDraftDirty}
       workspace={workspace}
     >
-      <div className="flex min-w-0 flex-col gap-[var(--space-5)]">
+      <div className="flex min-w-0 flex-col gap-5">
         <TaskStatus />
         <DraftEditor />
         <SourceEditors />
