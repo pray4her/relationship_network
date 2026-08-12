@@ -3,9 +3,15 @@ import { ZodError, z } from "zod"
 
 import { SESSION_COOKIE_NAME } from "@/lib/auth-client"
 import {
+  type ConfirmRequirementResponse,
+  confirmRequirementResponseSchema,
+  type RequirementDraft,
+  type RequirementDraftSubmission,
   type RequirementErrorDetail,
   type RequirementTask,
   type RequirementWorkspace,
+  requirementDraftRevisionConflictSchema,
+  requirementDraftSchema,
   requirementErrorSchema,
   requirementTaskSchema,
   requirementWorkspaceSchema,
@@ -27,6 +33,26 @@ export interface RequirementTransport {
     sources: readonly { readonly source_id: string; readonly corrected_text: string }[],
   ): Promise<RequirementTransportResponse>
   cancelTask(session: string, jobId: string, taskId: string): Promise<RequirementTransportResponse>
+  updateDraft(
+    session: string,
+    jobId: string,
+    draftId: string,
+    expectedRevision: number,
+    result: RequirementDraftSubmission,
+  ): Promise<RequirementTransportResponse>
+  abandonDraft(
+    session: string,
+    jobId: string,
+    draftId: string,
+    expectedRevision: number,
+  ): Promise<RequirementTransportResponse>
+  confirmDraft(
+    session: string,
+    jobId: string,
+    draftId: string,
+    expectedRevision: number,
+  ): Promise<RequirementTransportResponse>
+  copyCurrentVersion(session: string, jobId: string): Promise<RequirementTransportResponse>
 }
 
 export class RequirementTransportError extends Error {}
@@ -69,10 +95,57 @@ class KyRequirementTransport implements RequirementTransport {
     })
   }
 
+  updateDraft(
+    session: string,
+    jobId: string,
+    draftId: string,
+    expectedRevision: number,
+    result: RequirementDraftSubmission,
+  ): Promise<RequirementTransportResponse> {
+    return this.#request(`/jobs/${jobId}/requirement-drafts/${draftId}`, {
+      method: "PUT",
+      session,
+      json: { expected_revision: expectedRevision, result },
+    })
+  }
+
+  abandonDraft(
+    session: string,
+    jobId: string,
+    draftId: string,
+    expectedRevision: number,
+  ): Promise<RequirementTransportResponse> {
+    return this.#request(`/jobs/${jobId}/requirement-drafts/${draftId}/abandon`, {
+      method: "POST",
+      session,
+      json: { expected_revision: expectedRevision },
+    })
+  }
+
+  confirmDraft(
+    session: string,
+    jobId: string,
+    draftId: string,
+    expectedRevision: number,
+  ): Promise<RequirementTransportResponse> {
+    return this.#request(`/jobs/${jobId}/requirement-drafts/${draftId}/confirm`, {
+      method: "POST",
+      session,
+      json: { expected_revision: expectedRevision },
+    })
+  }
+
+  copyCurrentVersion(session: string, jobId: string): Promise<RequirementTransportResponse> {
+    return this.#request(`/jobs/${jobId}/requirement-versions/copy-current`, {
+      method: "POST",
+      session,
+    })
+  }
+
   async #request(
     path: string,
     options: {
-      readonly method: "GET" | "POST"
+      readonly method: "GET" | "POST" | "PUT"
       readonly session: string
       readonly json?: unknown
     },
@@ -195,6 +268,135 @@ export async function cancelRequirementTask(
     const response = await transport.cancelTask(session, jobId, taskId)
     if (response.status === 200) {
       return { kind: "ok", task: requirementTaskSchema.parse(response.body) }
+    }
+    const access = accessFailure(response)
+    if (access) return access
+    const detail = errorDetail(response.body)
+    return detail === null ? { kind: "unreachable" } : { kind: "businessError", detail }
+  } catch (error) {
+    if (expectedError(error)) return { kind: "unreachable" }
+    throw error
+  }
+}
+
+export type UpdateRequirementDraftResult =
+  | { readonly kind: "ok"; readonly draft: RequirementDraft }
+  | { readonly kind: "revisionConflict"; readonly draft: RequirementDraft }
+  | { readonly kind: "businessError"; readonly detail: RequirementErrorDetail }
+  | AccessFailure
+  | { readonly kind: "unreachable" }
+
+export async function updateRequirementDraft(
+  transport: RequirementTransport,
+  session: string,
+  jobId: string,
+  draftId: string,
+  expectedRevision: number,
+  result: RequirementDraftSubmission,
+): Promise<UpdateRequirementDraftResult> {
+  try {
+    const response = await transport.updateDraft(session, jobId, draftId, expectedRevision, result)
+    if (response.status === 200) {
+      return { kind: "ok", draft: requirementDraftSchema.parse(response.body) }
+    }
+    if (response.status === 409) {
+      const conflict = requirementDraftRevisionConflictSchema.safeParse(response.body)
+      if (conflict.success) return { kind: "revisionConflict", draft: conflict.data.draft }
+    }
+    const access = accessFailure(response)
+    if (access) return access
+    const detail = errorDetail(response.body)
+    return detail === null ? { kind: "unreachable" } : { kind: "businessError", detail }
+  } catch (error) {
+    if (expectedError(error)) return { kind: "unreachable" }
+    throw error
+  }
+}
+
+export type AbandonRequirementDraftResult =
+  | { readonly kind: "ok"; readonly draft: RequirementDraft }
+  | { readonly kind: "revisionConflict"; readonly draft: RequirementDraft }
+  | { readonly kind: "businessError"; readonly detail: RequirementErrorDetail }
+  | AccessFailure
+  | { readonly kind: "unreachable" }
+
+export async function abandonRequirementDraft(
+  transport: RequirementTransport,
+  session: string,
+  jobId: string,
+  draftId: string,
+  expectedRevision: number,
+): Promise<AbandonRequirementDraftResult> {
+  try {
+    const response = await transport.abandonDraft(session, jobId, draftId, expectedRevision)
+    if (response.status === 200) {
+      return { kind: "ok", draft: requirementDraftSchema.parse(response.body) }
+    }
+    if (response.status === 409) {
+      const conflict = requirementDraftRevisionConflictSchema.safeParse(response.body)
+      if (conflict.success) return { kind: "revisionConflict", draft: conflict.data.draft }
+    }
+    const access = accessFailure(response)
+    if (access) return access
+    const detail = errorDetail(response.body)
+    return detail === null ? { kind: "unreachable" } : { kind: "businessError", detail }
+  } catch (error) {
+    if (expectedError(error)) return { kind: "unreachable" }
+    throw error
+  }
+}
+
+export type ConfirmRequirementDraftResult =
+  | { readonly kind: "ok"; readonly confirmed: ConfirmRequirementResponse }
+  | { readonly kind: "revisionConflict"; readonly draft: RequirementDraft }
+  | { readonly kind: "businessError"; readonly detail: RequirementErrorDetail }
+  | AccessFailure
+  | { readonly kind: "unreachable" }
+
+export async function confirmRequirementDraft(
+  transport: RequirementTransport,
+  session: string,
+  jobId: string,
+  draftId: string,
+  expectedRevision: number,
+): Promise<ConfirmRequirementDraftResult> {
+  try {
+    const response = await transport.confirmDraft(session, jobId, draftId, expectedRevision)
+    if (response.status === 200) {
+      return {
+        kind: "ok",
+        confirmed: confirmRequirementResponseSchema.parse(response.body),
+      }
+    }
+    if (response.status === 409) {
+      const conflict = requirementDraftRevisionConflictSchema.safeParse(response.body)
+      if (conflict.success) return { kind: "revisionConflict", draft: conflict.data.draft }
+    }
+    const access = accessFailure(response)
+    if (access) return access
+    const detail = errorDetail(response.body)
+    return detail === null ? { kind: "unreachable" } : { kind: "businessError", detail }
+  } catch (error) {
+    if (expectedError(error)) return { kind: "unreachable" }
+    throw error
+  }
+}
+
+export type CopyCurrentRequirementVersionResult =
+  | { readonly kind: "ok"; readonly draft: RequirementDraft }
+  | { readonly kind: "businessError"; readonly detail: RequirementErrorDetail }
+  | AccessFailure
+  | { readonly kind: "unreachable" }
+
+export async function copyCurrentRequirementVersion(
+  transport: RequirementTransport,
+  session: string,
+  jobId: string,
+): Promise<CopyCurrentRequirementVersionResult> {
+  try {
+    const response = await transport.copyCurrentVersion(session, jobId)
+    if (response.status === 200) {
+      return { kind: "ok", draft: requirementDraftSchema.parse(response.body) }
     }
     const access = accessFailure(response)
     if (access) return access

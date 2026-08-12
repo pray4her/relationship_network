@@ -12,7 +12,11 @@ import pytest
 from fastapi import HTTPException, status
 from fastapi.testclient import TestClient
 
-from relationship_network_api import job_requirement_service
+from relationship_network_api import (
+    job_requirement_draft_service,
+    job_requirement_service,
+    job_requirement_version_service,
+)
 from relationship_network_api.auth_service import Authentication, MembershipView, UserView
 from relationship_network_api.deps import TenantContext, get_db_session, get_tenant_context
 from relationship_network_api.main import create_app
@@ -30,6 +34,7 @@ JOB_ID = uuid.UUID("33333333-3333-4333-8333-333333333333")
 TASK_ID = uuid.UUID("44444444-4444-4444-8444-444444444444")
 SNAPSHOT_ID = uuid.UUID("55555555-5555-4555-8555-555555555555")
 CONFIGURATION_ID = uuid.UUID("66666666-6666-4666-8666-666666666666")
+DRAFT_ID = uuid.UUID("99999999-9999-4999-8999-999999999999")
 NOW = datetime(2026, 8, 11, 8, 0, tzinfo=UTC)
 IDEMPOTENCY_KEY = "88888888-8888-4888-8888-888888888888"
 
@@ -89,6 +94,7 @@ def task_view() -> job_requirement_service.RequirementTaskView:
         error_code=None,
         input_snapshot_id=SNAPSHOT_ID,
         configuration_version_id=CONFIGURATION_ID,
+        replaces_draft_id=None,
         external_call_count=0,
         structured_invalid_count=0,
         created_by=USER_ID,
@@ -96,6 +102,41 @@ def task_view() -> job_requirement_service.RequirementTaskView:
         started_at=None,
         completed_at=None,
         next_attempt_at=None,
+        updated_at=NOW,
+    )
+
+
+def draft_view(
+    *,
+    revision: int = 2,
+) -> job_requirement_draft_service.RequirementDraftMutationView:
+    return job_requirement_draft_service.RequirementDraftMutationView(
+        id=DRAFT_ID,
+        task_id=TASK_ID,
+        input_snapshot_id=SNAPSHOT_ID,
+        source_version_id=None,
+        requirement_schema_version_id="job-requirement-schema-v2",
+        status="editable",
+        revision=revision,
+        result={
+            "hard_conditions": [],
+            "preference_conditions": [],
+            "research_topic_query": {
+                "value": "人工智能",
+                "model_value": "人工智能",
+                "last_modified_by": None,
+                "last_modified_at": None,
+            },
+            "unsupported_conditions": [],
+            "source_conflicts": [],
+            "removed_facts": [],
+        },
+        updated_by=USER_ID,
+        status_changed_at=NOW,
+        read_only_reason=None,
+        field_catalog={"h_index": ["gte", "lte", "between"]},
+        chinese_identity_values=["国内华人", "海外华人", "外国人"],
+        created_at=NOW,
         updated_at=NOW,
     )
 
@@ -130,6 +171,10 @@ def test_workspace_returns_v2_readiness_and_deterministic_sources(monkeypatch: M
             ],
             task=task_view(),
             draft=None,
+            current_version=None,
+            versions=[],
+            legacy_requirement_exempt=False,
+            matching_blocked=False,
         )
 
     monkeypatch.setattr(job_requirement_service, "load_workspace", fake_workspace)
@@ -220,6 +265,130 @@ def test_cancel_task_returns_latest_persisted_state(monkeypatch: MonkeyPatch) ->
     }
 
 
+def test_update_draft_uses_manage_gate_and_returns_normalized_snapshot(
+    monkeypatch: MonkeyPatch,
+) -> None:
+    captured: dict[str, object] = {}
+
+    async def fake_update(_session: object, **kwargs: object) -> object:
+        captured.update(kwargs)
+        return draft_view()
+
+    monkeypatch.setattr(job_requirement_draft_service, "update_requirement_draft", fake_update)
+    body = {
+        "expected_revision": 1,
+        "result": {
+            "hard_conditions": [],
+            "preference_conditions": [],
+            "research_topic_query": " 人工智能 ",
+            "unsupported_conditions": [],
+            "source_conflicts": [],
+        },
+    }
+    response = make_client(frozenset({"jobs:manage"})).put(
+        f"/jobs/{JOB_ID}/requirement-drafts/{DRAFT_ID}",
+        json=body,
+    )
+
+    assert response.status_code == status.HTTP_200_OK
+    assert response.json()["revision"] == 2
+    assert response.json()["field_catalog"]["h_index"] == ["gte", "lte", "between"]
+    assert captured["expected_revision"] == 1
+    assert captured["actor_user_id"] == USER_ID
+    assert cast("dict[str, object]", captured["submitted"])["research_topic_query"] == (
+        " 人工智能 "
+    )
+
+
+def test_revision_conflict_returns_the_latest_complete_draft(monkeypatch: MonkeyPatch) -> None:
+    async def reject(*_args: object, **_kwargs: object) -> object:
+        raise job_requirement_draft_service.RequirementDraftError(
+            job_requirement_draft_service.DRAFT_REVISION_CONFLICT,
+            latest=draft_view(revision=4),
+        )
+
+    monkeypatch.setattr(job_requirement_draft_service, "update_requirement_draft", reject)
+    response = make_client(frozenset({"jobs:manage"})).put(
+        f"/jobs/{JOB_ID}/requirement-drafts/{DRAFT_ID}",
+        json={
+            "expected_revision": 2,
+            "result": {
+                "hard_conditions": [],
+                "preference_conditions": [],
+                "research_topic_query": "人工智能",
+                "unsupported_conditions": [],
+                "source_conflicts": [],
+            },
+        },
+    )
+
+    assert response.status_code == status.HTTP_409_CONFLICT
+    assert response.json()["detail"] == job_requirement_draft_service.DRAFT_REVISION_CONFLICT
+    assert response.json()["draft"]["revision"] == 4
+
+
+@pytest.mark.parametrize(
+    ("code", "expected_status"),
+    [
+        (job_requirement_draft_service.DRAFT_INVALID, status.HTTP_422_UNPROCESSABLE_CONTENT),
+        (job_requirement_draft_service.DRAFT_LOCKED, status.HTTP_409_CONFLICT),
+        (job_requirement_draft_service.DRAFT_NOT_EDITABLE, status.HTTP_409_CONFLICT),
+        (job_requirement_draft_service.DRAFT_NOT_FOUND, status.HTTP_404_NOT_FOUND),
+    ],
+)
+def test_update_draft_maps_stable_business_errors(
+    monkeypatch: MonkeyPatch,
+    code: str,
+    expected_status: int,
+) -> None:
+    async def reject(*_args: object, **_kwargs: object) -> object:
+        raise job_requirement_draft_service.RequirementDraftError(code)
+
+    monkeypatch.setattr(job_requirement_draft_service, "update_requirement_draft", reject)
+    response = make_client(frozenset({"jobs:manage"})).put(
+        f"/jobs/{JOB_ID}/requirement-drafts/{DRAFT_ID}",
+        json={
+            "expected_revision": 1,
+            "result": {
+                "hard_conditions": [],
+                "preference_conditions": [],
+                "research_topic_query": "人工智能",
+                "unsupported_conditions": [],
+                "source_conflicts": [],
+            },
+        },
+    )
+
+    assert response.status_code == expected_status
+    assert response.json() == {"detail": code}
+
+
+def test_abandon_draft_requires_manage_and_writable_tenant(monkeypatch: MonkeyPatch) -> None:
+    async def should_not_run(*_args: object, **_kwargs: object) -> object:
+        message = "service should not run"
+        raise AssertionError(message)
+
+    monkeypatch.setattr(
+        job_requirement_draft_service,
+        "abandon_requirement_draft",
+        should_not_run,
+    )
+    path = f"/jobs/{JOB_ID}/requirement-drafts/{DRAFT_ID}/abandon"
+    forbidden = make_client(frozenset({"jobs:read"})).post(
+        path,
+        json={"expected_revision": 1},
+    )
+    read_only = make_client(frozenset({"jobs:manage"}), writable=False).post(
+        path,
+        json={"expected_revision": 1},
+    )
+
+    assert forbidden.status_code == status.HTTP_403_FORBIDDEN
+    assert forbidden.json() == {"detail": "permission_denied"}
+    assert read_only.status_code == status.HTTP_403_FORBIDDEN
+    assert read_only.json() == {"detail": "subscription_read_only"}
+
+
 def test_event_stream_replays_after_cursor_and_closes_on_terminal_event(
     monkeypatch: MonkeyPatch,
 ) -> None:
@@ -298,3 +467,117 @@ def test_create_task_maps_stable_business_errors(
 
     assert response.status_code == expected_status
     assert response.json() == {"detail": code}
+
+
+def test_confirm_draft_requires_manage(monkeypatch: MonkeyPatch) -> None:
+    async def should_not_run(*_args: object, **_kwargs: object) -> object:
+        msg = "service should not run"
+        raise AssertionError(msg)
+
+    monkeypatch.setattr(job_requirement_version_service, "confirm_draft", should_not_run)
+    response = make_client(frozenset({"jobs:read"})).post(
+        f"/jobs/{JOB_ID}/requirement-drafts/{DRAFT_ID}/confirm",
+        json={"expected_revision": 1},
+    )
+    assert response.status_code == status.HTTP_403_FORBIDDEN
+
+
+def test_confirm_draft_returns_version(monkeypatch: MonkeyPatch) -> None:
+    version_id = uuid.UUID("aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa")
+
+    async def fake_confirm(*_args: object, **_kwargs: object) -> object:
+        draft = draft_view(revision=2)
+        draft = replace(draft, status="confirmed", read_only_reason="draft_not_editable")
+        return job_requirement_version_service.ConfirmRequirementView(
+            version=job_requirement_service.RequirementVersionView(
+                id=version_id,
+                version_number=1,
+                requirement_schema_version_id="job-requirement-schema-v2",
+                result=draft.result,
+                draft_id=DRAFT_ID,
+                input_snapshot_id=SNAPSHOT_ID,
+                source_version_id=None,
+                confirmed_by=USER_ID,
+                confirmed_at=NOW,
+                created_at=NOW,
+                is_current=True,
+            ),
+            draft=job_requirement_service.RequirementDraftView(**vars(draft)),
+        )
+
+    monkeypatch.setattr(job_requirement_version_service, "confirm_draft", fake_confirm)
+    response = make_client(frozenset({"jobs:manage"})).post(
+        f"/jobs/{JOB_ID}/requirement-drafts/{DRAFT_ID}/confirm",
+        json={"expected_revision": 1},
+    )
+    assert response.status_code == status.HTTP_200_OK
+    body = response.json()
+    assert body["version"]["version_number"] == 1
+    assert body["version"]["is_current"] is True
+    assert body["draft"]["status"] == "confirmed"
+
+
+def test_confirm_draft_maps_confirmability_errors(monkeypatch: MonkeyPatch) -> None:
+    async def reject(*_args: object, **_kwargs: object) -> object:
+        raise job_requirement_version_service.RequirementVersionError(
+            job_requirement_version_service.SOURCE_CONFLICTS_UNRESOLVED
+        )
+
+    monkeypatch.setattr(job_requirement_version_service, "confirm_draft", reject)
+    response = make_client(frozenset({"jobs:manage"})).post(
+        f"/jobs/{JOB_ID}/requirement-drafts/{DRAFT_ID}/confirm",
+        json={"expected_revision": 1},
+    )
+    assert response.status_code == status.HTTP_409_CONFLICT
+    assert response.json() == {"detail": "source_conflicts_unresolved"}
+
+
+def test_copy_current_version_returns_draft(monkeypatch: MonkeyPatch) -> None:
+    async def fake_copy(*_args: object, **_kwargs: object) -> object:
+        return draft_view(revision=1)
+
+    monkeypatch.setattr(job_requirement_version_service, "copy_current_version", fake_copy)
+    response = make_client(frozenset({"jobs:manage"})).post(
+        f"/jobs/{JOB_ID}/requirement-versions/copy-current"
+    )
+    assert response.status_code == status.HTTP_200_OK
+    assert response.json()["id"] == str(DRAFT_ID)
+    assert response.json()["revision"] == 1
+
+
+def test_list_versions_requires_read(monkeypatch: MonkeyPatch) -> None:
+    async def should_not_run(*_args: object, **_kwargs: object) -> object:
+        msg = "service should not run"
+        raise AssertionError(msg)
+
+    monkeypatch.setattr(job_requirement_version_service, "list_versions", should_not_run)
+    response = make_client(frozenset()).get(f"/jobs/{JOB_ID}/requirement-versions")
+    assert response.status_code == status.HTTP_403_FORBIDDEN
+
+
+def test_list_versions_returns_history(monkeypatch: MonkeyPatch) -> None:
+    version_id = uuid.UUID("bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb")
+
+    async def fake_list(*_args: object, **_kwargs: object) -> object:
+        return version_id, [
+            job_requirement_service.RequirementVersionView(
+                id=version_id,
+                version_number=1,
+                requirement_schema_version_id="job-requirement-schema-v2",
+                result={},
+                draft_id=DRAFT_ID,
+                input_snapshot_id=SNAPSHOT_ID,
+                source_version_id=None,
+                confirmed_by=USER_ID,
+                confirmed_at=NOW,
+                created_at=NOW,
+                is_current=True,
+            )
+        ]
+
+    monkeypatch.setattr(job_requirement_version_service, "list_versions", fake_list)
+    response = make_client(frozenset({"jobs:read"})).get(f"/jobs/{JOB_ID}/requirement-versions")
+    assert response.status_code == status.HTTP_200_OK
+    body = response.json()
+    assert body[0]["version_number"] == 1
+    assert body[0]["is_current"] is True

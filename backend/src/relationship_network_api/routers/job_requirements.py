@@ -12,11 +12,13 @@ from typing import TYPE_CHECKING, Annotated, ClassVar, cast, final
 
 import asyncpg
 from fastapi import APIRouter, Depends, Header, HTTPException, Request, status
-from fastapi.responses import StreamingResponse
+from fastapi.responses import JSONResponse, StreamingResponse
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from relationship_network_api import job_requirement_draft_service as draft_service
 from relationship_network_api import job_requirement_service as service
+from relationship_network_api import job_requirement_version_service as version_service
 from relationship_network_api.config import load_database_settings
 from relationship_network_api.deps import (
     TenantContext,
@@ -141,6 +143,7 @@ class RequirementTaskResponse(BaseModel):
     error_code: str | None
     input_snapshot_id: uuid.UUID
     configuration_version_id: uuid.UUID
+    replaces_draft_id: uuid.UUID | None
     external_call_count: int
     structured_invalid_count: int
     created_by: uuid.UUID | None
@@ -163,14 +166,46 @@ class RequirementTaskEventResponse(BaseModel):
 
 class RequirementDraftResponse(BaseModel):
     id: uuid.UUID
-    task_id: uuid.UUID
-    input_snapshot_id: uuid.UUID
+    task_id: uuid.UUID | None
+    input_snapshot_id: uuid.UUID | None
+    source_version_id: uuid.UUID | None
     requirement_schema_version_id: str
     status: str
     revision: int
     result: dict[str, object]
+    updated_by: uuid.UUID | None
+    status_changed_at: datetime
+    read_only_reason: str | None
+    field_catalog: dict[str, object]
+    chinese_identity_values: list[str]
     created_at: datetime
     updated_at: datetime
+
+
+class RequirementVersionSummaryResponse(BaseModel):
+    id: uuid.UUID
+    version_number: int
+    requirement_schema_version_id: str
+    draft_id: uuid.UUID
+    source_version_id: uuid.UUID | None
+    confirmed_by: uuid.UUID | None
+    confirmed_at: datetime
+    created_at: datetime
+    is_current: bool
+
+
+class RequirementVersionResponse(BaseModel):
+    id: uuid.UUID
+    version_number: int
+    requirement_schema_version_id: str
+    result: dict[str, object]
+    draft_id: uuid.UUID
+    input_snapshot_id: uuid.UUID | None
+    source_version_id: uuid.UUID | None
+    confirmed_by: uuid.UUID | None
+    confirmed_at: datetime
+    created_at: datetime
+    is_current: bool
 
 
 class RequirementWorkspaceResponse(BaseModel):
@@ -179,14 +214,88 @@ class RequirementWorkspaceResponse(BaseModel):
     sources: list[RequirementSourceResponse]
     task: RequirementTaskResponse | None
     draft: RequirementDraftResponse | None
+    current_version: RequirementVersionResponse | None
+    versions: list[RequirementVersionSummaryResponse]
+    legacy_requirement_exempt: bool
+    matching_blocked: bool
+
+
+class ConfirmRequirementResponse(BaseModel):
+    version: RequirementVersionResponse
+    draft: RequirementDraftResponse
+
+
+class RequirementConditionSubmissionRequest(BaseModel):
+    model_config: ClassVar[ConfigDict] = ConfigDict(extra="forbid")
+
+    item_id: uuid.UUID | None = None
+    field: str = Field(max_length=100)
+    operator: str = Field(max_length=50)
+    value: object
+    description: str = Field(max_length=2000)
+
+
+class RequirementUnsupportedSubmissionRequest(BaseModel):
+    model_config: ClassVar[ConfigDict] = ConfigDict(extra="forbid")
+
+    item_id: uuid.UUID | None = None
+    description: str = Field(max_length=2000)
+
+
+class RequirementConflictSubmissionRequest(BaseModel):
+    model_config: ClassVar[ConfigDict] = ConfigDict(extra="forbid")
+
+    item_id: uuid.UUID
+    resolution_note: str | None = Field(default=None, max_length=2000)
+
+
+class RequirementDraftSubmissionRequest(BaseModel):
+    model_config: ClassVar[ConfigDict] = ConfigDict(extra="forbid")
+
+    hard_conditions: list[RequirementConditionSubmissionRequest] = Field(max_length=100)
+    preference_conditions: list[RequirementConditionSubmissionRequest] = Field(max_length=100)
+    research_topic_query: str = Field(max_length=4000)
+    unsupported_conditions: list[RequirementUnsupportedSubmissionRequest] = Field(max_length=100)
+    source_conflicts: list[RequirementConflictSubmissionRequest] = Field(max_length=50)
+
+
+class UpdateRequirementDraftRequest(BaseModel):
+    model_config: ClassVar[ConfigDict] = ConfigDict(extra="forbid")
+
+    expected_revision: int = Field(ge=1)
+    result: RequirementDraftSubmissionRequest
+
+
+class AbandonRequirementDraftRequest(BaseModel):
+    model_config: ClassVar[ConfigDict] = ConfigDict(extra="forbid")
+
+    expected_revision: int = Field(ge=1)
+
+
+class ConfirmRequirementDraftRequest(BaseModel):
+    model_config: ClassVar[ConfigDict] = ConfigDict(extra="forbid")
+
+    expected_revision: int = Field(ge=1)
 
 
 def _task_response(view: service.RequirementTaskView) -> RequirementTaskResponse:
     return RequirementTaskResponse(**view.__dict__)
 
 
-def _draft_response(view: service.RequirementDraftView) -> RequirementDraftResponse:
-    return RequirementDraftResponse(**view.__dict__)
+def _draft_response(
+    view: service.RequirementDraftView | draft_service.RequirementDraftMutationView,
+) -> RequirementDraftResponse:
+    return RequirementDraftResponse(**vars(view))
+
+
+def _version_response(view: service.RequirementVersionView) -> RequirementVersionResponse:
+    return RequirementVersionResponse(**view.__dict__)
+
+
+def _version_summary_response(
+    view: service.RequirementVersionSummaryView,
+) -> RequirementVersionSummaryResponse:
+    return RequirementVersionSummaryResponse(**view.__dict__)
 
 
 @router.get("/jobs/{job_id}/requirement-generation")
@@ -211,6 +320,14 @@ async def read_requirement_generation(
         sources=[RequirementSourceResponse(**source.__dict__) for source in workspace.sources],
         task=None if workspace.task is None else _task_response(workspace.task),
         draft=None if workspace.draft is None else _draft_response(workspace.draft),
+        current_version=(
+            None
+            if workspace.current_version is None
+            else _version_response(workspace.current_version)
+        ),
+        versions=[_version_summary_response(item) for item in workspace.versions],
+        legacy_requirement_exempt=workspace.legacy_requirement_exempt,
+        matching_blocked=workspace.matching_blocked,
     )
 
 
@@ -272,6 +389,170 @@ async def cancel_requirement_parsing_task(
     except service.RequirementGenerationError as error:
         raise HTTPException(status_code=_error_status(error.code), detail=error.code) from error
     return _task_response(task)
+
+
+@router.put("/jobs/{job_id}/requirement-drafts/{draft_id}", response_model=None)
+async def update_requirement_draft(
+    job_id: uuid.UUID,
+    draft_id: uuid.UUID,
+    body: UpdateRequirementDraftRequest,
+    context: JobsManageDep,
+    session: DbSession,
+) -> RequirementDraftResponse | JSONResponse:
+    try:
+        draft = await draft_service.update_requirement_draft(
+            session,
+            tenant_id=context.tenant_id,
+            job_id=job_id,
+            draft_id=draft_id,
+            actor_user_id=context.authentication.user.id,
+            expected_revision=body.expected_revision,
+            submitted=body.result.model_dump(mode="python"),
+        )
+    except JobNotFoundError as error:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=JOB_NOT_FOUND_DETAIL,
+        ) from error
+    except draft_service.RequirementDraftError as error:
+        if error.code == draft_service.DRAFT_REVISION_CONFLICT and error.latest is not None:
+            latest = _draft_response(error.latest).model_dump(mode="json")
+            return JSONResponse(
+                status_code=status.HTTP_409_CONFLICT,
+                content={"detail": error.code, "draft": latest},
+            )
+        raise HTTPException(
+            status_code=_draft_error_status(error.code),
+            detail=error.code,
+        ) from error
+    return _draft_response(draft)
+
+
+@router.post(
+    "/jobs/{job_id}/requirement-drafts/{draft_id}/abandon",
+    response_model=None,
+)
+async def abandon_requirement_draft(
+    job_id: uuid.UUID,
+    draft_id: uuid.UUID,
+    body: AbandonRequirementDraftRequest,
+    context: JobsManageDep,
+    session: DbSession,
+) -> RequirementDraftResponse | JSONResponse:
+    try:
+        draft = await draft_service.abandon_requirement_draft(
+            session,
+            tenant_id=context.tenant_id,
+            job_id=job_id,
+            draft_id=draft_id,
+            actor_user_id=context.authentication.user.id,
+            expected_revision=body.expected_revision,
+        )
+    except JobNotFoundError as error:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=JOB_NOT_FOUND_DETAIL,
+        ) from error
+    except draft_service.RequirementDraftError as error:
+        if error.code == draft_service.DRAFT_REVISION_CONFLICT and error.latest is not None:
+            latest = _draft_response(error.latest).model_dump(mode="json")
+            return JSONResponse(
+                status_code=status.HTTP_409_CONFLICT,
+                content={"detail": error.code, "draft": latest},
+            )
+        raise HTTPException(
+            status_code=_draft_error_status(error.code),
+            detail=error.code,
+        ) from error
+    return _draft_response(draft)
+
+
+@router.post(
+    "/jobs/{job_id}/requirement-drafts/{draft_id}/confirm",
+    response_model=None,
+)
+async def confirm_requirement_draft(
+    job_id: uuid.UUID,
+    draft_id: uuid.UUID,
+    body: ConfirmRequirementDraftRequest,
+    context: JobsManageDep,
+    session: DbSession,
+) -> ConfirmRequirementResponse | JSONResponse:
+    try:
+        confirmed = await version_service.confirm_draft(
+            session,
+            tenant_id=context.tenant_id,
+            job_id=job_id,
+            draft_id=draft_id,
+            actor_user_id=context.authentication.user.id,
+            expected_revision=body.expected_revision,
+        )
+    except JobNotFoundError as error:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=JOB_NOT_FOUND_DETAIL,
+        ) from error
+    except version_service.RequirementVersionError as error:
+        if error.code == version_service.DRAFT_REVISION_CONFLICT and error.latest is not None:
+            latest = _draft_response(error.latest).model_dump(mode="json")
+            return JSONResponse(
+                status_code=status.HTTP_409_CONFLICT,
+                content={"detail": error.code, "draft": latest},
+            )
+        raise HTTPException(
+            status_code=_version_error_status(error.code),
+            detail=error.code,
+        ) from error
+    return ConfirmRequirementResponse(
+        version=_version_response(confirmed.version),
+        draft=_draft_response(confirmed.draft),
+    )
+
+
+@router.post("/jobs/{job_id}/requirement-versions/copy-current", response_model=None)
+async def copy_current_requirement_version(
+    job_id: uuid.UUID,
+    context: JobsManageDep,
+    session: DbSession,
+) -> RequirementDraftResponse | JSONResponse:
+    try:
+        draft = await version_service.copy_current_version(
+            session,
+            tenant_id=context.tenant_id,
+            job_id=job_id,
+            actor_user_id=context.authentication.user.id,
+        )
+    except JobNotFoundError as error:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=JOB_NOT_FOUND_DETAIL,
+        ) from error
+    except version_service.RequirementVersionError as error:
+        raise HTTPException(
+            status_code=_version_error_status(error.code),
+            detail=error.code,
+        ) from error
+    return _draft_response(draft)
+
+
+@router.get("/jobs/{job_id}/requirement-versions")
+async def list_requirement_versions(
+    job_id: uuid.UUID,
+    context: JobsReadDep,
+    session: DbSession,
+) -> list[RequirementVersionResponse]:
+    try:
+        _, versions = await version_service.list_versions(
+            session,
+            tenant_id=context.tenant_id,
+            job_id=job_id,
+        )
+    except JobNotFoundError as error:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=JOB_NOT_FOUND_DETAIL,
+        ) from error
+    return [_version_response(item) for item in versions]
 
 
 @router.get("/jobs/{job_id}/requirement-parsing-tasks/{task_id}/events")
@@ -370,4 +651,23 @@ def _error_status(code: str) -> int:
         return status.HTTP_422_UNPROCESSABLE_CONTENT
     if code == service.CREATION_RATE_LIMITED:
         return status.HTTP_429_TOO_MANY_REQUESTS
+    return status.HTTP_409_CONFLICT
+
+
+def _draft_error_status(code: str) -> int:
+    if code == draft_service.DRAFT_NOT_FOUND:
+        return status.HTTP_404_NOT_FOUND
+    if code == draft_service.DRAFT_INVALID:
+        return status.HTTP_422_UNPROCESSABLE_CONTENT
+    return status.HTTP_409_CONFLICT
+
+
+def _version_error_status(code: str) -> int:
+    if code in {
+        version_service.DRAFT_NOT_FOUND,
+        version_service.VERSION_NOT_FOUND,
+    }:
+        return status.HTTP_404_NOT_FOUND
+    if code == version_service.DRAFT_INVALID:
+        return status.HTTP_422_UNPROCESSABLE_CONTENT
     return status.HTTP_409_CONFLICT

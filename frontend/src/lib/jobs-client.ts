@@ -301,6 +301,7 @@ export type JobMutationResult =
   | { readonly kind: "notDraft" }
   | { readonly kind: "statusConflict" }
   | { readonly kind: "quotaExceeded" }
+  | { readonly kind: "requirementVersionRequired" }
   | { readonly kind: "companyArchived" }
   | AccessFailure
   | { readonly kind: "unreachable" }
@@ -377,6 +378,9 @@ export async function activateJob(
       }
       if (detail === "company_archived") {
         return { kind: "companyArchived" }
+      }
+      if (detail === "requirement_version_required") {
+        return { kind: "requirementVersionRequired" }
       }
       return { kind: "statusConflict" }
     }

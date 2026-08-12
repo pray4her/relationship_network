@@ -17,6 +17,10 @@ import { JobEditForm } from "@/components/jobs/job-edit-form"
 import { JobMaterialUpload } from "@/components/jobs/job-material-upload"
 import { JobRequirementGenerator } from "@/components/jobs/requirement-generator"
 import {
+  RequirementMatchingGateAlert,
+  RequirementVersionHistory,
+} from "@/components/jobs/requirement-version-history"
+import {
   DataRegion,
   DataRegionContent,
   DataRegionFooter,
@@ -244,17 +248,41 @@ export default async function JobDetailPage({ params }: JobDetailPageProps) {
           </PageSectionHeaderContent>
         </PageSectionHeader>
         {requirement.kind === "ok" ? (
-          <JobRequirementGenerator
-            archived={job.status === "archived"}
-            canManage={canManage}
-            jobId={job.id}
-            workspace={requirement.workspace}
-          />
+          <>
+            <RequirementMatchingGateAlert workspace={requirement.workspace} />
+            <JobRequirementGenerator
+              archived={job.status === "archived"}
+              canManage={canManage}
+              jobId={job.id}
+              workspace={requirement.workspace}
+            />
+          </>
         ) : (
           <Alert>
             <AlertDescription>
               职位需求工作区暂时不可用。职位详情和已有材料仍可继续查看。
             </AlertDescription>
+          </Alert>
+        )}
+      </PageSection>
+
+      <PageSection aria-labelledby="requirement-versions-heading">
+        <PageSectionHeader>
+          <PageSectionHeaderContent>
+            <PageSectionTitle id="requirement-versions-heading">职位需求版本</PageSectionTitle>
+          </PageSectionHeaderContent>
+        </PageSectionHeader>
+        {requirement.kind === "ok" ? (
+          <RequirementVersionHistory
+            archived={job.status === "archived"}
+            canManage={canManage}
+            hasEditableDraft={requirement.workspace.draft?.status === "editable"}
+            jobId={job.id}
+            versions={requirement.workspace.versions}
+          />
+        ) : (
+          <Alert>
+            <AlertDescription>职位需求版本历史暂时不可用。</AlertDescription>
           </Alert>
         )}
       </PageSection>

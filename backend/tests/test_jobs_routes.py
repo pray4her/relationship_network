@@ -30,6 +30,7 @@ from relationship_network_api.job_service import (
     JobNotFoundError,
     JobStatusConflictError,
     JobView,
+    RequirementVersionRequiredError,
 )
 from relationship_network_api.main import create_app
 from relationship_network_api.object_storage_service import ObjectStorageError
@@ -265,6 +266,18 @@ def test_activate_job_maps_quota_exceeded(monkeypatch: MonkeyPatch) -> None:
     response = client.post(f"/jobs/{JOB_ID}/activate")
     assert response.status_code == 409
     assert response.json() == {"detail": "job_quota_exceeded"}
+
+
+def test_activate_job_maps_requirement_version_required(monkeypatch: MonkeyPatch) -> None:
+    client = make_client(make_context(permissions=frozenset({"jobs:manage"})))
+
+    async def missing_version(*_args: object, **_kwargs: object) -> JobView:
+        raise RequirementVersionRequiredError
+
+    monkeypatch.setattr(job_service, "activate_job", missing_version)
+    response = client.post(f"/jobs/{JOB_ID}/activate")
+    assert response.status_code == 409
+    assert response.json() == {"detail": "requirement_version_required"}
 
 
 def test_activate_job_maps_status_conflict(monkeypatch: MonkeyPatch) -> None:

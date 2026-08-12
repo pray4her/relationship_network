@@ -49,6 +49,7 @@ JOB_NOT_FOUND_DETAIL: Final = "job_not_found"
 JOB_NOT_DRAFT_DETAIL: Final = "job_not_draft"
 JOB_STATUS_CONFLICT_DETAIL: Final = "job_status_conflict"
 JOB_QUOTA_EXCEEDED_DETAIL: Final = "job_quota_exceeded"
+REQUIREMENT_VERSION_REQUIRED_DETAIL: Final = "requirement_version_required"
 
 ACTION_JOB_CREATE: Final = "job.create"
 ACTION_JOB_UPDATE: Final = "job.update"
@@ -78,6 +79,11 @@ class JobNotDraftError(Exception):
 @final
 class JobStatusConflictError(Exception):
     """Raised when a requested state transition is not allowed."""
+
+
+@final
+class RequirementVersionRequiredError(Exception):
+    """Raised when activation is blocked because no confirmed requirement version exists."""
 
 
 @final
@@ -229,6 +235,19 @@ async def activate_job(
     """
     job = await _load_job(session, tenant_id=tenant_id, job_id=job_id)
     _ensure_transition(job.status, to=JOB_STATUS_ACTIVE)
+    if job.current_requirement_version_id is None:
+        tenant_audit_service.record_event(
+            session,
+            tenant_id=tenant_id,
+            actor_user_id=actor_user_id,
+            action=ACTION_JOB_ACTIVATE,
+            target_type=TARGET_TYPE_JOB,
+            target_id=str(job_id),
+            result=tenant_audit_service.AUDIT_RESULT_FAILURE,
+            detail=REQUIREMENT_VERSION_REQUIRED_DETAIL,
+        )
+        await _commit(session)
+        raise RequirementVersionRequiredError
     await _ensure_company_writable(session, tenant_id=tenant_id, company_id=job.company_id)
     reservation = await usage_service.reserve(
         session,
@@ -249,6 +268,7 @@ async def activate_job(
                     Job.id == job_id,
                     Job.tenant_id == tenant_id,
                     Job.status.in_((JOB_STATUS_DRAFT, JOB_STATUS_CLOSED)),
+                    Job.current_requirement_version_id.is_not(None),
                 )
                 .values(
                     status=JOB_STATUS_ACTIVE,
@@ -309,6 +329,8 @@ async def close_job(
     now = datetime.now(UTC)
     job.status = JOB_STATUS_CLOSED
     job.updated_at = now
+    if job.legacy_requirement_exempt:
+        job.legacy_requirement_exempt = False
     tenant_audit_service.record_event(
         session,
         tenant_id=tenant_id,

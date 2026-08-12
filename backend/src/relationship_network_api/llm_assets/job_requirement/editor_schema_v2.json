@@ -1,0 +1,274 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:relationship-network:job-requirement-editor-schema:v2",
+  "title": "职位需求编辑文档 Schema v2",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "hard_conditions",
+    "preference_conditions",
+    "research_topic_query",
+    "unsupported_conditions",
+    "source_conflicts",
+    "removed_facts"
+  ],
+  "properties": {
+    "hard_conditions": {
+      "type": "array",
+      "maxItems": 100,
+      "items": { "$ref": "#/$defs/editable_condition" }
+    },
+    "preference_conditions": {
+      "type": "array",
+      "maxItems": 100,
+      "items": { "$ref": "#/$defs/editable_condition" }
+    },
+    "research_topic_query": { "$ref": "#/$defs/research_topic" },
+    "unsupported_conditions": {
+      "type": "array",
+      "maxItems": 100,
+      "items": { "$ref": "#/$defs/editable_unsupported" }
+    },
+    "source_conflicts": {
+      "type": "array",
+      "maxItems": 50,
+      "items": { "$ref": "#/$defs/editable_conflict" }
+    },
+    "removed_facts": {
+      "type": "array",
+      "maxItems": 500,
+      "items": { "$ref": "#/$defs/removed_fact" }
+    }
+  },
+  "$defs": {
+    "nullable_actor": {
+      "oneOf": [
+        { "type": "null" },
+        { "type": "string", "minLength": 1, "maxLength": 64 }
+      ]
+    },
+    "nullable_time": {
+      "oneOf": [
+        { "type": "null" },
+        { "type": "string", "format": "date-time" }
+      ]
+    },
+    "evidence": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["source_id", "start_offset", "end_offset", "quote"],
+      "properties": {
+        "source_id": { "type": "string", "minLength": 1, "maxLength": 128 },
+        "start_offset": { "type": "integer", "minimum": 0 },
+        "end_offset": { "type": "integer", "minimum": 1 },
+        "quote": { "type": "string", "minLength": 1, "maxLength": 2000 }
+      }
+    },
+    "condition_value": {
+      "oneOf": [
+        { "type": "number", "minimum": 0 },
+        { "type": "string", "minLength": 1, "maxLength": 500 },
+        {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 50,
+          "items": {
+            "oneOf": [
+              { "type": "number", "minimum": 0 },
+              { "type": "string", "minLength": 1, "maxLength": 200 }
+            ]
+          }
+        }
+      ]
+    },
+    "model_condition": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["field", "operator", "value", "description", "evidence"],
+      "properties": {
+        "field": { "type": "string", "minLength": 1, "maxLength": 100 },
+        "operator": { "type": "string", "minLength": 1, "maxLength": 50 },
+        "value": { "$ref": "#/$defs/condition_value" },
+        "description": { "type": "string", "minLength": 1, "maxLength": 2000 },
+        "evidence": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 20,
+          "items": { "$ref": "#/$defs/evidence" }
+        }
+      }
+    },
+    "editable_condition": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "item_id",
+        "origin",
+        "field",
+        "operator",
+        "value",
+        "description",
+        "evidence",
+        "model_snapshot",
+        "last_modified_by",
+        "last_modified_at"
+      ],
+      "properties": {
+        "item_id": { "type": "string", "minLength": 1, "maxLength": 64 },
+        "origin": { "enum": ["model", "user_added"] },
+        "field": { "type": "string", "minLength": 1, "maxLength": 100 },
+        "operator": { "type": "string", "minLength": 1, "maxLength": 50 },
+        "value": { "$ref": "#/$defs/condition_value" },
+        "description": { "type": "string", "minLength": 1, "maxLength": 2000 },
+        "evidence": {
+          "type": "array",
+          "maxItems": 20,
+          "items": { "$ref": "#/$defs/evidence" }
+        },
+        "model_snapshot": {
+          "oneOf": [
+            { "type": "null" },
+            { "$ref": "#/$defs/model_condition" }
+          ]
+        },
+        "last_modified_by": { "$ref": "#/$defs/nullable_actor" },
+        "last_modified_at": { "$ref": "#/$defs/nullable_time" }
+      }
+    },
+    "model_unsupported": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["description", "evidence"],
+      "properties": {
+        "description": { "type": "string", "minLength": 1, "maxLength": 2000 },
+        "evidence": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 20,
+          "items": { "$ref": "#/$defs/evidence" }
+        }
+      }
+    },
+    "editable_unsupported": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "item_id",
+        "origin",
+        "description",
+        "evidence",
+        "model_snapshot",
+        "last_modified_by",
+        "last_modified_at"
+      ],
+      "properties": {
+        "item_id": { "type": "string", "minLength": 1, "maxLength": 64 },
+        "origin": { "enum": ["model", "user_added"] },
+        "description": { "type": "string", "minLength": 1, "maxLength": 2000 },
+        "evidence": {
+          "type": "array",
+          "maxItems": 20,
+          "items": { "$ref": "#/$defs/evidence" }
+        },
+        "model_snapshot": {
+          "oneOf": [
+            { "type": "null" },
+            { "$ref": "#/$defs/model_unsupported" }
+          ]
+        },
+        "last_modified_by": { "$ref": "#/$defs/nullable_actor" },
+        "last_modified_at": { "$ref": "#/$defs/nullable_time" }
+      }
+    },
+    "research_topic": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["value", "model_value", "last_modified_by", "last_modified_at"],
+      "properties": {
+        "value": { "type": "string", "minLength": 1, "maxLength": 4000 },
+        "model_value": { "type": "string", "minLength": 1, "maxLength": 4000 },
+        "last_modified_by": { "$ref": "#/$defs/nullable_actor" },
+        "last_modified_at": { "$ref": "#/$defs/nullable_time" }
+      }
+    },
+    "model_conflict": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["description", "evidence"],
+      "properties": {
+        "description": { "type": "string", "minLength": 1, "maxLength": 2000 },
+        "evidence": {
+          "type": "array",
+          "minItems": 2,
+          "maxItems": 20,
+          "items": { "$ref": "#/$defs/evidence" }
+        }
+      }
+    },
+    "resolution": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["note", "resolved_by", "resolved_at"],
+      "properties": {
+        "note": { "type": "string", "minLength": 1, "maxLength": 2000 },
+        "resolved_by": { "type": "string", "minLength": 1, "maxLength": 64 },
+        "resolved_at": { "type": "string", "format": "date-time" }
+      }
+    },
+    "editable_conflict": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["item_id", "description", "evidence", "model_snapshot", "resolution"],
+      "properties": {
+        "item_id": { "type": "string", "minLength": 1, "maxLength": 64 },
+        "description": { "type": "string", "minLength": 1, "maxLength": 2000 },
+        "evidence": {
+          "type": "array",
+          "minItems": 2,
+          "maxItems": 20,
+          "items": { "$ref": "#/$defs/evidence" }
+        },
+        "model_snapshot": { "$ref": "#/$defs/model_conflict" },
+        "resolution": {
+          "oneOf": [
+            { "type": "null" },
+            { "$ref": "#/$defs/resolution" }
+          ]
+        }
+      }
+    },
+    "removed_fact": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "item_id",
+        "kind",
+        "origin",
+        "model_snapshot",
+        "removed_snapshot",
+        "removed_by",
+        "removed_at"
+      ],
+      "properties": {
+        "item_id": { "type": "string", "minLength": 1, "maxLength": 64 },
+        "kind": { "enum": ["hard_condition", "preference_condition", "unsupported_condition"] },
+        "origin": { "enum": ["model", "user_added"] },
+        "model_snapshot": {
+          "oneOf": [
+            { "type": "null" },
+            { "$ref": "#/$defs/model_condition" },
+            { "$ref": "#/$defs/model_unsupported" }
+          ]
+        },
+        "removed_snapshot": {
+          "oneOf": [
+            { "$ref": "#/$defs/editable_condition" },
+            { "$ref": "#/$defs/editable_unsupported" }
+          ]
+        },
+        "removed_by": { "type": "string", "minLength": 1, "maxLength": 64 },
+        "removed_at": { "type": "string", "format": "date-time" }
+      }
+    }
+  }
+}

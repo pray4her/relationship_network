@@ -50,6 +50,8 @@ function mutationError(result: JobMutationResult | MaterialUploadResult): string
   switch (result.kind) {
     case "quotaExceeded":
       return "活跃职位数量已达套餐上限，请关闭现有职位或升级套餐。可在用量页查看额度。"
+    case "requirementVersionRequired":
+      return "请先确认职位需求版本，再启用职位。"
     case "notDraft":
       return "职位不在草稿状态，不能再编辑或上传材料"
     case "statusConflict":

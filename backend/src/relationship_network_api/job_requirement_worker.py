@@ -31,6 +31,8 @@ from relationship_network_api.durable_task import (
 )
 from relationship_network_api.job_requirement_validation import (
     RequirementResultValidationError,
+    build_editable_requirement_document,
+    validate_editable_requirement_document,
     validate_requirement_result,
 )
 from relationship_network_api.llm_assets import manifest
@@ -547,7 +549,7 @@ async def handle_failure(  # noqa: PLR0913
         _record_failure_audit(session, task=task, error_code=error_code)
 
 
-async def complete_task(
+async def complete_task(  # noqa: C901, PLR0911
     session_factory: async_sessionmaker[AsyncSession],
     *,
     prepared: PreparedTask,
@@ -577,21 +579,68 @@ async def complete_task(
         if job.status == "archived":
             await _fail_locked_task(session, task=task, error_code=TENANT_JOB_ARCHIVED)
             return
-        existing = (
-            await session.execute(
-                select(JobRequirementDraft.id).where(
-                    JobRequirementDraft.tenant_id == prepared.tenant_id,
-                    JobRequirementDraft.job_id == prepared.job_id,
-                    JobRequirementDraft.status == "editable",
+        replaced_draft: JobRequirementDraft | None = None
+        if task.replaces_draft_id is not None:
+            replaced_draft = (
+                await session.execute(
+                    select(JobRequirementDraft)
+                    .where(
+                        JobRequirementDraft.id == task.replaces_draft_id,
+                        JobRequirementDraft.tenant_id == prepared.tenant_id,
+                        JobRequirementDraft.job_id == prepared.job_id,
+                    )
+                    .with_for_update()
                 )
+            ).scalar_one_or_none()
+            if (
+                replaced_draft is None
+                or replaced_draft.status != "editable"
+                or replaced_draft.revision != task.replaces_draft_revision
+            ):
+                await _fail_locked_task(
+                    session,
+                    task=task,
+                    error_code=service.DRAFT_REPLACEMENT_CONFLICT,
+                )
+                return
+        else:
+            existing = (
+                await session.execute(
+                    select(JobRequirementDraft.id).where(
+                        JobRequirementDraft.tenant_id == prepared.tenant_id,
+                        JobRequirementDraft.job_id == prepared.job_id,
+                        JobRequirementDraft.status == "editable",
+                    )
+                )
+            ).scalar_one_or_none()
+            if existing is not None:
+                await _fail_locked_task(session, task=task, error_code=service.DRAFT_EXISTS)
+                return
+        draft_id = uuid.uuid4()
+        editable_result = build_editable_requirement_document(result, draft_id=draft_id)
+        try:
+            editable_result = validate_editable_requirement_document(
+                editable_result,
+                schema=manifest.read_requirement_editor_schema(prepared.schema_id),
+                asset=manifest.JOB_REQUIREMENT_SCHEMA_V2,
+                source_texts=prepared.source_texts,
             )
-        ).scalar_one_or_none()
-        if existing is not None:
-            await _fail_locked_task(session, task=task, error_code=service.DRAFT_EXISTS)
+        except RequirementResultValidationError:
+            await _fail_locked_task(
+                session,
+                task=task,
+                error_code=TENANT_INVALID_OUTPUT,
+            )
             return
+        changed_at = datetime.now(UTC)
+        if replaced_draft is not None:
+            replaced_draft.status = "replaced"
+            replaced_draft.revision += 1
+            replaced_draft.updated_by = prepared.actor_user_id
+            replaced_draft.status_changed_at = changed_at
         session.add(
             JobRequirementDraft(
-                id=uuid.uuid4(),
+                id=draft_id,
                 tenant_id=prepared.tenant_id,
                 job_id=prepared.job_id,
                 task_id=prepared.task_id,
@@ -599,8 +648,10 @@ async def complete_task(
                 requirement_schema_version_id=prepared.schema_id,
                 status="editable",
                 revision=1,
-                result_json=result,
+                result_json=editable_result,
                 created_by=prepared.actor_user_id,
+                updated_by=prepared.actor_user_id,
+                status_changed_at=changed_at,
             )
         )
         task.status = "succeeded"
@@ -784,6 +835,10 @@ def _assets_match(*, prompt: PromptVersion, schema: JobRequirementSchemaVersion)
         and prompt.compatible_schema_version_id == schema.id
         and prompt.sha256 == manifest.JOB_REQUIREMENT_PROMPT_V2.sha256
         and schema.sha256 == manifest.JOB_REQUIREMENT_SCHEMA_V2.sha256
+        and schema.editor_schema_id == manifest.JOB_REQUIREMENT_SCHEMA_V2.editor_schema_id
+        and schema.editor_sha256 == manifest.JOB_REQUIREMENT_SCHEMA_V2.editor_sha256
+        and schema.editor_schema_json
+        == manifest.read_requirement_editor_schema(manifest.JOB_REQUIREMENT_SCHEMA_V2.id)
     )
 
 

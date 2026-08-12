@@ -8,6 +8,7 @@ import {
   cancelRequirementTaskAction,
   generateRequirementDraftAction,
 } from "@/app/actions/job-requirements"
+import { JobRequirementDraftEditor } from "@/components/jobs/requirement-draft-editor"
 import { DataRegion, DataRegionContent, DataRegionFooter } from "@/components/layout/page"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import {
@@ -40,9 +41,7 @@ import {
 import { Spinner } from "@/components/ui/spinner"
 import { Textarea } from "@/components/ui/textarea"
 import type {
-  ExecutableCondition,
   RequirementDraft,
-  RequirementEvidence,
   RequirementSource,
   RequirementTask,
   RequirementTaskStatus,
@@ -82,6 +81,10 @@ type RequirementGeneratorMeta = {
   readonly draft: RequirementDraft | null
   readonly configurationReady: boolean
   readonly canCancel: boolean
+  readonly canManage: boolean
+  readonly draftDirty: boolean
+  readonly jobId: string
+  readonly onDraftDirtyChange?: (dirty: boolean) => void
 }
 
 type RequirementGeneratorContextValue = {
@@ -108,6 +111,7 @@ const taskErrorMessages: Record<string, string> = {
   requirement_generation_unavailable: "生成服务暂时不可用。请稍后重新生成。",
   requirement_configuration_unavailable: "生成配置当前不可用。请联系平台管理员检查 v2 配置。",
   requirement_draft_exists: "该职位已有可编辑草稿，请先处理现有草稿。",
+  requirement_draft_replacement_conflict: "当前草稿已发生变化，本次结果没有替换现有草稿。",
   job_archived: "职位已归档，迟到结果没有写入草稿。",
 }
 
@@ -116,16 +120,6 @@ const taskTimeFormatter = new Intl.DateTimeFormat("zh-CN", {
   timeStyle: "medium",
   timeZone: "Asia/Shanghai",
 })
-
-const fieldLabels: Record<ExecutableCondition["field"], string> = {
-  qs_top200_rank: "QS 前 200 排名",
-  world_top500_rank: "世界前 500 排名",
-  h_index: "h-index",
-  total_citations: "总引用数",
-  chinese_identity: "华人身份",
-  country: "国家",
-  current_affiliation: "当前任职机构",
-}
 
 function useRequirementGenerator(): RequirementGeneratorContextValue {
   const context = use(RequirementGeneratorContext)
@@ -169,13 +163,17 @@ function RequirementGeneratorProvider({
   archived,
   canManage,
   children,
+  draftDirty = false,
   jobId,
+  onDraftDirtyChange,
   workspace,
 }: {
   readonly archived: boolean
   readonly canManage: boolean
   readonly children: React.ReactNode
+  readonly draftDirty?: boolean
   readonly jobId: string
+  readonly onDraftDirtyChange?: (dirty: boolean) => void
   readonly workspace: RequirementWorkspace
 }) {
   const router = useRouter()
@@ -190,12 +188,7 @@ function RequirementGeneratorProvider({
   const taskIsActive = task !== null && !terminalStatuses.has(task.status)
   const taskId = task?.id ?? null
   const taskStatus = task?.status ?? null
-  const editable =
-    canManage &&
-    !archived &&
-    workspace.configuration_ready &&
-    !taskIsActive &&
-    workspace.draft === null
+  const editable = canManage && !archived && workspace.configuration_ready && !taskIsActive
   const selectedSources = workspace.sources.filter(
     (source) => sourceState[source.source_id]?.selected ?? false,
   )
@@ -381,9 +374,13 @@ function RequirementGeneratorProvider({
     meta: {
       configurationReady: workspace.configuration_ready,
       canCancel: canManage && !archived,
+      canManage,
       draft: workspace.draft,
+      draftDirty,
       editable,
       inputCharacterLimit: workspace.input_character_limit,
+      jobId,
+      ...(onDraftDirtyChange === undefined ? {} : { onDraftDirtyChange }),
       overLimit,
       selectedCount: selectedSources.length,
       sources: workspace.sources,
@@ -509,13 +506,61 @@ function Summary() {
             </AlertDescription>
           </Alert>
         ) : null}
+        {meta.draft !== null && meta.draftDirty ? (
+          <Alert>
+            <AlertTitle>草稿还有未保存修改</AlertTitle>
+            <AlertDescription>请先保存草稿，或放弃本地修改，再提交重新解析任务。</AlertDescription>
+          </Alert>
+        ) : null}
       </DataRegionContent>
       {meta.editable ? (
         <DataRegionFooter>
-          <Button disabled={state.pending || meta.overLimit} onClick={actions.submit} type="button">
-            {state.pending ? <Spinner aria-hidden="true" data-icon="inline-start" /> : null}
-            {state.pending ? "正在提交…" : "生成职位需求草稿"}
-          </Button>
+          {meta.draft === null ? (
+            <Button
+              disabled={state.pending || meta.overLimit}
+              onClick={actions.submit}
+              type="button"
+            >
+              {state.pending ? <Spinner aria-hidden="true" data-icon="inline-start" /> : null}
+              {state.pending ? "正在提交…" : "生成职位需求草稿"}
+            </Button>
+          ) : (
+            <AlertDialog>
+              <AlertDialogTrigger
+                render={
+                  <Button
+                    disabled={state.pending || meta.overLimit || meta.draftDirty}
+                    type="button"
+                  />
+                }
+              >
+                重新解析并替换草稿
+              </AlertDialogTrigger>
+              <AlertDialogContent size="sm" variant="destructive">
+                <AlertDialogHeader showCloseButton={false}>
+                  <AlertDialogTitle>重新解析职位需求？</AlertDialogTitle>
+                  <AlertDialogDescription>
+                    任务成功后会用新草稿替换当前草稿；失败或取消不会修改当前草稿。
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogBody>
+                  当前修订 {meta.draft.revision} 会保持可编辑，直到新任务成功完成。
+                </AlertDialogBody>
+                <AlertDialogFooter>
+                  <AlertDialogCancel disabled={state.pending}>继续编辑</AlertDialogCancel>
+                  <AlertDialogAction
+                    disabled={state.pending}
+                    onClick={actions.submit}
+                    type="button"
+                    variant="destructive"
+                  >
+                    {state.pending ? <Spinner aria-hidden="true" data-icon="inline-start" /> : null}
+                    {state.pending ? "正在提交…" : "确认重新解析"}
+                  </AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
+          )}
         </DataRegionFooter>
       ) : null}
     </DataRegion>
@@ -606,6 +651,14 @@ function ActiveTask() {
           </div>
           <TaskStatusBadge status={task.status} />
         </div>
+        {task.replaces_draft_id !== null ? (
+          <Alert>
+            <AlertTitle>当前草稿暂时只读</AlertTitle>
+            <AlertDescription>
+              重新解析任务正在运行。任务成功后会切换到新草稿；失败或取消后恢复编辑。
+            </AlertDescription>
+          </Alert>
+        ) : null}
         {task.error_code ? (
           <Alert>
             <AlertTitle>任务正在恢复</AlertTitle>
@@ -693,111 +746,22 @@ function TaskStatus() {
   )
 }
 
-function EvidenceList({ evidence }: { readonly evidence: readonly RequirementEvidence[] }) {
-  return (
-    <ul className="m-0 flex list-none flex-col gap-[var(--space-2)] p-0">
-      {evidence.map((item) => (
-        <li
-          className="min-w-0 break-words text-sm text-muted-foreground"
-          key={JSON.stringify(item)}
-        >
-          <span className="font-mono text-xs" translate="no">
-            {item.source_id} [{item.start_offset}, {item.end_offset})
-          </span>
-          ：“{item.quote}”
-        </li>
-      ))}
-    </ul>
-  )
-}
-
-function ConditionGroup({
-  conditions,
-  title,
-}: {
-  readonly conditions: readonly ExecutableCondition[]
-  readonly title: string
-}) {
-  return (
-    <section aria-label={title} className="flex min-w-0 flex-col gap-[var(--space-3)]">
-      <h3 className="m-0 text-base font-medium text-balance">{title}</h3>
-      {conditions.length === 0 ? (
-        <p className="m-0 text-sm text-muted-foreground">无</p>
-      ) : (
-        <ol className="m-0 flex flex-col gap-[var(--space-4)] pl-[var(--space-5)]">
-          {conditions.map((condition) => (
-            <li className="min-w-0 break-words" key={JSON.stringify(condition)}>
-              <p className="m-0 font-medium">
-                {fieldLabels[condition.field]}，{condition.operator}，
-                {Array.isArray(condition.value) ? condition.value.join("、") : condition.value}
-              </p>
-              <p className="m-0 text-sm">{condition.description}</p>
-              <EvidenceList evidence={condition.evidence} />
-            </li>
-          ))}
-        </ol>
-      )}
-    </section>
-  )
-}
-
-function DraftViewer() {
+function DraftEditor() {
   const { meta } = useRequirementGenerator()
-  const draft = meta.draft
-  if (draft === null) return null
-  const result = draft.result
+  if (meta.draft === null) return null
   return (
-    <DataRegion>
-      <DataRegionContent className="flex min-w-0 flex-col gap-[var(--space-6)]">
-        <div className="flex flex-wrap items-center justify-between gap-[var(--space-4)]">
-          <div>
-            <h3 className="m-0 text-lg font-medium text-balance">职位需求草稿</h3>
-            <p className="m-0 text-sm text-muted-foreground">
-              Schema {draft.requirement_schema_version_id}，修订 {draft.revision}
-            </p>
-          </div>
-          <Badge>可编辑草稿</Badge>
-        </div>
-        <ConditionGroup conditions={result.hard_conditions} title="硬条件" />
-        <ConditionGroup conditions={result.preference_conditions} title="偏好条件" />
-        <section className="flex min-w-0 flex-col gap-[var(--space-2)]">
-          <h3 className="m-0 text-base font-medium text-balance">研究主题查询</h3>
-          <p className="m-0 break-words">{result.research_topic_query}</p>
-        </section>
-        <section className="flex min-w-0 flex-col gap-[var(--space-3)]">
-          <h3 className="m-0 text-base font-medium text-balance">未支持条件</h3>
-          {result.unsupported_conditions.length === 0 ? (
-            <p className="m-0 text-sm text-muted-foreground">无</p>
-          ) : (
-            result.unsupported_conditions.map((item) => (
-              <div className="min-w-0 break-words" key={JSON.stringify(item)}>
-                <p className="m-0">{item.description}</p>
-                <EvidenceList evidence={item.evidence} />
-              </div>
-            ))
-          )}
-        </section>
-        <section className="flex min-w-0 flex-col gap-[var(--space-3)]">
-          <h3 className="m-0 text-base font-medium text-balance">来源冲突</h3>
-          {result.source_conflicts.length === 0 ? (
-            <p className="m-0 text-sm text-muted-foreground">无</p>
-          ) : (
-            result.source_conflicts.map((conflict) => (
-              <Alert key={JSON.stringify(conflict)}>
-                <AlertTitle>待人工处理</AlertTitle>
-                <AlertDescription className="break-words">{conflict.description}</AlertDescription>
-                <EvidenceList evidence={conflict.evidence} />
-              </Alert>
-            ))
-          )}
-        </section>
-      </DataRegionContent>
-    </DataRegion>
+    <JobRequirementDraftEditor
+      canManage={meta.canManage}
+      draft={meta.draft}
+      jobId={meta.jobId}
+      {...(meta.onDraftDirtyChange === undefined ? {} : { onDirtyChange: meta.onDraftDirtyChange })}
+    />
   )
 }
 
 export const RequirementGenerator = {
-  DraftViewer,
+  DraftEditor,
+  DraftViewer: DraftEditor,
   Provider: RequirementGeneratorProvider,
   SourceEditors,
   Summary,
@@ -815,16 +779,19 @@ export function JobRequirementGenerator({
   readonly jobId: string
   readonly workspace: RequirementWorkspace
 }) {
+  const [draftDirty, setDraftDirty] = useState(false)
   return (
     <RequirementGeneratorProvider
       archived={archived}
       canManage={canManage}
+      draftDirty={draftDirty}
       jobId={jobId}
+      onDraftDirtyChange={setDraftDirty}
       workspace={workspace}
     >
       <div className="flex min-w-0 flex-col gap-[var(--space-5)]">
         <TaskStatus />
-        <DraftViewer />
+        <DraftEditor />
         <SourceEditors />
         <Summary />
       </div>

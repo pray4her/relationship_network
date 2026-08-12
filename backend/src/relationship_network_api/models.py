@@ -153,6 +153,16 @@ REQUIREMENT_TASK_LEASE_FIELDS_CHECK: Final = """
     (lease_token IS NOT NULL AND lease_expires_at IS NOT NULL
     AND last_heartbeat_at IS NOT NULL))
     """
+REQUIREMENT_TASK_REPLACED_DRAFT_CHECK: Final = """
+    ((replaces_draft_id IS NULL) = (replaces_draft_revision IS NULL))
+    AND (replaces_draft_revision IS NULL OR replaces_draft_revision > 0)
+    """
+REQUIREMENT_SCHEMA_EDITOR_ASSET_CHECK: Final = """
+    (editor_schema_id IS NULL AND editor_asset_path IS NULL
+    AND editor_sha256 IS NULL AND editor_schema_json IS NULL) OR
+    (editor_schema_id IS NOT NULL AND editor_asset_path IS NOT NULL
+    AND editor_sha256 IS NOT NULL AND editor_schema_json IS NOT NULL)
+    """
 
 
 class Base(DeclarativeBase):
@@ -408,6 +418,12 @@ class JobRequirementSchemaVersion(Base):
     """Immutable deployed job requirement Schema asset."""
 
     __tablename__ = "job_requirement_schema_versions"
+    __table_args__ = (
+        CheckConstraint(
+            REQUIREMENT_SCHEMA_EDITOR_ASSET_CHECK,
+            name="ck_requirement_schema_versions_editor_asset",
+        ),
+    )
 
     id: Mapped[str] = mapped_column(String(100), primary_key=True)
     schema_id: Mapped[str] = mapped_column(String(200), unique=True)
@@ -417,6 +433,10 @@ class JobRequirementSchemaVersion(Base):
     field_catalog: Mapped[dict[str, object]] = mapped_column(JSONB)
     chinese_identity_values: Mapped[list[str]] = mapped_column(JSONB)
     output_limits: Mapped[dict[str, int]] = mapped_column(JSONB)
+    editor_schema_id: Mapped[str | None] = mapped_column(String(200), unique=True, nullable=True)
+    editor_asset_path: Mapped[str | None] = mapped_column(String(300), unique=True, nullable=True)
+    editor_sha256: Mapped[str | None] = mapped_column(String(64), unique=True, nullable=True)
+    editor_schema_json: Mapped[dict[str, object] | None] = mapped_column(JSONB, nullable=True)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
         server_default=func.now(),
@@ -1142,6 +1162,20 @@ class Job(Base):
             "status IN ('draft', 'active', 'closed', 'archived')",
             name="ck_jobs_status",
         ),
+        CheckConstraint(
+            "status <> 'active' OR current_requirement_version_id IS NOT NULL "
+            "OR legacy_requirement_exempt",
+            name="ck_jobs_active_requires_requirement_version",
+        ),
+        ForeignKeyConstraint(
+            ["current_requirement_version_id", "tenant_id", "id"],
+            [
+                "job_requirement_versions.id",
+                "job_requirement_versions.tenant_id",
+                "job_requirement_versions.job_id",
+            ],
+            name="fk_jobs_current_requirement_version",
+        ),
         Index("ix_jobs_tenant_status", "tenant_id", "status"),
         Index("ix_jobs_tenant_company", "tenant_id", "company_id"),
         UniqueConstraint("id", "tenant_id", name="uq_jobs_id_tenant"),
@@ -1166,6 +1200,12 @@ class Job(Base):
         default=JOB_STATUS_DRAFT,
     )
     usage_reservation_id: Mapped[uuid.UUID | None] = mapped_column(Uuid, nullable=True)
+    current_requirement_version_id: Mapped[uuid.UUID | None] = mapped_column(Uuid, nullable=True)
+    legacy_requirement_exempt: Mapped[bool] = mapped_column(
+        Boolean,
+        server_default="false",
+        default=False,
+    )
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
         server_default=func.now(),
@@ -1350,6 +1390,10 @@ class JobRequirementParsingTask(Base):
             "((status IN ('succeeded', 'failed', 'cancelled')) = (completed_at IS NOT NULL))",
             name="ck_requirement_tasks_completion_fields",
         ),
+        CheckConstraint(
+            REQUIREMENT_TASK_REPLACED_DRAFT_CHECK,
+            name="ck_requirement_tasks_replaced_draft",
+        ),
         ForeignKeyConstraint(
             ["job_id", "tenant_id"],
             ["jobs.id", "jobs.tenant_id"],
@@ -1360,6 +1404,16 @@ class JobRequirementParsingTask(Base):
             ["input_snapshot_id", "tenant_id"],
             ["job_requirement_input_snapshots.id", "job_requirement_input_snapshots.tenant_id"],
             name="fk_requirement_tasks_snapshot_tenant",
+        ),
+        ForeignKeyConstraint(
+            ["replaces_draft_id", "tenant_id", "job_id"],
+            [
+                "job_requirement_drafts.id",
+                "job_requirement_drafts.tenant_id",
+                "job_requirement_drafts.job_id",
+            ],
+            name="fk_requirement_tasks_replaced_draft_tenant_job",
+            use_alter=True,
         ),
         UniqueConstraint("id", "tenant_id", name="uq_requirement_tasks_id_tenant"),
         UniqueConstraint(
@@ -1399,6 +1453,8 @@ class JobRequirementParsingTask(Base):
     )
     idempotency_key: Mapped[str] = mapped_column(String(128))
     effective_request_sha256: Mapped[str] = mapped_column(String(64))
+    replaces_draft_id: Mapped[uuid.UUID | None] = mapped_column(Uuid, nullable=True)
+    replaces_draft_revision: Mapped[int | None] = mapped_column(Integer, nullable=True)
     status: Mapped[str] = mapped_column(String(30), server_default="queued", default="queued")
     error_code: Mapped[str | None] = mapped_column(String(100), nullable=True)
     external_call_count: Mapped[int] = mapped_column(Integer, server_default="0", default=0)
@@ -1485,7 +1541,22 @@ class JobRequirementDraft(Base):
             ["job_requirement_input_snapshots.id", "job_requirement_input_snapshots.tenant_id"],
             name="fk_requirement_drafts_snapshot_tenant",
         ),
-        UniqueConstraint("task_id", name="uq_requirement_drafts_task"),
+        ForeignKeyConstraint(
+            ["source_version_id", "tenant_id", "job_id"],
+            [
+                "job_requirement_versions.id",
+                "job_requirement_versions.tenant_id",
+                "job_requirement_versions.job_id",
+            ],
+            name="fk_requirement_drafts_source_version",
+        ),
+        UniqueConstraint("id", "tenant_id", "job_id", name="uq_requirement_drafts_id_tenant_job"),
+        Index(
+            "uq_requirement_drafts_task",
+            "task_id",
+            unique=True,
+            postgresql_where=text("task_id IS NOT NULL"),
+        ),
         Index(
             "uq_requirement_drafts_one_editable",
             "tenant_id",
@@ -1498,8 +1569,9 @@ class JobRequirementDraft(Base):
     id: Mapped[uuid.UUID] = mapped_column(Uuid, primary_key=True, default=uuid.uuid4)
     tenant_id: Mapped[uuid.UUID] = mapped_column(Uuid, index=True)
     job_id: Mapped[uuid.UUID] = mapped_column(Uuid, index=True)
-    task_id: Mapped[uuid.UUID] = mapped_column(Uuid)
-    input_snapshot_id: Mapped[uuid.UUID] = mapped_column(Uuid)
+    task_id: Mapped[uuid.UUID | None] = mapped_column(Uuid, nullable=True)
+    input_snapshot_id: Mapped[uuid.UUID | None] = mapped_column(Uuid, nullable=True)
+    source_version_id: Mapped[uuid.UUID | None] = mapped_column(Uuid, nullable=True)
     requirement_schema_version_id: Mapped[str] = mapped_column(
         String(100),
         ForeignKey("job_requirement_schema_versions.id"),
@@ -1512,6 +1584,15 @@ class JobRequirementDraft(Base):
         ForeignKey("users.id", ondelete="SET NULL"),
         nullable=True,
     )
+    updated_by: Mapped[uuid.UUID | None] = mapped_column(
+        Uuid,
+        ForeignKey("users.id", ondelete="SET NULL"),
+        nullable=True,
+    )
+    status_changed_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        server_default=func.now(),
+    )
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
         server_default=func.now(),
@@ -1520,6 +1601,88 @@ class JobRequirementDraft(Base):
         DateTime(timezone=True),
         server_default=func.now(),
         onupdate=func.now(),
+    )
+
+
+@final
+class JobRequirementVersion(Base):
+    """An immutable confirmed requirement snapshot used as the matching contract."""
+
+    __tablename__ = "job_requirement_versions"
+    __table_args__ = (
+        CheckConstraint("version_number > 0", name="ck_requirement_versions_number"),
+        ForeignKeyConstraint(
+            ["job_id", "tenant_id"],
+            ["jobs.id", "jobs.tenant_id"],
+            name="fk_requirement_versions_job_tenant",
+            ondelete="CASCADE",
+        ),
+        ForeignKeyConstraint(
+            ["draft_id", "tenant_id", "job_id"],
+            [
+                "job_requirement_drafts.id",
+                "job_requirement_drafts.tenant_id",
+                "job_requirement_drafts.job_id",
+            ],
+            name="fk_requirement_versions_draft_tenant_job",
+        ),
+        ForeignKeyConstraint(
+            ["input_snapshot_id", "tenant_id"],
+            [
+                "job_requirement_input_snapshots.id",
+                "job_requirement_input_snapshots.tenant_id",
+            ],
+            name="fk_requirement_versions_snapshot_tenant",
+        ),
+        ForeignKeyConstraint(
+            ["source_version_id", "tenant_id", "job_id"],
+            [
+                "job_requirement_versions.id",
+                "job_requirement_versions.tenant_id",
+                "job_requirement_versions.job_id",
+            ],
+            name="fk_requirement_versions_source_version",
+        ),
+        UniqueConstraint(
+            "tenant_id",
+            "job_id",
+            "version_number",
+            name="uq_requirement_versions_tenant_job_number",
+        ),
+        UniqueConstraint(
+            "id",
+            "tenant_id",
+            "job_id",
+            name="uq_requirement_versions_id_tenant_job",
+        ),
+        UniqueConstraint("draft_id", name="uq_requirement_versions_draft"),
+        Index("ix_requirement_versions_tenant_job", "tenant_id", "job_id"),
+    )
+
+    id: Mapped[uuid.UUID] = mapped_column(Uuid, primary_key=True, default=uuid.uuid4)
+    tenant_id: Mapped[uuid.UUID] = mapped_column(Uuid, index=True)
+    job_id: Mapped[uuid.UUID] = mapped_column(Uuid, index=True)
+    version_number: Mapped[int] = mapped_column(Integer)
+    requirement_schema_version_id: Mapped[str] = mapped_column(
+        String(100),
+        ForeignKey("job_requirement_schema_versions.id"),
+    )
+    result_json: Mapped[dict[str, object]] = mapped_column(JSONB)
+    draft_id: Mapped[uuid.UUID] = mapped_column(Uuid)
+    input_snapshot_id: Mapped[uuid.UUID | None] = mapped_column(Uuid, nullable=True)
+    source_version_id: Mapped[uuid.UUID | None] = mapped_column(Uuid, nullable=True)
+    confirmed_by: Mapped[uuid.UUID | None] = mapped_column(
+        Uuid,
+        ForeignKey("users.id", ondelete="SET NULL"),
+        nullable=True,
+    )
+    confirmed_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        server_default=func.now(),
+    )
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        server_default=func.now(),
     )
 
 

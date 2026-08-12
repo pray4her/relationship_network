@@ -37,11 +37,13 @@ from relationship_network_api.job_service import (
     JOB_NOT_FOUND_DETAIL,
     JOB_QUOTA_EXCEEDED_DETAIL,
     JOB_STATUS_CONFLICT_DETAIL,
+    REQUIREMENT_VERSION_REQUIRED_DETAIL,
     JobMaterialView,
     JobNotDraftError,
     JobNotFoundError,
     JobStatusConflictError,
     JobView,
+    RequirementVersionRequiredError,
 )
 from relationship_network_api.models import JobStatus  # noqa: TC001
 from relationship_network_api.object_storage_service import (
@@ -296,6 +298,11 @@ async def activate_job(
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
             detail=JOB_STATUS_CONFLICT_DETAIL,
+        ) from error
+    except RequirementVersionRequiredError as error:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail=REQUIREMENT_VERSION_REQUIRED_DETAIL,
         ) from error
     except CompanyArchivedError as error:
         raise HTTPException(

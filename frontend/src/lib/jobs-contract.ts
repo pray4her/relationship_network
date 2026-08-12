@@ -5,6 +5,7 @@ export const jobsErrorDetails = [
   "job_not_draft",
   "job_status_conflict",
   "job_quota_exceeded",
+  "requirement_version_required",
   "company_not_found",
   "company_archived",
   "invalid_document",

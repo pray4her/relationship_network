@@ -11,7 +11,15 @@ from sqlalchemy import select, text
 from sqlalchemy.exc import DBAPIError
 
 from relationship_network_api.document_text import MAX_DOCUMENT_BYTES
-from relationship_network_api.models import Company, Job, JobMaterial, TenantAuditEvent
+from relationship_network_api.llm_assets import manifest
+from relationship_network_api.models import (
+    Company,
+    Job,
+    JobMaterial,
+    JobRequirementDraft,
+    JobRequirementVersion,
+    TenantAuditEvent,
+)
 from relationship_network_api.tenant_context import set_tenant_context
 from relationship_network_api.usage_service import get_usage_summary
 
@@ -64,6 +72,69 @@ async def create_draft_job(client: AsyncClient, company_id: uuid.UUID, title: st
     body = created.json()
     assert body["status"] == "draft"
     return uuid.UUID(body["id"])
+
+
+async def seed_requirement_version(
+    stack: Stack,
+    *,
+    tenant_id: uuid.UUID,
+    job_id: uuid.UUID,
+    actor_user_id: uuid.UUID | None = None,
+) -> uuid.UUID:
+    """Insert a minimal confirmed requirement version so activation gates can pass."""
+    draft_id = uuid.uuid4()
+    version_id = uuid.uuid4()
+    result_json: dict[str, object] = {
+        "hard_conditions": [],
+        "preference_conditions": [],
+        "research_topic_query": {
+            "value": "seeded topic",
+            "model_value": "seeded topic",
+            "last_modified_by": None,
+            "last_modified_at": None,
+        },
+        "unsupported_conditions": [],
+        "source_conflicts": [],
+        "removed_facts": [],
+    }
+    async with stack.session_factory() as session:
+        await set_tenant_context(session, tenant_id)
+        session.add(
+            JobRequirementDraft(
+                id=draft_id,
+                tenant_id=tenant_id,
+                job_id=job_id,
+                task_id=None,
+                input_snapshot_id=None,
+                source_version_id=None,
+                requirement_schema_version_id=manifest.JOB_REQUIREMENT_SCHEMA_V2.id,
+                status="confirmed",
+                revision=1,
+                result_json=result_json,
+                created_by=actor_user_id,
+                updated_by=actor_user_id,
+            )
+        )
+        await session.flush()
+        session.add(
+            JobRequirementVersion(
+                id=version_id,
+                tenant_id=tenant_id,
+                job_id=job_id,
+                version_number=1,
+                requirement_schema_version_id=manifest.JOB_REQUIREMENT_SCHEMA_V2.id,
+                result_json=result_json,
+                draft_id=draft_id,
+                input_snapshot_id=None,
+                source_version_id=None,
+                confirmed_by=actor_user_id,
+            )
+        )
+        await session.flush()
+        job = (await session.execute(select(Job).where(Job.id == job_id))).scalar_one()
+        job.current_requirement_version_id = version_id
+        await session.commit()
+    return version_id
 
 
 async def active_jobs_used(stack: Stack, tenant_id: uuid.UUID) -> int:
@@ -119,6 +190,9 @@ async def test_job_lifecycle_quota_and_audit(  # noqa: PLR0915 (sequential lifec
     assert oversized.json() == {"detail": "document_too_large"}
 
     # Trial allows two active jobs.
+    await seed_requirement_version(stack, tenant_id=tenant_id, job_id=job_1)
+    await seed_requirement_version(stack, tenant_id=tenant_id, job_id=job_2)
+    await seed_requirement_version(stack, tenant_id=tenant_id, job_id=job_3)
     first = await client.post(f"/jobs/{job_1}/activate")
     assert first.status_code == 200
     assert first.json()["status"] == "active"
@@ -289,9 +363,10 @@ async def test_job_rls_blocks_cross_tenant_access(stack: Stack, client: AsyncCli
 @pytest.mark.anyio
 @pytest.mark.integration
 async def test_job_guards_on_archived_company(stack: Stack, client: AsyncClient) -> None:
-    _ = await register_owner(stack, client)
+    tenant_id = await register_owner(stack, client)
     company_id = await create_company(client)
     draft_job = await create_draft_job(client, company_id, "归档前的草稿")
+    await seed_requirement_version(stack, tenant_id=tenant_id, job_id=draft_job)
 
     archived = await client.post(f"/companies/{company_id}/archive")
     assert archived.status_code == 200

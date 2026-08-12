@@ -21,6 +21,10 @@ class RequirementSchemaAsset:
     field_catalog: dict[str, tuple[str, ...]]
     chinese_identity_values: tuple[str, ...]
     output_limits: dict[str, int]
+    editor_package: str | None = None
+    editor_path: str | None = None
+    editor_sha256: str | None = None
+    editor_schema_id: str | None = None
 
 
 @dataclass(frozen=True)
@@ -74,6 +78,10 @@ JOB_REQUIREMENT_SCHEMA_V2: Final = RequirementSchemaAsset(
     field_catalog=JOB_REQUIREMENT_SCHEMA_V1.field_catalog,
     chinese_identity_values=JOB_REQUIREMENT_SCHEMA_V1.chinese_identity_values,
     output_limits=JOB_REQUIREMENT_SCHEMA_V1.output_limits,
+    editor_package="relationship_network_api.llm_assets.job_requirement",
+    editor_path="editor_schema_v2.json",
+    editor_sha256="3ffebbb8ac7336612a1eccb2dd70ee7b1bafe3efedc123759dee4fb2fd6a32ec",
+    editor_schema_id="urn:relationship-network:job-requirement-editor-schema:v2",
 )
 
 JOB_REQUIREMENT_PROMPT_V2: Final = PromptAsset(
@@ -120,6 +128,29 @@ def validate_deployed_assets() -> None:
         if schema.get("$id") != asset.schema_id:
             message = f"Schema ID mismatch for {asset.id}"
             raise LlmAssetError(message)
+        editor_declaration = (
+            asset.editor_package,
+            asset.editor_path,
+            asset.editor_sha256,
+            asset.editor_schema_id,
+        )
+        if any(part is not None for part in editor_declaration):
+            if any(part is None for part in editor_declaration):
+                message = f"incomplete editor Schema declaration for {asset.id}"
+                raise LlmAssetError(message)
+            editor_content = _read_asset(
+                cast("str", asset.editor_package),
+                cast("str", asset.editor_path),
+            )
+            _verify_hash(
+                editor_content,
+                asset_id=f"{asset.id}:editor",
+                expected_sha256=cast("str", asset.editor_sha256),
+            )
+            editor_schema = cast("dict[str, object]", json.loads(editor_content))
+            if editor_schema.get("$id") != asset.editor_schema_id:
+                message = f"editor Schema ID mismatch for {asset.id}"
+                raise LlmAssetError(message)
     for asset in PROMPT_ASSETS:
         if asset.compatible_schema_version_id not in known_schema_ids:
             message = f"unknown compatible Schema for {asset.id}"
@@ -135,6 +166,23 @@ def read_requirement_schema(asset_id: str) -> dict[str, object]:
         raise LlmAssetError(message)
     content = _read_asset(asset.package, asset.path)
     _verify_hash(content, asset_id=asset.id, expected_sha256=asset.sha256)
+    return cast("dict[str, object]", json.loads(content))
+
+
+def read_requirement_editor_schema(asset_id: str) -> dict[str, object]:
+    asset = next((item for item in REQUIREMENT_SCHEMA_ASSETS if item.id == asset_id), None)
+    if asset is None or asset.editor_package is None or asset.editor_path is None:
+        message = f"unknown requirement editor Schema asset: {asset_id}"
+        raise LlmAssetError(message)
+    if asset.editor_sha256 is None:
+        message = f"missing requirement editor Schema hash: {asset_id}"
+        raise LlmAssetError(message)
+    content = _read_asset(asset.editor_package, asset.editor_path)
+    _verify_hash(
+        content,
+        asset_id=f"{asset.id}:editor",
+        expected_sha256=asset.editor_sha256,
+    )
     return cast("dict[str, object]", json.loads(content))
 
 

@@ -10,7 +10,11 @@ from typing import TYPE_CHECKING, Final, final
 from sqlalchemy import case, func, select
 from sqlalchemy.exc import IntegrityError
 
-from relationship_network_api import tenant_audit_service, tenant_context
+from relationship_network_api import (
+    job_requirement_draft_service,
+    tenant_audit_service,
+    tenant_context,
+)
 from relationship_network_api.job_requirement_validation import (
     NormalizedSource,
     normalize_sent_text,
@@ -28,6 +32,8 @@ from relationship_network_api.models import (
     JobRequirementInputSource,
     JobRequirementParsingTask,
     JobRequirementParsingTaskEvent,
+    JobRequirementSchemaVersion,
+    JobRequirementVersion,
     LlmConfigurationCurrent,
     LlmConfigurationVersion,
     Tenant,
@@ -53,6 +59,7 @@ EMPTY_MATERIAL_CORRECTION: Final = "requirement_material_correction_empty"
 INPUT_TOO_LARGE: Final = "requirement_input_too_large"
 TASK_EXISTS: Final = "requirement_task_exists"
 DRAFT_EXISTS: Final = "requirement_draft_exists"
+DRAFT_REPLACEMENT_CONFLICT: Final = "requirement_draft_replacement_conflict"
 CONFIGURATION_NOT_READY: Final = "requirement_configuration_not_ready"
 IDEMPOTENCY_CONFLICT: Final = "idempotency_conflict"
 CREATION_RATE_LIMITED: Final = "requirement_creation_rate_limited"
@@ -98,6 +105,7 @@ class RequirementTaskView:
     error_code: str | None
     input_snapshot_id: uuid.UUID
     configuration_version_id: uuid.UUID
+    replaces_draft_id: uuid.UUID | None
     external_call_count: int
     structured_invalid_count: int
     created_by: uuid.UUID | None
@@ -124,14 +132,50 @@ class RequirementTaskEventView:
 @dataclass(frozen=True)
 class RequirementDraftView:
     id: uuid.UUID
-    task_id: uuid.UUID
-    input_snapshot_id: uuid.UUID
+    task_id: uuid.UUID | None
+    input_snapshot_id: uuid.UUID | None
+    source_version_id: uuid.UUID | None
     requirement_schema_version_id: str
     status: str
     revision: int
     result: dict[str, object]
+    updated_by: uuid.UUID | None
+    status_changed_at: datetime
+    read_only_reason: str | None
+    field_catalog: dict[str, object]
+    chinese_identity_values: list[str]
     created_at: datetime
     updated_at: datetime
+
+
+@final
+@dataclass(frozen=True)
+class RequirementVersionSummaryView:
+    id: uuid.UUID
+    version_number: int
+    requirement_schema_version_id: str
+    draft_id: uuid.UUID
+    source_version_id: uuid.UUID | None
+    confirmed_by: uuid.UUID | None
+    confirmed_at: datetime
+    created_at: datetime
+    is_current: bool
+
+
+@final
+@dataclass(frozen=True)
+class RequirementVersionView:
+    id: uuid.UUID
+    version_number: int
+    requirement_schema_version_id: str
+    result: dict[str, object]
+    draft_id: uuid.UUID
+    input_snapshot_id: uuid.UUID | None
+    source_version_id: uuid.UUID | None
+    confirmed_by: uuid.UUID | None
+    confirmed_at: datetime
+    created_at: datetime
+    is_current: bool
 
 
 @final
@@ -142,6 +186,10 @@ class RequirementWorkspaceView:
     sources: list[RequirementSourceView]
     task: RequirementTaskView | None
     draft: RequirementDraftView | None
+    current_version: RequirementVersionView | None
+    versions: list[RequirementVersionSummaryView]
+    legacy_requirement_exempt: bool
+    matching_blocked: bool
 
 
 async def load_workspace(
@@ -193,6 +241,73 @@ async def load_workspace(
             .limit(1)
         )
     ).scalar_one_or_none()
+    draft_view: RequirementDraftView | None = None
+    if draft is not None:
+        schema = (
+            await session.execute(
+                select(JobRequirementSchemaVersion).where(
+                    JobRequirementSchemaVersion.id == draft.requirement_schema_version_id
+                )
+            )
+        ).scalar_one()
+        reason = await job_requirement_draft_service.read_only_reason(
+            session,
+            job=job,
+            draft=draft,
+        )
+        draft_view = _draft_view(draft, schema=schema, read_only_reason=reason)
+    versions = list(
+        (
+            await session.execute(
+                select(JobRequirementVersion)
+                .where(
+                    JobRequirementVersion.tenant_id == tenant_id,
+                    JobRequirementVersion.job_id == job_id,
+                )
+                .order_by(
+                    JobRequirementVersion.version_number.desc(),
+                    JobRequirementVersion.created_at.desc(),
+                )
+            )
+        )
+        .scalars()
+        .all()
+    )
+    current_id = job.current_requirement_version_id
+    current_version: RequirementVersionView | None = None
+    version_summaries: list[RequirementVersionSummaryView] = []
+    for version in versions:
+        is_current = version.id == current_id
+        version_summaries.append(
+            RequirementVersionSummaryView(
+                id=version.id,
+                version_number=version.version_number,
+                requirement_schema_version_id=version.requirement_schema_version_id,
+                draft_id=version.draft_id,
+                source_version_id=version.source_version_id,
+                confirmed_by=version.confirmed_by,
+                confirmed_at=version.confirmed_at,
+                created_at=version.created_at,
+                is_current=is_current,
+            )
+        )
+        if is_current:
+            current_version = RequirementVersionView(
+                id=version.id,
+                version_number=version.version_number,
+                requirement_schema_version_id=version.requirement_schema_version_id,
+                result=version.result_json,
+                draft_id=version.draft_id,
+                input_snapshot_id=version.input_snapshot_id,
+                source_version_id=version.source_version_id,
+                confirmed_by=version.confirmed_by,
+                confirmed_at=version.confirmed_at,
+                created_at=version.created_at,
+                is_current=True,
+            )
+    matching_blocked = (
+        job.status != JOB_STATUS_ARCHIVED and current_id is None and job.legacy_requirement_exempt
+    )
     return RequirementWorkspaceView(
         configuration_ready=_configuration_ready(configuration),
         input_character_limit=configuration.input_character_limit,
@@ -220,7 +335,11 @@ async def load_workspace(
             ],
         ],
         task=None if task is None else _task_view(task),
-        draft=None if draft is None else _draft_view(draft),
+        draft=draft_view,
+        current_version=current_version,
+        versions=version_summaries,
+        legacy_requirement_exempt=job.legacy_requirement_exempt,
+        matching_blocked=matching_blocked,
     )
 
 
@@ -346,11 +465,25 @@ async def create_parsing_task(  # noqa: C901, PLR0912, PLR0913, PLR0915
             job_id=job_id,
             code=INPUT_TOO_LARGE,
         )
-    effective_request_sha256 = _effective_request_sha256(
-        job_id=job_id,
-        configuration_version_id=configuration.id,
-        sources=normalized_sources,
-    )
+    if job.status == JOB_STATUS_ARCHIVED:
+        await _reject(
+            session,
+            tenant_id=tenant_id,
+            actor_user_id=actor_user_id,
+            job_id=job_id,
+            code=JOB_ARCHIVED,
+        )
+    current_draft = (
+        await session.execute(
+            select(JobRequirementDraft)
+            .where(
+                JobRequirementDraft.tenant_id == tenant_id,
+                JobRequirementDraft.job_id == job_id,
+                JobRequirementDraft.status == "editable",
+            )
+            .with_for_update()
+        )
+    ).scalar_one_or_none()
     existing_idempotent = (
         await session.execute(
             select(JobRequirementParsingTask).where(
@@ -360,7 +493,14 @@ async def create_parsing_task(  # noqa: C901, PLR0912, PLR0913, PLR0915
         )
     ).scalar_one_or_none()
     if existing_idempotent is not None:
-        if existing_idempotent.effective_request_sha256 == effective_request_sha256:
+        existing_request_sha256 = _effective_request_sha256(
+            job_id=job_id,
+            configuration_version_id=existing_idempotent.configuration_version_id,
+            sources=normalized_sources,
+            replaces_draft_id=existing_idempotent.replaces_draft_id,
+            replaces_draft_revision=existing_idempotent.replaces_draft_revision,
+        )
+        if existing_idempotent.effective_request_sha256 == existing_request_sha256:
             return _task_view(existing_idempotent)
         await _reject(
             session,
@@ -369,6 +509,13 @@ async def create_parsing_task(  # noqa: C901, PLR0912, PLR0913, PLR0915
             job_id=job_id,
             code=IDEMPOTENCY_CONFLICT,
         )
+    effective_request_sha256 = _effective_request_sha256(
+        job_id=job_id,
+        configuration_version_id=configuration.id,
+        sources=normalized_sources,
+        replaces_draft_id=None if current_draft is None else current_draft.id,
+        replaces_draft_revision=None if current_draft is None else current_draft.revision,
+    )
     created_in_window = int(
         (
             await session.execute(
@@ -388,31 +535,6 @@ async def create_parsing_task(  # noqa: C901, PLR0912, PLR0913, PLR0915
             actor_user_id=actor_user_id,
             job_id=job_id,
             code=CREATION_RATE_LIMITED,
-        )
-    if job.status == JOB_STATUS_ARCHIVED:
-        await _reject(
-            session,
-            tenant_id=tenant_id,
-            actor_user_id=actor_user_id,
-            job_id=job_id,
-            code=JOB_ARCHIVED,
-        )
-    draft_exists = (
-        await session.execute(
-            select(JobRequirementDraft.id).where(
-                JobRequirementDraft.tenant_id == tenant_id,
-                JobRequirementDraft.job_id == job_id,
-                JobRequirementDraft.status == "editable",
-            )
-        )
-    ).scalar_one_or_none()
-    if draft_exists is not None:
-        await _reject(
-            session,
-            tenant_id=tenant_id,
-            actor_user_id=actor_user_id,
-            job_id=job_id,
-            code=DRAFT_EXISTS,
         )
     task_exists = (
         await session.execute(
@@ -448,6 +570,8 @@ async def create_parsing_task(  # noqa: C901, PLR0912, PLR0913, PLR0915
         configuration_version_id=configuration.id,
         idempotency_key=idempotency_key,
         effective_request_sha256=effective_request_sha256,
+        replaces_draft_id=None if current_draft is None else current_draft.id,
+        replaces_draft_revision=None if current_draft is None else current_draft.revision,
         status="queued",
         created_by=actor_user_id,
     )
@@ -725,10 +849,14 @@ def _effective_request_sha256(
     job_id: uuid.UUID,
     configuration_version_id: uuid.UUID,
     sources: list[NormalizedSource],
+    replaces_draft_id: uuid.UUID | None,
+    replaces_draft_revision: int | None,
 ) -> str:
     canonical = {
         "configuration_version_id": str(configuration_version_id),
         "job_id": str(job_id),
+        "replaces_draft_id": None if replaces_draft_id is None else str(replaces_draft_id),
+        "replaces_draft_revision": replaces_draft_revision,
         "sources": [
             {
                 "content_sha256": sha256_text(source.sent_text),
@@ -805,6 +933,7 @@ def _task_view(task: JobRequirementParsingTask) -> RequirementTaskView:
         error_code=task.error_code,
         input_snapshot_id=task.input_snapshot_id,
         configuration_version_id=task.configuration_version_id,
+        replaces_draft_id=task.replaces_draft_id,
         external_call_count=task.external_call_count,
         structured_invalid_count=task.structured_invalid_count,
         created_by=task.created_by,
@@ -837,15 +966,30 @@ def _event_view(event: JobRequirementParsingTaskEvent) -> RequirementTaskEventVi
     )
 
 
-def _draft_view(draft: JobRequirementDraft) -> RequirementDraftView:
+def _draft_view(
+    draft: JobRequirementDraft,
+    *,
+    schema: JobRequirementSchemaVersion,
+    read_only_reason: str | None,
+) -> RequirementDraftView:
     return RequirementDraftView(
         id=draft.id,
         task_id=draft.task_id,
         input_snapshot_id=draft.input_snapshot_id,
+        source_version_id=draft.source_version_id,
         requirement_schema_version_id=draft.requirement_schema_version_id,
         status=draft.status,
         revision=draft.revision,
         result=draft.result_json,
+        updated_by=draft.updated_by,
+        status_changed_at=draft.status_changed_at,
+        read_only_reason=read_only_reason,
+        field_catalog=draft_view_catalog(schema.field_catalog),
+        chinese_identity_values=list(schema.chinese_identity_values),
         created_at=draft.created_at,
         updated_at=draft.updated_at,
     )
+
+
+def draft_view_catalog(value: dict[str, object]) -> dict[str, object]:
+    return json.loads(json.dumps(value))
