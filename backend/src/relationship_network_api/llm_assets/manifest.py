@@ -202,3 +202,11 @@ def prompt_asset(asset_id: str) -> PromptAsset:
         message = f"unknown prompt asset: {asset_id}"
         raise LlmAssetError(message)
     return asset
+
+
+def schema_asset(asset_id: str) -> RequirementSchemaAsset:
+    asset = next((item for item in REQUIREMENT_SCHEMA_ASSETS if item.id == asset_id), None)
+    if asset is None:
+        message = f"unknown requirement Schema asset: {asset_id}"
+        raise LlmAssetError(message)
+    return asset

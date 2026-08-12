@@ -8,6 +8,7 @@ import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Button } from "@/components/ui/button"
 import { Field, FieldDescription, FieldLabel } from "@/components/ui/field"
 import { Input } from "@/components/ui/input"
+import { Spinner } from "@/components/ui/spinner"
 
 type InviteRegisterFormProps = {
   readonly action: (state: AuthFormState, formData: FormData) => Promise<AuthFormState>
@@ -59,7 +60,8 @@ export function InviteRegisterForm({
         type="text"
       />
 
-      <Button className="w-full" loading={isPending} type="submit">
+      <Button className="w-full" disabled={isPending} type="submit">
+        {isPending ? <Spinner data-icon="inline-start" /> : null}
         注册并接受邀请
       </Button>
     </form>

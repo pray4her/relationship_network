@@ -6,7 +6,6 @@ import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Button } from "@/components/ui/button"
 import {
   Dialog,
-  DialogBody,
   DialogContent,
   DialogDescription,
   DialogHeader,
@@ -45,13 +44,13 @@ function ResponseState({ state }: { readonly state: ViewState }) {
       return <p>{state.kind === "loading" ? "正在解密并读取原始响应…" : "尚未请求原始响应。"}</p>
     case "expired":
       return (
-        <Alert variant="warning">
+        <Alert>
           <AlertDescription>原始响应不存在或已超过 90 天保留期。</AlertDescription>
         </Alert>
       )
     case "keyUnavailable":
       return (
-        <Alert variant="warning">
+        <Alert>
           <AlertDescription>历史密钥不可用，无法解密这条原始响应。</AlertDescription>
         </Alert>
       )
@@ -69,8 +68,8 @@ function ResponseState({ state }: { readonly state: ViewState }) {
       )
     case "success":
       return (
-        <div className="grid min-w-0 gap-[var(--space-4)]">
-          <dl className="grid grid-cols-2 gap-[var(--space-3)] text-sm max-sm:grid-cols-1">
+        <div className="grid min-w-0 gap-4">
+          <dl className="grid grid-cols-2 gap-3 text-sm max-sm:grid-cols-1">
             <div>
               <dt className="text-muted-foreground">HTTP 状态</dt>
               <dd className="m-0 font-mono tabular-nums">{state.response.http_status ?? "—"}</dd>
@@ -90,7 +89,7 @@ function ResponseState({ state }: { readonly state: ViewState }) {
               </dd>
             </div>
           </dl>
-          <pre className="m-0 max-h-[55vh] overflow-auto rounded-[var(--radius-md)] border border-border bg-surface-soft p-[var(--space-4)] whitespace-pre-wrap break-words font-mono text-sm leading-relaxed">
+          <pre className="m-0 max-h-[55vh] overflow-auto rounded-md border border-border bg-muted p-4 whitespace-pre-wrap break-words font-mono text-sm leading-relaxed">
             {formatBody(state.response)}
           </pre>
         </div>
@@ -146,16 +145,16 @@ export function LlmRawResponseDialog({
         {available ? "查看原始响应" : "原始响应不可用"}
       </Button>
       <Dialog onOpenChange={setOpen} open={open}>
-        <DialogContent size="lg">
+        <DialogContent className="sm:max-w-2xl">
           <DialogHeader>
             <DialogTitle>原始供应商响应</DialogTitle>
             <DialogDescription>
               此操作已写入平台审计日志。页面不会缓存解密后的响应。
             </DialogDescription>
           </DialogHeader>
-          <DialogBody aria-live="polite">
+          <div aria-live="polite" className="min-w-0">
             <ResponseState state={state} />
-          </DialogBody>
+          </div>
         </DialogContent>
       </Dialog>
     </>

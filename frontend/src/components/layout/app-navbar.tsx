@@ -121,7 +121,7 @@ export function AppNavbar({ account }: { readonly account: AppNavbarAccount | nu
               <DropdownMenuTrigger
                 render={
                   <Button aria-label="打开账户菜单" size="sm" variant="ghost">
-                    <Avatar aria-hidden="true" size="sm" variant="initials">
+                    <Avatar aria-hidden="true" size="sm">
                       <AvatarFallback>{initialFor(account.displayName)}</AvatarFallback>
                     </Avatar>
                     <span className="max-w-32 truncate max-md:sr-only">{account.displayName}</span>
@@ -164,12 +164,10 @@ export function AppNavbar({ account }: { readonly account: AppNavbarAccount | nu
         />
       </NavbarInner>
       {adminMode ? (
-        <div className="border-t-[length:var(--border-width)] border-warning bg-warning-soft">
-          <div className="mx-auto flex min-h-[var(--control-height-sm)] w-full max-w-[1400px] items-center gap-[var(--space-3)] px-[var(--space-6)] py-[var(--space-1)]">
-            <Badge dot size="sm" style="subtle" variant="warning">
-              平台管理模式
-            </Badge>
-            <span className="font-sans text-[length:var(--text-caption)] leading-[var(--text-caption--line-height)] text-foreground-body">
+        <div className="border-t border-warning bg-warning/10">
+          <div className="mx-auto flex min-h-8 w-full max-w-[1400px] items-center gap-3 px-6 py-1">
+            <Badge variant="outline">平台管理模式</Badge>
+            <span className="text-xs leading-normal text-muted-foreground">
               此区域可跨租户读取，请确认操作对象。
             </span>
           </div>

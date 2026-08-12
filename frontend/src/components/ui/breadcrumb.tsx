@@ -2,29 +2,20 @@ import { mergeProps } from "@base-ui/react/merge-props"
 import { useRender } from "@base-ui/react/use-render"
 import { ChevronRightIcon, MoreHorizontalIcon } from "lucide-react"
 import type * as React from "react"
-
 import { cn } from "@/lib/utils"
 
-/** 视觉与 markup 规格：frontend/src/styles/breadcrumb.css。 */
 function Breadcrumb({ className, ...props }: React.ComponentProps<"nav">) {
-  return (
-    <nav
-      aria-label="面包屑"
-      className={cn("min-w-0", className)}
-      data-slot="breadcrumb"
-      {...props}
-    />
-  )
+  return <nav aria-label="面包屑" data-slot="breadcrumb" className={cn(className)} {...props} />
 }
 
 function BreadcrumbList({ className, ...props }: React.ComponentProps<"ol">) {
   return (
     <ol
+      data-slot="breadcrumb-list"
       className={cn(
-        "m-0 inline-flex list-none flex-wrap items-center gap-[var(--space-2)] p-0 font-sans text-[length:var(--text-nav-link)] leading-[var(--text-nav-link--line-height)] font-medium",
+        "flex flex-wrap items-center gap-1.5 text-sm wrap-break-word text-muted-foreground",
         className,
       )}
-      data-slot="breadcrumb-list"
       {...props}
     />
   )
@@ -33,8 +24,8 @@ function BreadcrumbList({ className, ...props }: React.ComponentProps<"ol">) {
 function BreadcrumbItem({ className, ...props }: React.ComponentProps<"li">) {
   return (
     <li
-      className={cn("inline-flex min-w-0 items-center", className)}
       data-slot="breadcrumb-item"
+      className={cn("inline-flex items-center gap-1", className)}
       {...props}
     />
   )
@@ -45,27 +36,26 @@ function BreadcrumbLink({ className, render, ...props }: useRender.ComponentProp
     defaultTagName: "a",
     props: mergeProps<"a">(
       {
-        className: cn(
-          "inline-flex min-w-0 items-center gap-[var(--space-1)] truncate rounded-[var(--radius-xs)] text-muted-foreground no-underline transition-[color,box-shadow] duration-fast ease-standard hover:text-muted-foreground-hover focus-visible:outline-none focus-visible:shadow-[0_0_0_var(--ring-width)_var(--ring-focus)] data-[state=hover]:text-muted-foreground-hover data-[state=focus-visible]:shadow-[0_0_0_var(--ring-width)_var(--ring-focus)] motion-reduce:transition-none",
-          className,
-        ),
+        className: cn("transition-colors hover:text-foreground", className),
       },
       props,
     ),
     render,
-    state: { slot: "breadcrumb-link" },
+    state: {
+      slot: "breadcrumb-link",
+    },
   })
 }
 
 function BreadcrumbPage({ className, ...props }: React.ComponentProps<"span">) {
   return (
     <span
-      aria-current="page"
-      className={cn(
-        "inline-flex min-w-0 items-center gap-[var(--space-1)] truncate rounded-[var(--radius-sm)] bg-selected-bg px-[var(--space-2)] py-[var(--space-0-5)] text-foreground shadow-[inset_0_calc(-1*var(--border-width-strong))_0_var(--selected-border)]",
-        className,
-      )}
       data-slot="breadcrumb-page"
+      role="link"
+      tabIndex={-1}
+      aria-disabled="true"
+      aria-current="page"
+      className={cn("font-normal text-foreground", className)}
       {...props}
     />
   )
@@ -74,13 +64,10 @@ function BreadcrumbPage({ className, ...props }: React.ComponentProps<"span">) {
 function BreadcrumbSeparator({ children, className, ...props }: React.ComponentProps<"li">) {
   return (
     <li
-      aria-hidden="true"
-      className={cn(
-        "inline-flex shrink-0 list-none items-center text-muted-foreground [&_svg]:size-[var(--icon-size-xs)] [&_svg_path]:[stroke-width:var(--stroke-width-icon)]",
-        className,
-      )}
       data-slot="breadcrumb-separator"
       role="presentation"
+      aria-hidden="true"
+      className={cn("[&>svg]:size-3.5", className)}
       {...props}
     >
       {children ?? <ChevronRightIcon />}
@@ -88,25 +75,18 @@ function BreadcrumbSeparator({ children, className, ...props }: React.ComponentP
   )
 }
 
-function BreadcrumbEllipsis({
-  className,
-  type = "button",
-  ...props
-}: React.ComponentProps<"button">) {
+function BreadcrumbEllipsis({ className, ...props }: React.ComponentProps<"span">) {
   return (
-    <button
-      aria-haspopup="menu"
-      aria-label="显示隐藏的路径"
-      className={cn(
-        "inline-flex items-center justify-center rounded-[var(--radius-sm)] border-[length:var(--border-width)] border-transparent bg-transparent p-[var(--space-1)] text-muted-foreground transition-[color,background-color,box-shadow] duration-fast ease-standard hover:bg-accent hover:text-accent-foreground focus-visible:outline-none focus-visible:shadow-[0_0_0_var(--ring-width)_var(--ring-focus)] aria-expanded:bg-selected-bg aria-expanded:text-foreground data-[state=hover]:bg-accent data-[state=hover]:text-accent-foreground data-[state=focus-visible]:shadow-[0_0_0_var(--ring-width)_var(--ring-focus)] data-[state=expanded]:bg-selected-bg data-[state=expanded]:text-foreground motion-reduce:transition-none [&_svg]:size-[var(--icon-size-sm)]",
-        className,
-      )}
+    <span
       data-slot="breadcrumb-ellipsis"
-      type={type}
+      role="presentation"
+      aria-hidden="true"
+      className={cn("flex size-5 items-center justify-center [&>svg]:size-4", className)}
       {...props}
     >
       <MoreHorizontalIcon />
-    </button>
+      <span className="sr-only">More</span>
+    </span>
   )
 }
 

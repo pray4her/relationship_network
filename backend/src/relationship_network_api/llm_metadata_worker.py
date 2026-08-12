@@ -218,8 +218,10 @@ async def _append_retry_or_unavailable(
             if task_id is None:
                 message = "tenant metadata retry requires a parsing task"
                 raise RuntimeError(message)
-            session.add(
-                TenantOutboxEvent(
+            _ = await session.execute(
+                insert(TenantOutboxEvent)
+                .inline()
+                .values(
                     id=uuid.uuid4(),
                     tenant_id=tenant_id,
                     topic=LLM_METADATA_OUTBOX_TOPIC,

@@ -22,17 +22,16 @@ import {
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
 
 describe("new UI navigation and form controls", () => {
-  it("renders avatar fallback, size, variant and presence status", () => {
+  it("renders avatar fallback, size and presence status", () => {
     render(
-      <Avatar aria-label="林宁，在线" size="lg" variant="initials">
+      <Avatar aria-label="林宁，在线" size="lg">
         <AvatarFallback>林</AvatarFallback>
-        <AvatarBadge status="online" />
+        <AvatarBadge data-status="online" />
       </Avatar>,
     )
 
     const avatar = screen.getByLabelText("林宁，在线")
     expect(avatar).toHaveAttribute("data-size", "lg")
-    expect(avatar).toHaveAttribute("data-variant", "initials")
     expect(avatar.querySelector('[data-slot="avatar-badge"]')).toHaveAttribute(
       "data-status",
       "online",
@@ -84,7 +83,7 @@ describe("new UI navigation and form controls", () => {
     expect(screen.getByRole("navigation", { name: "面包屑" })).toBeInTheDocument()
     expect(screen.getByRole("link", { name: "企业" })).toHaveAttribute("href", "/companies")
     expect(screen.getByText("示例企业")).toHaveAttribute("aria-current", "page")
-    expect(screen.queryByRole("link", { name: "示例企业" })).not.toBeInTheDocument()
+    expect(screen.getByText("示例企业")).toHaveAttribute("aria-disabled", "true")
   })
 
   it("ties the mobile navigation trigger to the shared navigation panel", () => {

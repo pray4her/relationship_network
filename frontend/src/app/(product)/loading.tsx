@@ -17,26 +17,26 @@ export default function ProductPageLoading() {
     <Page aria-busy="true" aria-label="正在加载页面">
       <PageHeader>
         <PageHeaderContent>
-          <Skeleton className="h-[var(--space-12)] max-w-xl" />
-          <Skeleton className="max-w-2xl" variant="text" />
+          <Skeleton className="h-12 max-w-xl" />
+          <Skeleton className="h-4 max-w-2xl" />
         </PageHeaderContent>
       </PageHeader>
       <PageSection>
         <PageSectionHeader>
           <PageSectionHeaderContent className="w-full">
-            <Skeleton className="max-w-xs" variant="text" />
+            <Skeleton className="h-4 max-w-xs" />
           </PageSectionHeaderContent>
         </PageSectionHeader>
         <DataRegion>
-          <DataRegionContent className="divide-y divide-border-soft">
+          <DataRegionContent className="divide-y divide-border">
             {loadingRows.map((row) => (
               <div
-                className="grid grid-cols-[minmax(10rem,1fr)_minmax(7rem,0.45fr)_minmax(8rem,0.55fr)] gap-[var(--space-6)] px-[var(--space-5)] py-[var(--space-4)] max-sm:grid-cols-[1fr_auto]"
+                className="grid grid-cols-[minmax(10rem,1fr)_minmax(7rem,0.45fr)_minmax(8rem,0.55fr)] gap-6 px-5 py-4 max-sm:grid-cols-[1fr_auto]"
                 key={row}
               >
-                <Skeleton variant="text" />
-                <Skeleton className="max-sm:hidden" variant="text" />
-                <Skeleton className="w-24" variant="text" />
+                <Skeleton className="h-4" />
+                <Skeleton className="h-4 max-sm:hidden" />
+                <Skeleton className="h-4 w-24" />
               </div>
             ))}
           </DataRegionContent>

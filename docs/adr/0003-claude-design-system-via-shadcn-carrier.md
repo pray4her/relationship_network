@@ -1,5 +1,7 @@
 # 前端视觉系统切换至 Claude 设计体系(showcase 为规格,supersede ADR 0001 相应条款)
 
+> Status: 视觉规格条款被 [ADR 0024](./0024-openai-design-system-via-shadcn-carrier.md) supersede(OpenAI 测量规格 + globals.css 单事实源);shadcn + Tailwind v4 载体、语义 token、禁止双样式体系仍有效。
+
 前端视觉规格改以 `frontend/showcase/`(静态 HTML)+ `frontend/src/styles/`(tokens.css 与 40 个组件 CSS)为唯一标准:primary 从近黑 `#141413` 改为珊瑚橘 `#cc785c`,接受多强调色(accent-teal/accent-amber/图表色),字体栈切到 Copernicus(衬线展示)/StyreneB(sans)/JetBrains Mono 的 fallback 链。**ADR 0001 中被 supersede 的条款**:`#d97757` 为唯一强调色、自托管第三方再分发的 Anthropic Sans/Mono(其许可不确定性随之解除);**仍然有效的条款**:shadcn + Tailwind v4 为载体、仅浅色主题、组件内只允许语义 token、禁止双样式体系并存于运行时。保留载体的理由是 ADR 0001 否决"双体系并存"的逻辑依然成立,本次只换风格不换架构,避免第二次全量重写。
 
 ## Considered Options

@@ -193,7 +193,7 @@ export default async function JobsPage({ searchParams }: JobsPageProps) {
         <DataRegion>
           <DataRegionContent>
             {jobsResult.jobs.length === 0 ? (
-              <Empty variant="first-use">
+              <Empty>
                 <EmptyMedia>
                   <BriefcaseBusinessIcon />
                 </EmptyMedia>

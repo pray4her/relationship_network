@@ -5,6 +5,7 @@ import { useActionState } from "react"
 import type { AcceptInvitationFormState } from "@/app/actions/invitations"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Button } from "@/components/ui/button"
+import { Spinner } from "@/components/ui/spinner"
 
 type AcceptInviteFormProps = {
   readonly action: (
@@ -26,7 +27,8 @@ export function AcceptInviteForm({ action, token }: AcceptInviteFormProps) {
       ) : null}
 
       <input name="token" type="hidden" value={token} />
-      <Button className="w-full" loading={isPending} type="submit">
+      <Button className="w-full" disabled={isPending} type="submit">
+        {isPending ? <Spinner data-icon="inline-start" /> : null}
         接受邀请
       </Button>
     </form>

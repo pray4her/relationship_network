@@ -54,7 +54,7 @@ type SearchParameters = Record<string, string | string[] | undefined>
 type LlmCallListPageProps = { readonly searchParams: Promise<SearchParameters> }
 
 const selectClassName =
-  "h-[var(--control-height)] w-full min-w-0 rounded-[var(--radius-md)] border border-input bg-background px-[var(--button-padding-inline-sm)] text-sm outline-none focus-visible:shadow-[0_0_0_var(--ring-width)_var(--ring-focus)]"
+  "h-8 w-full min-w-0 rounded-lg border border-input bg-background px-2.5 text-sm outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50"
 
 function first(value: string | string[] | undefined): string {
   return typeof value === "string" ? value : ""
@@ -75,20 +75,24 @@ function cleanQuery(parameters: SearchParameters): Record<string, string> {
 }
 
 function OutcomeBadge({ outcome }: { readonly outcome: string | null }) {
-  if (outcome === null) return <Badge variant="neutral">等待结果</Badge>
+  if (outcome === null) return <Badge variant="outline">等待结果</Badge>
   const parsed = llmCallOutcomeSchema.safeParse(outcome)
-  if (!parsed.success) return <Badge variant="neutral">未知</Badge>
+  if (!parsed.success) return <Badge variant="outline">未知</Badge>
   const variant =
     parsed.data === "succeeded" ? "success" : parsed.data === "failed" ? "destructive" : "warning"
   return <Badge variant={variant}>{llmCallOutcomeLabels[parsed.data]}</Badge>
 }
 
 function MetadataBadge({ status }: { readonly status: string | null }) {
-  if (status === null) return <Badge variant="neutral">等待元数据</Badge>
+  if (status === null) return <Badge variant="outline">等待元数据</Badge>
   const parsed = llmCallMetadataStatusSchema.safeParse(status)
-  if (!parsed.success) return <Badge variant="neutral">未知</Badge>
+  if (!parsed.success) return <Badge variant="outline">未知</Badge>
   const variant =
-    parsed.data === "available" ? "success" : parsed.data === "retry_scheduled" ? "info" : "warning"
+    parsed.data === "available"
+      ? "success"
+      : parsed.data === "retry_scheduled"
+        ? "secondary"
+        : "warning"
   return <Badge variant={variant}>{llmCallMetadataStatusLabels[parsed.data]}</Badge>
 }
 
@@ -252,11 +256,11 @@ export default async function LlmCallListPage({ searchParams }: LlmCallListPageP
                   本页最多显示 50 条，按创建时间倒序。
                 </p>
               </div>
-              <Badge variant="neutral">{result.page.calls.length} 条</Badge>
+              <Badge variant="outline">{result.page.calls.length} 条</Badge>
             </DataRegionHeader>
             <DataRegionContent>
               {result.page.calls.length === 0 ? (
-                <Empty variant="no-results">
+                <Empty>
                   <EmptyMedia>
                     <SearchXIcon />
                   </EmptyMedia>
@@ -308,7 +312,7 @@ export default async function LlmCallListPage({ searchParams }: LlmCallListPageP
                           <MetadataBadge status={call.metadata_status} />
                         </TableCell>
                         <TableCell>
-                          <Badge variant={call.raw_response_available ? "info" : "neutral"}>
+                          <Badge variant={call.raw_response_available ? "secondary" : "outline"}>
                             {call.raw_response_available ? "可查看" : "不可用"}
                           </Badge>
                         </TableCell>

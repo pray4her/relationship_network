@@ -13,7 +13,6 @@ import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import {
   AlertDialog,
   AlertDialogAction,
-  AlertDialogBody,
   AlertDialogCancel,
   AlertDialogContent,
   AlertDialogDescription,
@@ -76,6 +75,8 @@ const errorLabels: Record<string, string> = {
   model_unavailable: "该模型当前不可用或无法满足参数要求。",
   openrouter_not_configured: "服务端尚未配置 OpenRouter API Key。",
   privacy_routing_rejected: "没有满足零数据保留要求的供应商路由。",
+  raw_response_encryption_not_configured:
+    "服务端未配置 RN_LLM_RAW_RESPONSE_KEYS / RN_LLM_RAW_RESPONSE_ACTIVE_KEY_ID，无法加密保存探测响应。",
   stale_current_configuration: "探测期间当前配置已变化，本次没有启用。",
   unsupported_parameters: "模型不支持严格结构化输出所需参数。",
 }
@@ -204,21 +205,21 @@ function WorkbenchProvider({
 function ConfigurationFacts({ workspace }: { readonly workspace: LlmWorkspace }) {
   const current = workspace.current
   return (
-    <dl className="grid grid-cols-2 gap-x-[var(--space-8)] gap-y-[var(--space-4)] max-sm:grid-cols-1">
+    <dl className="grid grid-cols-2 gap-x-8 gap-y-4 max-sm:grid-cols-1">
       <div>
-        <dt className="text-caption text-muted-foreground">模型</dt>
+        <dt className="text-xs text-muted-foreground">模型</dt>
         <dd className="m-0 font-medium">{current.model}</dd>
       </div>
       <div>
-        <dt className="text-caption text-muted-foreground">提示词版本</dt>
+        <dt className="text-xs text-muted-foreground">提示词版本</dt>
         <dd className="m-0 font-mono text-sm">{current.prompt_version_id}</dd>
       </div>
       <div>
-        <dt className="text-caption text-muted-foreground">Temperature</dt>
+        <dt className="text-xs text-muted-foreground">Temperature</dt>
         <dd className="m-0 tabular-nums">{current.temperature}</dd>
       </div>
       <div>
-        <dt className="text-caption text-muted-foreground">输出 / 超时</dt>
+        <dt className="text-xs text-muted-foreground">输出 / 超时</dt>
         <dd className="m-0 tabular-nums">
           {current.max_output_tokens} tokens · {current.request_timeout_seconds} 秒
         </dd>
@@ -230,9 +231,9 @@ function ConfigurationFacts({ workspace }: { readonly workspace: LlmWorkspace })
 function CurrentConfiguration() {
   const { workspace } = useWorkbench()
   return (
-    <Card variant="elevated">
+    <Card>
       <CardHeader>
-        <ShieldCheckIcon aria-hidden="true" className="size-[var(--icon-size-md)] text-primary" />
+        <ShieldCheckIcon aria-hidden="true" className="size-5 text-primary" />
         <div>
           <CardTitle>当前启用配置</CardTitle>
           <CardDescription>
@@ -278,7 +279,7 @@ function CandidateForm() {
   }
 
   return (
-    <Card variant="outlined">
+    <Card>
       <CardHeader>
         <div>
           <CardTitle>候选配置</CardTitle>
@@ -286,7 +287,7 @@ function CandidateForm() {
         </div>
       </CardHeader>
       <CardContent>
-        <form action={submit} className="space-y-[var(--space-5)]">
+        <form action={submit} className="flex flex-col gap-5">
           <input name="expected_current_version_id" type="hidden" value={current.id} />
           <FieldGroup>
             <Field data-invalid={fieldErrors["model"] ? true : undefined}>
@@ -323,7 +324,7 @@ function CandidateForm() {
               </select>
               <FieldError>{fieldErrors["prompt_version_id"]}</FieldError>
             </Field>
-            <div className="grid grid-cols-3 gap-[var(--space-4)] max-md:grid-cols-1">
+            <div className="grid grid-cols-3 gap-4 max-md:grid-cols-1">
               <Field data-invalid={fieldErrors["temperature"] ? true : undefined}>
                 <FieldLabel htmlFor="temperature">Temperature</FieldLabel>
                 <Input
@@ -375,7 +376,7 @@ function CandidateForm() {
             </div>
           </FieldGroup>
           <Button disabled={busy || pending} type="submit">
-            {pending && <Spinner aria-hidden="true" size="sm" variant="inverse" />}
+            {pending ? <Spinner aria-hidden="true" data-icon="inline-start" /> : null}
             {busy ? "已有变更正在执行" : "提交并探测"}
           </Button>
         </form>
@@ -390,11 +391,11 @@ function AttemptProgress() {
   const [dialogOpen, setDialogOpen] = useState(false)
   if (activeAttempt === null) {
     return (
-      <Card variant="outlined">
+      <Card>
         <CardHeader>
           <CardTitle>变更进度</CardTitle>
         </CardHeader>
-        <CardContent className="space-y-[var(--space-4)] text-sm text-muted-foreground">
+        <CardContent className="flex flex-col gap-4 text-sm text-muted-foreground">
           <p className="m-0">当前没有待处理的配置变更。</p>
           {formError && (
             <Alert>
@@ -422,9 +423,9 @@ function AttemptProgress() {
   }
 
   return (
-    <Card aria-live="polite" variant="outlined">
+    <Card aria-live="polite">
       <CardHeader>
-        {!terminal && <Spinner aria-hidden="true" size="sm" />}
+        {!terminal && <Spinner aria-hidden="true" />}
         <div>
           <CardTitle>变更进度</CardTitle>
           <CardDescription>尝试 {activeAttempt.id.slice(0, 8)}</CardDescription>
@@ -433,7 +434,7 @@ function AttemptProgress() {
           <Badge variant="secondary">{statusLabels[activeAttempt.status]}</Badge>
         </CardAction>
       </CardHeader>
-      <CardContent className="space-y-[var(--space-4)]">
+      <CardContent className="flex flex-col gap-4">
         <p className="m-0 text-sm text-muted-foreground">
           已发起 {activeAttempt.external_call_count} / 3 次外部请求
           {activeAttempt.next_attempt_at
@@ -458,16 +459,14 @@ function AttemptProgress() {
               <XIcon aria-hidden="true" />
               取消变更
             </AlertDialogTrigger>
-            <AlertDialogContent size="sm" variant="destructive">
+            <AlertDialogContent size="sm">
               <AlertDialogHeader>
                 <AlertDialogTitle>取消这次配置变更？</AlertDialogTitle>
                 <AlertDialogDescription>
                   已完成的探测事实会保留，但不会启用候选配置。
+                  取消请求会在安全点生效，正在进行的网络请求可能先完成。
                 </AlertDialogDescription>
               </AlertDialogHeader>
-              <AlertDialogBody>
-                取消请求会在安全点生效，正在进行的网络请求可能先完成。
-              </AlertDialogBody>
               <AlertDialogFooter>
                 <AlertDialogCancel>继续等待</AlertDialogCancel>
                 <AlertDialogAction disabled={pending} onClick={cancel} variant="destructive">
@@ -505,9 +504,9 @@ function RestoreButton({ versionId }: { readonly versionId: string }) {
           <AlertDialogTitle>从历史版本创建新配置？</AlertDialogTitle>
           <AlertDialogDescription>
             系统会复制参数并重新探测，不会重新启用旧记录。
+            只有探测成功且当前版本未变化时，才会创建并启用新版本。
           </AlertDialogDescription>
         </AlertDialogHeader>
-        <AlertDialogBody>只有探测成功且当前版本未变化时，才会创建并启用新版本。</AlertDialogBody>
         <AlertDialogFooter>
           <AlertDialogCancel>返回</AlertDialogCancel>
           <AlertDialogAction disabled={pending} onClick={restore}>
@@ -522,7 +521,7 @@ function RestoreButton({ versionId }: { readonly versionId: string }) {
 function ConfigurationHistory() {
   const { workspace } = useWorkbench()
   return (
-    <Card variant="outlined">
+    <Card>
       <CardHeader>
         <div>
           <CardTitle>配置版本历史</CardTitle>
@@ -578,7 +577,7 @@ export function LlmConfigurationWorkbench({ workspace }: { readonly workspace: L
   return (
     <WorkbenchProvider workspace={workspace}>
       <CurrentConfiguration />
-      <div className="grid grid-cols-[minmax(0,1.45fr)_minmax(18rem,0.75fr)] gap-[var(--space-6)] max-lg:grid-cols-1">
+      <div className="grid grid-cols-[minmax(0,1.45fr)_minmax(18rem,0.75fr)] gap-6 max-lg:grid-cols-1">
         <CandidateForm />
         <AttemptProgress />
       </div>

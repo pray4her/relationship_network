@@ -8,14 +8,12 @@ export function AuthShell({ children }: { readonly children: ReactNode }) {
     <div className="relative min-h-dvh bg-background">
       <Link
         aria-label="返回 Relationship Network 首页"
-        className="absolute top-[var(--space-6)] left-[var(--space-6)] z-[var(--z-sticky)] rounded-[var(--radius-md)] no-underline focus-visible:outline-none focus-visible:shadow-[0_0_0_var(--ring-width)_var(--ring-focus)]"
+        className="absolute top-6 left-6 z-10 rounded-md no-underline outline-none focus-visible:ring-3 focus-visible:ring-ring/50"
         href="/"
       >
         <BrandMark />
       </Link>
-      <main className="flex min-h-dvh items-center justify-center px-[var(--space-4)] py-[calc(var(--space-24)+var(--space-6))]">
-        {children}
-      </main>
+      <main className="flex min-h-dvh items-center justify-center px-4 py-24">{children}</main>
     </div>
   )
 }

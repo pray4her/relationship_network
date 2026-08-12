@@ -34,13 +34,10 @@ type ConnectedDashboardProps = {
 
 function StatusLabel({ online }: { readonly online: boolean }) {
   return (
-    <span className="inline-flex shrink-0 items-center gap-[var(--space-2)] font-mono text-[length:var(--text-caption)] tracking-[var(--tracking-label)]">
+    <span className="inline-flex shrink-0 items-center gap-2 font-mono text-xs tracking-wide">
       <span
         aria-hidden="true"
-        className={cn(
-          "size-[var(--space-2)] rounded-[var(--radius-full)]",
-          online ? "bg-success" : "bg-destructive",
-        )}
+        className={cn("size-2 rounded-full", online ? "bg-success" : "bg-destructive")}
       />
       {online ? "ONLINE" : "OFFLINE"}
     </span>
@@ -84,21 +81,19 @@ function ConnectedDashboard({ health }: ConnectedDashboardProps) {
           </PageSectionHeaderContent>
         </PageSectionHeader>
         <DataRegion>
-          <DataRegionContent className="divide-y divide-border-soft">
+          <DataRegionContent className="divide-y divide-border">
             {services.map((service, index) => (
               <article
-                className="flex min-h-[var(--control-height-lg)] items-center gap-[var(--space-4)] px-[var(--space-5)] py-[var(--space-4)] max-sm:px-[var(--space-4)]"
+                className="flex min-h-9 items-center gap-4 px-5 py-4 max-sm:px-4"
                 data-state={service.status}
                 key={service.name}
               >
-                <span className="w-7 shrink-0 font-mono text-[length:var(--text-caption)] text-muted-foreground">
+                <span className="w-7 shrink-0 font-mono text-xs text-muted-foreground">
                   {String(index + 1).padStart(2, "0")}
                 </span>
                 <div className="min-w-0 flex-1">
-                  <h3 className="m-0 text-[length:var(--text-body-md)] font-medium">
-                    {service.label}
-                  </h3>
-                  <p className="m-0 text-[length:var(--text-body-sm)] text-muted-foreground">
+                  <h3 className="m-0 text-base font-medium">{service.label}</h3>
+                  <p className="m-0 text-sm text-muted-foreground">
                     {service.status === "ok" ? "连接正常" : "暂时不可用"}
                   </p>
                 </div>
@@ -107,9 +102,7 @@ function ConnectedDashboard({ health }: ConnectedDashboardProps) {
             ))}
           </DataRegionContent>
         </DataRegion>
-        <p className="m-0 text-[length:var(--text-body-sm)] text-muted-foreground">
-          刷新状态：重新加载页面。
-        </p>
+        <p className="m-0 text-sm text-muted-foreground">刷新状态：重新加载页面。</p>
       </PageSection>
     </Page>
   )

@@ -144,7 +144,7 @@ export default async function CompaniesPage() {
         <DataRegion>
           <DataRegionContent>
             {companiesResult.companies.length === 0 ? (
-              <Empty variant="first-use">
+              <Empty>
                 <EmptyMedia>
                   <Building2Icon />
                 </EmptyMedia>

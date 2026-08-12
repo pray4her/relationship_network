@@ -270,7 +270,7 @@ export default async function UsagePage() {
           </PageSectionHeaderContent>
         </PageSectionHeader>
         <DataRegion>
-          <DataRegionContent className="space-y-3 p-[var(--space-5)]">
+          <DataRegionContent className="flex flex-col gap-3 p-5">
             {isReadOnly ? <ReadOnlyBanner /> : null}
             <p>
               当前套餐：{summary.plan.name} v{summary.plan.version}{" "}

@@ -18,6 +18,10 @@ def test_deployed_job_requirement_assets_are_hash_verified_and_compatible() -> N
     assert manifest.JOB_REQUIREMENT_PROMPT_V1.compatible_schema_version_id == (
         manifest.JOB_REQUIREMENT_SCHEMA_V1.id
     )
+    assert (
+        manifest.schema_asset(manifest.JOB_REQUIREMENT_PROMPT_V2.compatible_schema_version_id).id
+        == manifest.JOB_REQUIREMENT_SCHEMA_V2.id
+    )
     assert "hard_conditions" in prompt
     assert manifest.JOB_REQUIREMENT_SCHEMA_V1.chinese_identity_values == (
         "国内华人",

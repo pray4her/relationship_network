@@ -21,3 +21,5 @@ frontend/e2e/test-results/
 .agents/skills/
 .claude/skills/
 skills-lock.json
+
+docs/issues-export/

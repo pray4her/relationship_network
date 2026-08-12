@@ -114,6 +114,26 @@ test("maps a successful create and idempotent cancel to attempt views", async ()
   })
 })
 
+test("accepts create responses whose candidate includes the frozen input_character_limit", async () => {
+  // Backend _attempt_view setdefault("input_character_limit", 100_000) on candidate_snapshot.
+  const body = {
+    ...attempt,
+    candidate: { ...attempt.candidate, input_character_limit: 100_000 as const },
+  }
+
+  await expect(
+    createLlmAttempt(
+      new FixedTransport({ body, status: 202 }),
+      "session",
+      attempt.candidate,
+      version.id,
+    ),
+  ).resolves.toEqual({
+    attempt: body,
+    kind: "ok",
+  })
+})
+
 test("preserves stable conflict details and the active attempt ID", async () => {
   await expect(
     createLlmAttempt(

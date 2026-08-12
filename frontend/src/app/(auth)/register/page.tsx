@@ -26,7 +26,7 @@ export default function RegisterPage() {
       <AuthPanelContent>
         <RegisterForm action={registerAction} />
       </AuthPanelContent>
-      <AuthPanelFooter className="space-y-[var(--space-3)]">
+      <AuthPanelFooter className="flex flex-col gap-3">
         <p className="m-0">
           已有账户？
           <Link className="font-medium text-foreground underline underline-offset-4" href="/login">

@@ -52,7 +52,7 @@ export async function AppShell({ children }: { readonly children: ReactNode }) {
     <div className="min-h-dvh bg-background">
       <AppNavbar account={state.account} />
       {state.mfaGateActive ? (
-        <div className="mx-auto w-full max-w-[1400px] px-[var(--space-6)] pt-[var(--space-4)]">
+        <div className="mx-auto w-full max-w-[1400px] px-6 pt-4">
           <Alert variant="destructive">
             <AlertDescription>
               租户已要求成员启用两步验证。请前往安全设置完成配置后再继续写入操作。

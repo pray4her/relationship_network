@@ -1,6 +1,6 @@
 # 前端视觉系统采用 Anthropic 气质(shadcn + Tailwind v4 承载)
 
-> Status: 部分条款被 [ADR 0003](./0003-claude-design-system-via-shadcn-carrier.md) supersede(唯一强调色、自托管字体);载体、仅浅色主题、语义 token 硬约束仍有效。
+> Status: 视觉条款先后被 [ADR 0003](./0003-claude-design-system-via-shadcn-carrier.md) 与 [ADR 0024](./0024-openai-design-system-via-shadcn-carrier.md) supersede;载体(shadcn + Tailwind v4)、语义 token、禁止双样式体系仍有效;产品不启用暗色切换见 ADR 0024/0013。
 
 前端从手写 BEM CSS 的粗野主义风格(荧光绿、网格背景、全直角描边)全量重构为 Anthropic 官网气质:暖米白 `#faf9f5` 底、近黑 `#141413`、陶土橘 `#d97757` 单强调色、仅浅色主题。token 经 shadcn CSS variables + Tailwind v4 `@theme inline` 承载,组件全部替换为 shadcn 注册表版本,页面标记用 Tailwind 工具类重写。
 

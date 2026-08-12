@@ -453,6 +453,7 @@ async def validate_candidate_assets(
     try:
         manifest.validate_deployed_assets()
         deployed_prompt = manifest.prompt_asset(candidate.prompt_version_id)
+        deployed_schema = manifest.schema_asset(deployed_prompt.compatible_schema_version_id)
     except manifest.LlmAssetError as error:
         raise IncompatibleLlmAssetsError(INCOMPATIBLE_LLM_ASSETS) from error
     prompt = (
@@ -460,7 +461,11 @@ async def validate_candidate_assets(
             select(PromptVersion).where(PromptVersion.id == candidate.prompt_version_id)
         )
     ).scalar_one_or_none()
-    if prompt is None or prompt.sha256 != deployed_prompt.sha256:
+    if (
+        prompt is None
+        or prompt.sha256 != deployed_prompt.sha256
+        or prompt.compatible_schema_version_id != deployed_prompt.compatible_schema_version_id
+    ):
         raise IncompatibleLlmAssetsError(INCOMPATIBLE_LLM_ASSETS)
     schema = (
         await session.execute(
@@ -469,10 +474,8 @@ async def validate_candidate_assets(
             )
         )
     ).scalar_one_or_none()
-    deployed_schema = manifest.JOB_REQUIREMENT_SCHEMA_V1
     if (
         schema is None
-        or deployed_prompt.compatible_schema_version_id != schema.id
         or schema.sha256 != deployed_schema.sha256
         or schema.schema_id != deployed_schema.schema_id
     ):

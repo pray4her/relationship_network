@@ -56,13 +56,13 @@ function OutcomeBadge({ outcome }: { readonly outcome: LlmCallOutcome }) {
 
 function MetadataBadge({ status }: { readonly status: LlmCallMetadataStatus }) {
   const variant =
-    status === "available" ? "success" : status === "retry_scheduled" ? "info" : "warning"
+    status === "available" ? "success" : status === "retry_scheduled" ? "secondary" : "warning"
   return <Badge variant={variant}>{llmCallMetadataStatusLabels[status]}</Badge>
 }
 
 function JsonFact({ value }: { readonly value: Record<string, unknown> }) {
   return (
-    <pre className="m-0 max-h-80 overflow-auto rounded-[var(--radius-md)] border border-border bg-surface-soft p-[var(--space-4)] whitespace-pre-wrap break-words font-mono text-sm leading-relaxed">
+    <pre className="m-0 max-h-80 overflow-auto rounded-md border border-border bg-muted p-4 whitespace-pre-wrap break-words font-mono text-sm leading-relaxed">
       {JSON.stringify(value, null, 2)}
     </pre>
   )
@@ -222,12 +222,12 @@ export default async function LlmCallDetailPage({ params }: LlmCallDetailPagePro
             </DescriptionDetails>
           </DescriptionItem>
         </DescriptionList>
-        <div className="grid grid-cols-2 gap-[var(--space-6)] max-lg:grid-cols-1">
-          <div className="min-w-0 space-y-[var(--space-2)]">
+        <div className="grid grid-cols-2 gap-6 max-lg:grid-cols-1">
+          <div className="flex min-w-0 flex-col gap-2">
             <h3 className="m-0 text-base font-medium">输入来源摘要</h3>
             <JsonFact value={call.input_sources_summary} />
           </div>
-          <div className="min-w-0 space-y-[var(--space-2)]">
+          <div className="flex min-w-0 flex-col gap-2">
             <h3 className="m-0 text-base font-medium">生成参数</h3>
             <JsonFact value={call.parameters} />
           </div>
@@ -249,14 +249,12 @@ export default async function LlmCallDetailPage({ params }: LlmCallDetailPagePro
           </DataRegionHeader>
           <DataRegionContent>
             {timeline.length === 0 ? (
-              <p className="m-0 p-[var(--space-6)] text-muted-foreground">
-                尚未记录结果或元数据事件。
-              </p>
+              <p className="m-0 p-6 text-muted-foreground">尚未记录结果或元数据事件。</p>
             ) : (
-              <ol className="m-0 list-none divide-y divide-border-soft p-0">
+              <ol className="m-0 list-none divide-y divide-border p-0">
                 {timeline.map((item) => (
                   <li
-                    className="grid grid-cols-[12rem_minmax(0,1fr)] gap-[var(--space-6)] p-[var(--space-5)] max-md:grid-cols-1 max-md:gap-[var(--space-2)]"
+                    className="grid grid-cols-[12rem_minmax(0,1fr)] gap-6 p-5 max-md:grid-cols-1 max-md:gap-2"
                     key={`${item.kind}-${item.event.sequence_number}`}
                   >
                     <time
@@ -266,8 +264,8 @@ export default async function LlmCallDetailPage({ params }: LlmCallDetailPagePro
                       {formatDiagnosticDateTime(item.createdAt)}
                     </time>
                     {item.kind === "outcome" ? (
-                      <div className="min-w-0 space-y-[var(--space-2)]">
-                        <div className="flex flex-wrap items-center gap-[var(--space-2)]">
+                      <div className="flex min-w-0 flex-col gap-2">
+                        <div className="flex flex-wrap items-center gap-2">
                           <OutcomeBadge outcome={item.event.outcome} />
                           <span className="font-mono text-sm">
                             结果事件 #{item.event.sequence_number}
@@ -283,8 +281,8 @@ export default async function LlmCallDetailPage({ params }: LlmCallDetailPagePro
                         </p>
                       </div>
                     ) : (
-                      <div className="min-w-0 space-y-[var(--space-2)]">
-                        <div className="flex flex-wrap items-center gap-[var(--space-2)]">
+                      <div className="flex min-w-0 flex-col gap-2">
+                        <div className="flex flex-wrap items-center gap-2">
                           <MetadataBadge status={item.event.status} />
                           <span className="font-mono text-sm">
                             元数据事件 #{item.event.sequence_number}

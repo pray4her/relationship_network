@@ -242,8 +242,11 @@ async def persist_call_response(  # noqa: PLR0913
                 call_id=call.id,
                 scope_key=call.scope_key,
             )
-            session.add(
-                LlmRawResponse(
+            # Insert without RETURNING: app role may INSERT tenant rows but cannot SELECT them.
+            _ = await session.execute(
+                insert(LlmRawResponse)
+                .inline()
+                .values(
                     id=uuid.uuid4(),
                     call_id=call.id,
                     response_sequence=sequence_number,
@@ -257,7 +260,6 @@ async def persist_call_response(  # noqa: PLR0913
                     expires_at=encrypted.expires_at,
                 )
             )
-            await session.flush()
 
         session.add(
             LlmCallOutcomeEvent(
@@ -365,8 +367,10 @@ async def _append_initial_metadata(
         if task_id is None or call.tenant_id is None:
             message = "tenant metadata Outbox requires tenant task identity"
             raise RuntimeError(message)
-        session.add(
-            TenantOutboxEvent(
+        _ = await session.execute(
+            insert(TenantOutboxEvent)
+            .inline()
+            .values(
                 id=uuid.uuid4(),
                 tenant_id=call.tenant_id,
                 topic=LLM_METADATA_OUTBOX_TOPIC,

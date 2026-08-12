@@ -9,7 +9,6 @@ import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import {
   AlertDialog,
   AlertDialogAction,
-  AlertDialogBody,
   AlertDialogCancel,
   AlertDialogContent,
   AlertDialogDescription,
@@ -83,7 +82,7 @@ export function RequirementVersionHistory({
   return (
     <DataRegion>
       <DataRegionHeader>
-        <div className="flex flex-wrap items-start justify-between gap-[var(--space-3)]">
+        <div className="flex flex-wrap items-start justify-between gap-3">
           <div>
             <h3 className="text-base font-medium">版本历史</h3>
             <p className="text-sm text-muted-foreground">
@@ -100,17 +99,15 @@ export function RequirementVersionHistory({
                 复制为新草稿
               </AlertDialogTrigger>
               <AlertDialogContent size="sm">
-                <AlertDialogHeader showCloseButton={false}>
+                <AlertDialogHeader>
                   <AlertDialogTitle>复制当前职位需求版本？</AlertDialogTitle>
                   <AlertDialogDescription>
                     将创建可编辑草稿，不调用模型。确认后才会生成下一版本。
+                    {hasEditableDraft
+                      ? "当前已有可编辑草稿，请先完成或放弃后再复制。"
+                      : "复制不会改变当前职位需求版本。"}
                   </AlertDialogDescription>
                 </AlertDialogHeader>
-                <AlertDialogBody>
-                  {hasEditableDraft
-                    ? "当前已有可编辑草稿，请先完成或放弃后再复制。"
-                    : "复制不会改变当前职位需求版本。"}
-                </AlertDialogBody>
                 <AlertDialogFooter>
                   <AlertDialogCancel disabled={pending}>取消</AlertDialogCancel>
                   <AlertDialogAction disabled={pending || hasEditableDraft} onClick={copyCurrent}>
@@ -123,7 +120,7 @@ export function RequirementVersionHistory({
           ) : null}
         </div>
       </DataRegionHeader>
-      <DataRegionContent className="flex flex-col gap-[var(--space-3)]">
+      <DataRegionContent className="flex flex-col gap-3">
         {message ? (
           <Alert>
             <AlertTitle>操作完成</AlertTitle>

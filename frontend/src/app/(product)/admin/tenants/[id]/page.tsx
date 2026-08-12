@@ -5,10 +5,22 @@ import { redirect } from "next/navigation"
 import { tenantStatusAction } from "@/app/actions/admin"
 import { AdminGateNotice } from "@/components/admin/admin-gate-notice"
 import { TenantStatusAction } from "@/components/admin/tenant-status-action"
-import { Page, PageTitle } from "@/components/layout/page"
+import {
+  DescriptionDetails,
+  DescriptionItem,
+  DescriptionList,
+  DescriptionTerm,
+  Page,
+  PageDescription,
+  PageHeader,
+  PageHeaderContent,
+  PageSection,
+  PageSectionHeader,
+  PageSectionHeaderContent,
+  PageSectionTitle,
+  PageTitle,
+} from "@/components/layout/page"
 import { Badge } from "@/components/ui/badge"
-import { Card, CardContent, CardHeader } from "@/components/ui/card"
-import { Table, TableBody, TableCell, TableHead, TableRow } from "@/components/ui/table"
 import { createAdminTransport, loadAdminTenant } from "@/lib/admin-client"
 import { requireAdminView } from "@/lib/admin-guard"
 import { formatDateTime, tenantStatusLabels } from "@/lib/admin-view"
@@ -22,7 +34,7 @@ type AdminTenantPageProps = {
   readonly params: Promise<{ id: string }>
 }
 
-const rowHeadClassName = "w-32 font-mono text-xs tracking-wider text-muted-foreground uppercase"
+const linkClassName = "font-medium underline underline-offset-4"
 
 export default async function AdminTenantPage({ params }: AdminTenantPageProps) {
   const { id } = await params
@@ -51,8 +63,8 @@ export default async function AdminTenantPage({ params }: AdminTenantPageProps) 
         }
         title="租户详情"
       >
-        <p className="text-sm text-muted-foreground">
-          <Link className="font-medium underline underline-offset-4" href="/admin">
+        <p className="m-0 text-sm text-muted-foreground">
+          <Link className={linkClassName} href="/admin">
             返回租户列表
           </Link>
         </p>
@@ -64,68 +76,61 @@ export default async function AdminTenantPage({ params }: AdminTenantPageProps) 
 
   return (
     <Page>
-      <section aria-labelledby="tenant-heading">
-        <Card>
-          <CardHeader>
-            <PageTitle id="tenant-heading">{tenant.name}</PageTitle>
-          </CardHeader>
-          <CardContent className="flex flex-col gap-4">
-            <Table>
-              <TableBody>
-                <TableRow>
-                  <TableHead className={rowHeadClassName} scope="row">
-                    标识
-                  </TableHead>
-                  <TableCell>{tenant.slug}</TableCell>
-                </TableRow>
-                <TableRow>
-                  <TableHead className={rowHeadClassName} scope="row">
-                    状态
-                  </TableHead>
-                  <TableCell>
-                    <Badge
-                      className={cn(tenant.status === "active" && "bg-success/10 text-success")}
-                      variant="secondary"
-                    >
-                      {tenantStatusLabels[tenant.status]}
-                    </Badge>
-                  </TableCell>
-                </TableRow>
-                <TableRow>
-                  <TableHead className={rowHeadClassName} scope="row">
-                    强制 MFA
-                  </TableHead>
-                  <TableCell>{tenant.mfa_required ? "已开启" : "未开启"}</TableCell>
-                </TableRow>
-                <TableRow>
-                  <TableHead className={rowHeadClassName} scope="row">
-                    成员数
-                  </TableHead>
-                  <TableCell className="tabular-nums">{tenant.member_count}</TableCell>
-                </TableRow>
-                <TableRow>
-                  <TableHead className={rowHeadClassName} scope="row">
-                    创建时间
-                  </TableHead>
-                  <TableCell className="tabular-nums">
-                    {formatDateTime(tenant.created_at)}
-                  </TableCell>
-                </TableRow>
-              </TableBody>
-            </Table>
-            <TenantStatusAction
-              action={tenantStatusAction}
-              status={tenant.status}
-              tenantId={tenant.id}
-            />
-            <p className="text-sm text-muted-foreground">
-              <Link className="font-medium underline underline-offset-4" href="/admin">
-                返回租户列表
-              </Link>
-            </p>
-          </CardContent>
-        </Card>
-      </section>
+      <PageHeader>
+        <PageHeaderContent>
+          <PageTitle id="tenant-heading">{tenant.name}</PageTitle>
+          <PageDescription>查看租户状态并执行暂停或恢复操作。</PageDescription>
+        </PageHeaderContent>
+      </PageHeader>
+
+      <PageSection aria-labelledby="tenant-facts-heading">
+        <PageSectionHeader>
+          <PageSectionHeaderContent>
+            <PageSectionTitle id="tenant-facts-heading">租户信息</PageSectionTitle>
+          </PageSectionHeaderContent>
+        </PageSectionHeader>
+        <DescriptionList>
+          <DescriptionItem>
+            <DescriptionTerm>标识</DescriptionTerm>
+            <DescriptionDetails>{tenant.slug}</DescriptionDetails>
+          </DescriptionItem>
+          <DescriptionItem>
+            <DescriptionTerm>状态</DescriptionTerm>
+            <DescriptionDetails>
+              <Badge
+                className={cn(tenant.status === "active" && "bg-success/10 text-success")}
+                variant="secondary"
+              >
+                {tenantStatusLabels[tenant.status]}
+              </Badge>
+            </DescriptionDetails>
+          </DescriptionItem>
+          <DescriptionItem>
+            <DescriptionTerm>强制 MFA</DescriptionTerm>
+            <DescriptionDetails>{tenant.mfa_required ? "已开启" : "未开启"}</DescriptionDetails>
+          </DescriptionItem>
+          <DescriptionItem>
+            <DescriptionTerm>成员数</DescriptionTerm>
+            <DescriptionDetails className="tabular-nums">{tenant.member_count}</DescriptionDetails>
+          </DescriptionItem>
+          <DescriptionItem>
+            <DescriptionTerm>创建时间</DescriptionTerm>
+            <DescriptionDetails className="tabular-nums">
+              {formatDateTime(tenant.created_at)}
+            </DescriptionDetails>
+          </DescriptionItem>
+        </DescriptionList>
+        <TenantStatusAction
+          action={tenantStatusAction}
+          status={tenant.status}
+          tenantId={tenant.id}
+        />
+        <p className="m-0 text-sm text-muted-foreground">
+          <Link className={linkClassName} href="/admin">
+            返回租户列表
+          </Link>
+        </p>
+      </PageSection>
     </Page>
   )
 }

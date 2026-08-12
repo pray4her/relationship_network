@@ -38,7 +38,7 @@ export default function LlmCallDetailLoading() {
           <Skeleton className="h-14 w-full" key={key} />
         ))}
       </DataRegion>
-      <DataRegion className="space-y-3 p-5">
+      <DataRegion className="flex flex-col gap-3 p-5">
         {eventSkeletons.map((key) => (
           <Skeleton className="h-20 w-full" key={key} />
         ))}

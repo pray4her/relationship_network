@@ -8,6 +8,7 @@ import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Button } from "@/components/ui/button"
 import { FieldLegend, FieldSet } from "@/components/ui/field"
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
+import { Spinner } from "@/components/ui/spinner"
 
 type MfaVerifyFormProps = {
   readonly action: (state: MfaVerifyFormState, formData: FormData) => Promise<MfaVerifyFormState>
@@ -50,7 +51,8 @@ export function MfaVerifyForm({ action }: MfaVerifyFormProps) {
         type="text"
       />
 
-      <Button className="w-full" loading={isPending} type="submit">
+      <Button className="w-full" disabled={isPending} type="submit">
+        {isPending ? <Spinner data-icon="inline-start" /> : null}
         验证并登录
       </Button>
     </form>

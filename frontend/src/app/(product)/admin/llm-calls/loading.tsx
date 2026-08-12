@@ -28,7 +28,7 @@ export default function LlmCallListLoading() {
           <Skeleton className="h-16 w-40" key={key} />
         ))}
       </PageToolbar>
-      <DataRegion className="space-y-3 p-5">
+      <DataRegion className="flex flex-col gap-3 p-5">
         {rowSkeletons.map((key) => (
           <Skeleton className="h-12 w-full" key={key} />
         ))}

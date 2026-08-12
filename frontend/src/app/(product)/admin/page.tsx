@@ -3,11 +3,24 @@ import Link from "next/link"
 import { redirect } from "next/navigation"
 
 import { AdminGateNotice } from "@/components/admin/admin-gate-notice"
-import { Page, PageTitle } from "@/components/layout/page"
+import {
+  DataRegion,
+  DataRegionContent,
+  Page,
+  PageActions,
+  PageDescription,
+  PageHeader,
+  PageHeaderContent,
+  PageSection,
+  PageSectionHeader,
+  PageSectionHeaderContent,
+  PageSectionTitle,
+  PageTitle,
+  PageToolbar,
+} from "@/components/layout/page"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardHeader } from "@/components/ui/card"
 import { Field, FieldLabel } from "@/components/ui/field"
 import { Input } from "@/components/ui/input"
 import {
@@ -33,9 +46,11 @@ type AdminPageProps = {
 }
 
 const selectClassName =
-  "h-8 w-full min-w-0 rounded-lg border border-input bg-transparent px-2.5 py-1 text-sm outline-none transition-colors focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50"
+  "h-8 w-full min-w-0 rounded-md border border-input bg-transparent px-2.5 py-1 text-sm outline-none transition-colors focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50"
 
 const tableHeadClassName = "font-mono text-xs tracking-wider text-muted-foreground uppercase"
+
+const linkClassName = "font-medium underline underline-offset-4"
 
 function firstParam(value: string | string[] | undefined): string {
   return typeof value === "string" ? value : ""
@@ -95,59 +110,63 @@ export default async function AdminPage({ searchParams }: AdminPageProps) {
 
   return (
     <Page>
-      <section aria-labelledby="tenants-heading">
-        <Card>
-          <CardHeader>
-            <PageTitle id="tenants-heading">租户管理</PageTitle>
-          </CardHeader>
-          <CardContent className="flex flex-col gap-4">
-            <form action="/admin" className="flex flex-wrap items-end gap-4" method="get">
-              <Field className="w-full sm:w-64">
-                <FieldLabel htmlFor="tenant-query">搜索（名称或标识）</FieldLabel>
-                <Input
-                  defaultValue={query}
-                  id="tenant-query"
-                  name="query"
-                  placeholder="输入租户名称或 slug"
-                  type="search"
-                />
-              </Field>
-              <Field className="w-full sm:w-48">
-                <FieldLabel htmlFor="tenant-status">状态</FieldLabel>
-                <select
-                  className={selectClassName}
-                  defaultValue={status ?? ""}
-                  id="tenant-status"
-                  name="status"
-                >
-                  <option value="">全部</option>
-                  <option value="active">正常</option>
-                  <option value="suspended">已暂停</option>
-                </select>
-              </Field>
-              <Button type="submit" variant="secondary">
-                搜索
-              </Button>
-            </form>
-            <p className="text-sm text-muted-foreground">共 {tenantsResult.total} 个租户</p>
-            <p className="text-sm text-muted-foreground">
-              <Link className="font-medium underline underline-offset-4" href="/admin/orders">
-                前往线下订单审核
-              </Link>
-              <span aria-hidden="true"> · </span>
-              <Link
-                className="font-medium underline underline-offset-4"
-                href="/admin/llm-configuration"
-              >
-                管理 LLM 配置
-              </Link>
-              <span aria-hidden="true"> · </span>
-              <Link className="font-medium underline underline-offset-4" href="/admin/llm-calls">
-                查看 LLM 调用
-              </Link>
-            </p>
+      <PageHeader>
+        <PageHeaderContent>
+          <PageTitle id="tenants-heading">租户管理</PageTitle>
+          <PageDescription>检索租户、查看状态，并跳转到订单与 LLM 管理。</PageDescription>
+        </PageHeaderContent>
+        <PageActions>
+          <Link className={linkClassName} href="/admin/orders">
+            线下订单审核
+          </Link>
+          <Link className={linkClassName} href="/admin/llm-configuration">
+            LLM 配置
+          </Link>
+          <Link className={linkClassName} href="/admin/llm-calls">
+            LLM 调用
+          </Link>
+        </PageActions>
+      </PageHeader>
+
+      <PageSection aria-labelledby="tenant-list-heading">
+        <PageSectionHeader>
+          <PageSectionHeaderContent>
+            <PageSectionTitle id="tenant-list-heading">租户列表</PageSectionTitle>
+          </PageSectionHeaderContent>
+        </PageSectionHeader>
+        <PageToolbar render={<form action="/admin" method="get" />}>
+          <Field className="w-full sm:w-64">
+            <FieldLabel htmlFor="tenant-query">搜索（名称或标识）</FieldLabel>
+            <Input
+              defaultValue={query}
+              id="tenant-query"
+              name="query"
+              placeholder="输入租户名称或 slug"
+              type="search"
+            />
+          </Field>
+          <Field className="w-full sm:w-48">
+            <FieldLabel htmlFor="tenant-status">状态</FieldLabel>
+            <select
+              className={selectClassName}
+              defaultValue={status ?? ""}
+              id="tenant-status"
+              name="status"
+            >
+              <option value="">全部</option>
+              <option value="active">正常</option>
+              <option value="suspended">已暂停</option>
+            </select>
+          </Field>
+          <Button type="submit" variant="secondary">
+            搜索
+          </Button>
+        </PageToolbar>
+        <p className="m-0 text-sm text-muted-foreground">共 {tenantsResult.total} 个租户</p>
+        <DataRegion>
+          <DataRegionContent>
             {tenantsResult.tenants.length === 0 ? (
-              <p className="text-sm text-muted-foreground">没有符合条件的租户。</p>
+              <p className="m-0 p-6 text-sm text-muted-foreground">没有符合条件的租户。</p>
             ) : (
               <Table>
                 <TableHeader>
@@ -163,10 +182,7 @@ export default async function AdminPage({ searchParams }: AdminPageProps) {
                   {tenantsResult.tenants.map((tenant) => (
                     <TableRow key={tenant.id}>
                       <TableCell>
-                        <Link
-                          className="font-medium underline underline-offset-4"
-                          href={`/admin/tenants/${tenant.id}`}
-                        >
+                        <Link className={linkClassName} href={`/admin/tenants/${tenant.id}`}>
                           {tenant.name}
                         </Link>
                       </TableCell>
@@ -183,24 +199,26 @@ export default async function AdminPage({ searchParams }: AdminPageProps) {
                 </TableBody>
               </Table>
             )}
-          </CardContent>
-        </Card>
-      </section>
+          </DataRegionContent>
+        </DataRegion>
+      </PageSection>
 
-      <section aria-labelledby="audit-heading">
-        <Card>
-          <CardHeader>
-            <h2 className="text-xl font-semibold tracking-tight" id="audit-heading">
-              审计日志
-            </h2>
-          </CardHeader>
-          <CardContent className="flex flex-col gap-4">
+      <PageSection aria-labelledby="audit-heading">
+        <PageSectionHeader>
+          <PageSectionHeaderContent>
+            <PageSectionTitle id="audit-heading">审计日志</PageSectionTitle>
+          </PageSectionHeaderContent>
+        </PageSectionHeader>
+        <DataRegion>
+          <DataRegionContent>
             {auditResult.kind !== "ok" ? (
-              <Alert>
-                <AlertDescription>审计日志暂时不可用，请稍后再试。</AlertDescription>
-              </Alert>
+              <div className="p-5">
+                <Alert>
+                  <AlertDescription>审计日志暂时不可用，请稍后再试。</AlertDescription>
+                </Alert>
+              </div>
             ) : auditResult.events.length === 0 ? (
-              <p className="text-sm text-muted-foreground">暂无审计事件。</p>
+              <p className="m-0 p-6 text-sm text-muted-foreground">暂无审计事件。</p>
             ) : (
               <Table>
                 <TableHeader>
@@ -227,9 +245,9 @@ export default async function AdminPage({ searchParams }: AdminPageProps) {
                 </TableBody>
               </Table>
             )}
-          </CardContent>
-        </Card>
-      </section>
+          </DataRegionContent>
+        </DataRegion>
+      </PageSection>
     </Page>
   )
 }

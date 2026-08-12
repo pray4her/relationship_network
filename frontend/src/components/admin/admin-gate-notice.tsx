@@ -1,6 +1,13 @@
 import Link from "next/link"
 import type { ReactNode } from "react"
 
+import {
+  Page,
+  PageDescription,
+  PageHeader,
+  PageHeaderContent,
+  PageTitle,
+} from "@/components/layout/page"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import type { AdminGateFailure } from "@/lib/admin-guard"
 
@@ -16,13 +23,21 @@ function defaultMessage(failure: AdminGateFailure): ReactNode {
     case "noSession":
       return (
         <>
-          请先<Link href="/login">登录</Link>后访问平台管理控制台。
+          请先
+          <Link className="font-medium underline underline-offset-4" href="/login">
+            登录
+          </Link>
+          后访问平台管理控制台。
         </>
       )
     case "anonymous":
       return (
         <>
-          登录已过期，请<Link href="/login">重新登录</Link>。
+          登录已过期，请
+          <Link className="font-medium underline underline-offset-4" href="/login">
+            重新登录
+          </Link>
+          。
         </>
       )
     case "forbidden":
@@ -34,16 +49,17 @@ function defaultMessage(failure: AdminGateFailure): ReactNode {
 
 export function AdminGateNotice({ children, failure, message, title }: AdminGateNoticeProps) {
   return (
-    <main className="mx-auto flex w-full max-w-7xl flex-col gap-6 px-6 py-6">
-      <section aria-labelledby="gate-heading" className="flex flex-col gap-4">
-        <h1 className="text-2xl font-bold tracking-tight" id="gate-heading">
-          {title}
-        </h1>
-        <Alert variant={failure === "forbidden" ? "destructive" : "default"}>
-          <AlertDescription>{message ?? defaultMessage(failure)}</AlertDescription>
-        </Alert>
-        {children}
-      </section>
-    </main>
+    <Page>
+      <PageHeader>
+        <PageHeaderContent>
+          <PageTitle id="gate-heading">{title}</PageTitle>
+          <PageDescription>平台管理入口。</PageDescription>
+        </PageHeaderContent>
+      </PageHeader>
+      <Alert variant={failure === "forbidden" ? "destructive" : "default"}>
+        <AlertDescription>{message ?? defaultMessage(failure)}</AlertDescription>
+      </Alert>
+      {children}
+    </Page>
   )
 }

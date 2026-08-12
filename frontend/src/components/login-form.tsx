@@ -6,6 +6,7 @@ import type { AuthFormState } from "@/app/actions/auth"
 import { FormField } from "@/components/form-field"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Button } from "@/components/ui/button"
+import { Spinner } from "@/components/ui/spinner"
 
 type LoginFormProps = {
   readonly action: (state: AuthFormState, formData: FormData) => Promise<AuthFormState>
@@ -40,7 +41,8 @@ export function LoginForm({ action }: LoginFormProps) {
         type="password"
       />
 
-      <Button className="w-full" loading={isPending} type="submit">
+      <Button className="w-full" disabled={isPending} type="submit">
+        {isPending ? <Spinner data-icon="inline-start" /> : null}
         登录
       </Button>
     </form>

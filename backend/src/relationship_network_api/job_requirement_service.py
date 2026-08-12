@@ -7,7 +7,7 @@ from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
 from typing import TYPE_CHECKING, Final, final
 
-from sqlalchemy import case, func, select
+from sqlalchemy import case, func, insert, select
 from sqlalchemy.exc import IntegrityError
 
 from relationship_network_api import (
@@ -608,7 +608,7 @@ async def create_parsing_task(  # noqa: C901, PLR0912, PLR0913, PLR0915
             payload={},
         )
     )
-    enqueue_tenant_outbox(
+    await enqueue_tenant_outbox(
         session,
         tenant_id=tenant_id,
         task_id=task.id,
@@ -641,7 +641,7 @@ async def create_parsing_task(  # noqa: C901, PLR0912, PLR0913, PLR0915
     return _task_view(task)
 
 
-def enqueue_tenant_outbox(  # noqa: PLR0913
+async def enqueue_tenant_outbox(  # noqa: PLR0913
     session: AsyncSession,
     *,
     tenant_id: uuid.UUID,
@@ -650,6 +650,7 @@ def enqueue_tenant_outbox(  # noqa: PLR0913
     aggregate_id: uuid.UUID,
     available_at: datetime | None = None,
 ) -> None:
+    """Insert without implicit RETURNING so writers need no Outbox read privilege."""
     values: dict[str, object] = {
         "aggregate_id": aggregate_id,
         "id": uuid.uuid4(),
@@ -659,7 +660,7 @@ def enqueue_tenant_outbox(  # noqa: PLR0913
     }
     if available_at is not None:
         values["available_at"] = available_at
-    session.add(TenantOutboxEvent(**values))
+    _ = await session.execute(insert(TenantOutboxEvent).inline().values(**values))
 
 
 async def append_task_event(

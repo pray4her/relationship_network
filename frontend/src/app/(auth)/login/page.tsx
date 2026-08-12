@@ -39,7 +39,7 @@ export default async function LoginPage({ searchParams }: LoginPageProps) {
         ) : null}
         <LoginForm action={loginAction} />
       </AuthPanelContent>
-      <AuthPanelFooter className="space-y-[var(--space-3)]">
+      <AuthPanelFooter className="flex flex-col gap-3">
         <p className="m-0">
           还没有账户？
           <Link

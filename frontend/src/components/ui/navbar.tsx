@@ -9,20 +9,13 @@ import type * as React from "react"
 import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
 
-/** 视觉与 markup 规格：frontend/src/styles/navbar.css。 */
 const navbarVariants = cva(
-  "group/navbar relative border-b-[length:var(--border-width)] border-border-soft bg-background transition-[border-color,box-shadow] duration-normal ease-standard motion-reduce:transition-none",
+  "group/navbar relative border-b border-border bg-background transition-[border-color,box-shadow] duration-[var(--duration-base)] ease-[var(--ease-standard)] motion-reduce:transition-none",
   {
     variants: {
-      sticky: { true: "sticky top-0 z-[var(--z-sticky)]", false: "" },
-      scrolled: {
-        true: "border-border shadow-subtle",
-        false: "",
-      },
-      mobile: {
-        true: "navbar-mobile",
-        false: "",
-      },
+      sticky: { true: "sticky top-0 z-10", false: "" },
+      scrolled: { true: "border-border", false: "" },
+      mobile: { true: "navbar-mobile", false: "" },
       menuOpen: { true: "", false: "" },
     },
     compoundVariants: [{ mobile: true, menuOpen: true, className: "navbar-mobile-open" }],
@@ -61,7 +54,7 @@ function NavbarInner({ className, ...props }: React.ComponentProps<"div">) {
   return (
     <div
       className={cn(
-        "mx-auto flex h-[var(--space-16)] w-full max-w-[1400px] items-center gap-[var(--space-6)] px-[var(--space-6)] max-md:gap-[var(--space-2)] max-md:px-[var(--space-4)]",
+        "mx-auto flex h-16 w-full max-w-[1400px] items-center gap-6 px-6 max-md:gap-2 max-md:px-4",
         className,
       )}
       data-slot="navbar-inner"
@@ -76,7 +69,7 @@ function NavbarBrand({ className, render, ...props }: useRender.ComponentProps<"
     props: mergeProps<"a">(
       {
         className: cn(
-          "inline-flex shrink-0 items-center gap-[var(--space-2)] rounded-[var(--radius-md)] text-foreground no-underline focus-visible:outline-none focus-visible:shadow-[0_0_0_var(--ring-width)_var(--ring-focus)]",
+          "inline-flex shrink-0 items-center gap-2 rounded-md text-foreground no-underline outline-none focus-visible:ring-3 focus-visible:ring-ring/50",
           className,
         ),
       },
@@ -92,7 +85,7 @@ function NavbarBrandMark({ className, ...props }: React.ComponentProps<"span">) 
     <span
       aria-hidden="true"
       className={cn(
-        "inline-flex size-[var(--brand-mark-size)] shrink-0 items-center justify-center [&_img]:size-full [&_svg]:size-full [&_svg_line]:[stroke-width:var(--stroke-width-brand)]",
+        "inline-flex size-5 shrink-0 items-center justify-center [&_img]:size-full [&_svg]:size-full",
         className,
       )}
       data-slot="navbar-brand-mark"
@@ -104,10 +97,7 @@ function NavbarBrandMark({ className, ...props }: React.ComponentProps<"span">) 
 function NavbarBrandName({ className, ...props }: React.ComponentProps<"span">) {
   return (
     <span
-      className={cn(
-        "font-display text-[length:var(--text-title-md)] leading-[var(--text-title-md--line-height)] font-normal",
-        className,
-      )}
+      className={cn("text-base font-semibold leading-normal text-foreground", className)}
       data-slot="navbar-brand-name"
       {...props}
     />
@@ -115,7 +105,7 @@ function NavbarBrandName({ className, ...props }: React.ComponentProps<"span">) 
 }
 
 const mobilePanelClasses =
-  "max-md:absolute max-md:top-full max-md:inset-x-0 max-md:hidden max-md:border-b-[length:var(--border-width)] max-md:border-border max-md:bg-background max-md:px-[var(--space-6)] max-md:pt-[var(--space-4)] max-md:pb-[var(--space-6)] max-md:shadow-subtle group-data-[menu-open=true]/navbar:max-md:block group-[.navbar-mobile]/navbar:absolute group-[.navbar-mobile]/navbar:top-full group-[.navbar-mobile]/navbar:inset-x-0 group-[.navbar-mobile]/navbar:hidden group-[.navbar-mobile]/navbar:border-b-[length:var(--border-width)] group-[.navbar-mobile]/navbar:border-border group-[.navbar-mobile]/navbar:bg-background group-[.navbar-mobile]/navbar:px-[var(--space-6)] group-[.navbar-mobile]/navbar:pt-[var(--space-4)] group-[.navbar-mobile]/navbar:pb-[var(--space-6)] group-[.navbar-mobile]/navbar:shadow-subtle group-[.navbar-mobile-open]/navbar:block"
+  "max-md:absolute max-md:inset-x-0 max-md:top-full max-md:hidden max-md:border-b max-md:border-border max-md:bg-background max-md:px-6 max-md:pt-4 max-md:pb-6 group-data-[menu-open=true]/navbar:max-md:block group-[.navbar-mobile]/navbar:absolute group-[.navbar-mobile]/navbar:inset-x-0 group-[.navbar-mobile]/navbar:top-full group-[.navbar-mobile]/navbar:hidden group-[.navbar-mobile]/navbar:border-b group-[.navbar-mobile]/navbar:border-border group-[.navbar-mobile]/navbar:bg-background group-[.navbar-mobile]/navbar:px-6 group-[.navbar-mobile]/navbar:pt-4 group-[.navbar-mobile]/navbar:pb-6 group-[.navbar-mobile-open]/navbar:block"
 
 function NavbarPrimary({ className, ...props }: React.ComponentProps<"nav">) {
   return (
@@ -146,7 +136,7 @@ function NavbarSecondary({ className, ...props }: React.ComponentProps<"nav">) {
 function NavbarList({ className, ...props }: React.ComponentProps<"ul">) {
   return (
     <ul
-      className={cn("m-0 flex list-none items-center gap-[var(--space-1)] p-0", className)}
+      className={cn("m-0 flex list-none items-center gap-1 p-0", className)}
       data-slot="navbar-list"
       {...props}
     />
@@ -154,13 +144,12 @@ function NavbarList({ className, ...props }: React.ComponentProps<"ul">) {
 }
 
 const navbarItemVariants = cva(
-  "inline-flex cursor-pointer items-center gap-[var(--space-2)] rounded-[var(--radius-md)] border-0 bg-transparent px-[var(--space-3)] py-[var(--space-2)] font-sans text-[length:var(--text-nav-link)] leading-[var(--text-nav-link--line-height)] font-medium text-foreground no-underline transition-[background-color,color,box-shadow] duration-fast ease-standard hover:bg-accent hover:text-accent-foreground active:bg-surface-cream-strong focus-visible:outline-none focus-visible:shadow-[0_0_0_var(--ring-width)_var(--ring-focus)] aria-[current=page]:bg-selected-bg aria-[current=page]:text-foreground aria-[current=page]:shadow-[inset_0_calc(-1*var(--border-width-strong))_0_var(--selected-border)] aria-[current=page]:focus-visible:shadow-[inset_0_calc(-1*var(--border-width-strong))_0_var(--selected-border),0_0_0_var(--ring-width)_var(--ring-focus)] aria-disabled:pointer-events-none aria-disabled:opacity-[var(--opacity-disabled)] data-[state=hover]:bg-accent data-[state=hover]:text-accent-foreground data-[state=active]:bg-surface-cream-strong data-[state=focus-visible]:shadow-[0_0_0_var(--ring-width)_var(--ring-focus)] motion-reduce:transition-none max-md:w-full group-[.navbar-mobile]/navbar:w-full",
+  "inline-flex cursor-pointer items-center gap-2 rounded-md border-0 bg-transparent px-3 py-2 text-sm font-medium leading-normal text-foreground no-underline transition-colors duration-[var(--duration-base)] ease-[var(--ease-standard)] hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-3 focus-visible:ring-ring/50 aria-[current=page]:bg-muted aria-[current=page]:text-muted-foreground aria-disabled:pointer-events-none aria-disabled:opacity-50 motion-reduce:transition-none max-md:w-full group-[.navbar-mobile]/navbar:w-full",
   {
     variants: {
       variant: {
         default: "",
-        quiet:
-          "text-muted-foreground hover:bg-transparent hover:text-muted-foreground-hover active:bg-transparent active:text-muted-foreground-active data-[state=hover]:bg-transparent data-[state=hover]:text-muted-foreground-hover data-[state=active]:bg-transparent data-[state=active]:text-muted-foreground-active",
+        quiet: "text-foreground hover:bg-transparent hover:text-muted-foreground",
       },
     },
     defaultVariants: { variant: "default" },
@@ -184,10 +173,7 @@ function NavbarItem({
 function NavbarSearch({ className, ...props }: React.ComponentProps<"div">) {
   return (
     <div
-      className={cn(
-        "ms-auto w-[calc(var(--space-24)*3)] max-md:hidden group-[.navbar-mobile]/navbar:hidden",
-        className,
-      )}
+      className={cn("ms-auto w-72 max-md:hidden group-[.navbar-mobile]/navbar:hidden", className)}
       data-slot="navbar-search"
       {...props}
     />
@@ -197,7 +183,7 @@ function NavbarSearch({ className, ...props }: React.ComponentProps<"div">) {
 function NavbarActions({ className, ...props }: React.ComponentProps<"div">) {
   return (
     <div
-      className={cn("flex items-center gap-[var(--space-2)]", className)}
+      className={cn("flex items-center gap-2", className)}
       data-slot="navbar-actions"
       {...props}
     />
@@ -230,7 +216,7 @@ function NavbarMenuTrigger({
       aria-expanded={menuOpen}
       aria-label={menuOpen ? "关闭导航菜单" : "打开导航菜单"}
       className={cn(
-        "ms-auto hidden after:absolute after:-inset-[var(--space-1)] aria-expanded:bg-selected-bg max-md:inline-flex group-[.navbar-mobile]/navbar:inline-flex",
+        "ms-auto hidden max-md:inline-flex group-[.navbar-mobile]/navbar:inline-flex",
         className,
       )}
       data-slot="navbar-menu-trigger"

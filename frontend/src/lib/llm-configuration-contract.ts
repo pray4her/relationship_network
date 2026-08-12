@@ -17,6 +17,7 @@ export const llmAttemptStatusSchema = z.enum([
 
 export const llmCandidateSchema = z
   .object({
+    input_character_limit: z.literal(100_000).optional(),
     max_output_tokens: z.number().int().min(1024).max(16384),
     model: z.string().trim().min(1).max(200),
     prompt_version_id: z.string().trim().min(1).max(100),
