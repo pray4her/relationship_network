@@ -7,8 +7,10 @@ from relationship_network_api.fake_search_base import (
     DEFAULT_DATA_VERSION,
     DEFAULT_SERVICE_API_KEY,
     SEEDED_ABSENT_PERSON_ID,
+    SEEDED_FIELD_PROVENANCE,
     SEEDED_PERSON_ID,
     SEEDED_PERSONS,
+    SEEDED_PUBLICATIONS,
     app,
     reset_fake_search_base,
     state,
@@ -24,6 +26,7 @@ from relationship_network_api.search_base_contract import (
     PersonBatchResponse,
     PersonCurrentAbsence,
     PersonDetailFound,
+    PersonEvidenceFound,
     SearchBaseErrorBody,
     SearchBaseHealthResponse,
 )
@@ -227,6 +230,65 @@ async def test_person_detail_uses_shared_auth_guard() -> None:
         missing = await client.get(f"/v1/persons/{SEEDED_PERSON_ID}")
         denied = await client.get(
             f"/v1/persons/{SEEDED_PERSON_ID}",
+            headers=_health_headers(api_key="wrong-key"),
+        )
+
+    assert missing.status_code == 401
+    assert denied.status_code == 401
+    assert SearchBaseErrorBody.model_validate(missing.json()).category == "unauthenticated"
+
+
+@pytest.mark.anyio
+async def test_person_evidence_round_trips_found_contract_model() -> None:
+    async with httpx.AsyncClient(
+        transport=httpx.ASGITransport(app=app),
+        base_url="http://test",
+    ) as client:
+        response = await client.get(
+            f"/v1/persons/{SEEDED_PERSON_ID}/evidence",
+            headers=_health_headers(),
+        )
+
+    assert response.status_code == 200
+    payload = PersonEvidenceFound.model_validate(response.json())
+    assert payload.outcome == "found"
+    assert payload.canonical_person_id == SEEDED_PERSON_ID
+    assert payload.publications == SEEDED_PUBLICATIONS[SEEDED_PERSON_ID]
+    assert payload.field_provenance == SEEDED_FIELD_PROVENANCE[SEEDED_PERSON_ID]
+    assert payload.data_version == DEFAULT_DATA_VERSION
+    _assert_no_contact_keys(response.json())
+    assert "claimed_value" not in response.json()
+
+
+@pytest.mark.anyio
+async def test_person_evidence_current_absence_is_http_200() -> None:
+    async with httpx.AsyncClient(
+        transport=httpx.ASGITransport(app=app),
+        base_url="http://test",
+    ) as client:
+        response = await client.get(
+            f"/v1/persons/{SEEDED_ABSENT_PERSON_ID}/evidence",
+            headers=_health_headers(),
+        )
+
+    assert response.status_code == 200
+    payload = PersonCurrentAbsence.model_validate(response.json())
+    assert payload.outcome == "current_absence"
+    assert payload.canonical_person_id == SEEDED_ABSENT_PERSON_ID
+    assert "publications" not in response.json()
+    assert "field_provenance" not in response.json()
+    _assert_no_contact_keys(response.json())
+
+
+@pytest.mark.anyio
+async def test_person_evidence_uses_shared_auth_guard() -> None:
+    async with httpx.AsyncClient(
+        transport=httpx.ASGITransport(app=app),
+        base_url="http://test",
+    ) as client:
+        missing = await client.get(f"/v1/persons/{SEEDED_PERSON_ID}/evidence")
+        denied = await client.get(
+            f"/v1/persons/{SEEDED_PERSON_ID}/evidence",
             headers=_health_headers(api_key="wrong-key"),
         )
 

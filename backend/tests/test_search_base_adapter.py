@@ -7,9 +7,12 @@ from relationship_network_api.fake_search_base import (
     DEFAULT_DATA_VERSION,
     DEFAULT_SERVICE_API_KEY,
     SEEDED_ABSENT_PERSON_ID,
+    SEEDED_FIELD_PROVENANCE,
     SEEDED_PERSON_ID,
     SEEDED_PERSON_WITHOUT_RANKS_ID,
     SEEDED_PERSONS,
+    SEEDED_PUBLICATION_ID,
+    SEEDED_PUBLICATIONS,
     app,
     reset_fake_search_base,
     state,
@@ -32,6 +35,7 @@ from relationship_network_api.search_base_contract import (
     SEARCH_CONTRACT_VERSION_V1,
     PersonCurrentAbsence,
     PersonDetailFound,
+    PersonEvidenceFound,
 )
 
 
@@ -552,3 +556,249 @@ async def test_illegal_chinese_identity_in_response_is_invalid() -> None:
 
     assert captured.value.category == "invalid_response"
     assert captured.value.retryable is False
+
+
+@pytest.mark.anyio
+async def test_person_evidence_returns_seeded_publications_and_provenance(
+    fake_client: httpx.AsyncClient,
+) -> None:
+    adapter = SearchBaseAdapter(_config(), client=fake_client)
+    result = await adapter.get_person_evidence(SEEDED_PERSON_ID, request_id="req-evidence-1")
+
+    assert isinstance(result, PersonEvidenceFound)
+    assert result.request_id == "req-evidence-1"
+    assert result.data_version == DEFAULT_DATA_VERSION
+    assert result.canonical_person_id == SEEDED_PERSON_ID
+    assert result.publications == SEEDED_PUBLICATIONS[SEEDED_PERSON_ID]
+    assert result.field_provenance == SEEDED_FIELD_PROVENANCE[SEEDED_PERSON_ID]
+    assert result.publications[0].snippet is not None
+    assert result.publications[1].snippet is None
+    assert {claim.field for claim in result.field_provenance} == {
+        "h_index",
+        "current_affiliation",
+        "has_contact",
+    }
+    assert not hasattr(result, "claimed_value")
+    for claim in result.field_provenance:
+        assert not hasattr(claim, "claimed_value")
+    assert state.last_query == ""
+    assert state.last_path.endswith(f"/v1/persons/{SEEDED_PERSON_ID}/evidence")
+    assert state.request_count == 1
+
+
+@pytest.mark.anyio
+async def test_person_evidence_omits_rank_claims_when_ranks_are_absent(
+    fake_client: httpx.AsyncClient,
+) -> None:
+    adapter = SearchBaseAdapter(_config(), client=fake_client)
+    result = await adapter.get_person_evidence(
+        SEEDED_PERSON_WITHOUT_RANKS_ID,
+        request_id="req-evidence-2",
+    )
+
+    assert isinstance(result, PersonEvidenceFound)
+    assert result.publications == SEEDED_PUBLICATIONS[SEEDED_PERSON_WITHOUT_RANKS_ID]
+    assert result.field_provenance == SEEDED_FIELD_PROVENANCE[SEEDED_PERSON_WITHOUT_RANKS_ID]
+    claimed_fields = {claim.field for claim in result.field_provenance}
+    assert "qs_top200_rank" not in claimed_fields
+    assert "world_top500_rank" not in claimed_fields
+
+
+@pytest.mark.anyio
+async def test_person_evidence_current_absence_is_not_an_empty_dossier(
+    fake_client: httpx.AsyncClient,
+) -> None:
+    adapter = SearchBaseAdapter(_config(), client=fake_client)
+    result = await adapter.get_person_evidence(
+        SEEDED_ABSENT_PERSON_ID,
+        request_id="req-evidence-absent",
+    )
+
+    assert isinstance(result, PersonCurrentAbsence)
+    assert result.outcome == "current_absence"
+    assert result.canonical_person_id == SEEDED_ABSENT_PERSON_ID
+    assert result.data_version == DEFAULT_DATA_VERSION
+    assert result.request_id == "req-evidence-absent"
+    assert not hasattr(result, "publications")
+    assert not hasattr(result, "field_provenance")
+
+
+@pytest.mark.anyio
+async def test_person_detail_and_evidence_share_current_data_version(
+    fake_client: httpx.AsyncClient,
+) -> None:
+    adapter = SearchBaseAdapter(_config(), client=fake_client)
+    detail = await adapter.get_person(SEEDED_PERSON_ID, request_id="req-same-dv-detail")
+    evidence = await adapter.get_person_evidence(
+        SEEDED_PERSON_ID,
+        request_id="req-same-dv-evidence",
+    )
+
+    assert detail.data_version == evidence.data_version == DEFAULT_DATA_VERSION
+
+
+@pytest.mark.anyio
+async def test_blank_person_id_is_rejected_before_evidence_http(
+    fake_client: httpx.AsyncClient,
+) -> None:
+    adapter = SearchBaseAdapter(_config(), client=fake_client)
+    with pytest.raises(SearchBaseAdapterError) as captured:
+        _ = await adapter.get_person_evidence("  ", request_id="req-blank-evidence")
+
+    assert captured.value.category == "invalid_query"
+    assert captured.value.retryable is False
+    assert state.request_count == 0
+
+
+@pytest.mark.anyio
+async def test_person_evidence_auth_failure_is_not_retried(
+    fake_client: httpx.AsyncClient,
+) -> None:
+    state.deny_auth = True
+    adapter = SearchBaseAdapter(_config(), client=fake_client, sleeper=_noop_sleep)
+    with pytest.raises(SearchBaseAdapterError) as captured:
+        _ = await adapter.get_person_evidence(SEEDED_PERSON_ID, request_id="req-evidence-auth")
+
+    assert captured.value.category == "unauthenticated"
+    assert captured.value.retryable is False
+    assert captured.value.status_code == 401
+    assert state.request_count == 1
+
+
+@pytest.mark.anyio
+async def test_person_evidence_unavailable_retries_then_fails(
+    fake_client: httpx.AsyncClient,
+) -> None:
+    delays: list[float] = []
+
+    async def sleeper(seconds: float) -> None:
+        delays.append(seconds)
+
+    state.status_5xx = True
+    adapter = SearchBaseAdapter(_config(), client=fake_client, sleeper=sleeper)
+    with pytest.raises(SearchBaseAdapterError) as captured:
+        _ = await adapter.get_person_evidence(SEEDED_PERSON_ID, request_id="req-evidence-5xx")
+
+    assert captured.value.category == "unavailable"
+    assert captured.value.retryable is True
+    assert state.request_count == MAX_ATTEMPTS
+    assert delays == [0.2, 0.4]
+
+
+def _seeded_evidence_payload(**overrides: object) -> dict[str, object]:
+    body: dict[str, object] = {
+        "outcome": "found",
+        "request_id": "req-evidence",
+        "data_version": DEFAULT_DATA_VERSION,
+        "canonical_person_id": SEEDED_PERSON_ID,
+        "publications": [
+            item.model_dump(mode="json") for item in SEEDED_PUBLICATIONS[SEEDED_PERSON_ID]
+        ],
+        "field_provenance": [
+            item.model_dump(mode="json") for item in SEEDED_FIELD_PROVENANCE[SEEDED_PERSON_ID]
+        ],
+    }
+    body.update(overrides)
+    return body
+
+
+@pytest.mark.anyio
+async def test_person_evidence_payload_with_email_is_invalid_and_not_retried() -> None:
+    attempts = {"count": 0}
+    payload = _seeded_evidence_payload()
+    payload["email"] = "wei@example.com"
+
+    def handler(_request: httpx.Request) -> httpx.Response:
+        attempts["count"] += 1
+        return httpx.Response(200, json=payload)
+
+    async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+        adapter = SearchBaseAdapter(_config(), client=client, sleeper=_noop_sleep)
+        with pytest.raises(SearchBaseAdapterError) as captured:
+            _ = await adapter.get_person_evidence(SEEDED_PERSON_ID, request_id="req-evidence")
+
+    assert captured.value.category == "invalid_response"
+    assert captured.value.retryable is False
+    assert attempts["count"] == 1
+
+
+@pytest.mark.anyio
+async def test_person_evidence_missing_data_version_is_invalid_response() -> None:
+    payload = _seeded_evidence_payload()
+    del payload["data_version"]
+
+    def handler(_request: httpx.Request) -> httpx.Response:
+        return httpx.Response(200, json=payload)
+
+    async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+        adapter = SearchBaseAdapter(_config(), client=client, sleeper=_noop_sleep)
+        with pytest.raises(SearchBaseAdapterError) as captured:
+            _ = await adapter.get_person_evidence(SEEDED_PERSON_ID, request_id="req-evidence")
+
+    assert captured.value.category == "invalid_response"
+    assert captured.value.retryable is False
+
+
+@pytest.mark.anyio
+async def test_person_evidence_mismatched_request_id_is_invalid_response() -> None:
+    def handler(_request: httpx.Request) -> httpx.Response:
+        return httpx.Response(200, json=_seeded_evidence_payload(request_id="other-id"))
+
+    async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+        adapter = SearchBaseAdapter(_config(), client=client, sleeper=_noop_sleep)
+        with pytest.raises(SearchBaseAdapterError) as captured:
+            _ = await adapter.get_person_evidence(SEEDED_PERSON_ID, request_id="req-evidence")
+
+    assert captured.value.category == "invalid_response"
+    assert captured.value.retryable is False
+
+
+@pytest.mark.anyio
+async def test_illegal_provenance_field_is_invalid_response() -> None:
+    payload = _seeded_evidence_payload(
+        field_provenance=[
+            {
+                "field": "email",
+                "source_kind": "profile",
+                "source_id": "src-orcid-001",
+                "snippet": None,
+            }
+        ]
+    )
+
+    def handler(_request: httpx.Request) -> httpx.Response:
+        return httpx.Response(200, json=payload)
+
+    async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+        adapter = SearchBaseAdapter(_config(), client=client, sleeper=_noop_sleep)
+        with pytest.raises(SearchBaseAdapterError) as captured:
+            _ = await adapter.get_person_evidence(SEEDED_PERSON_ID, request_id="req-evidence")
+
+    assert captured.value.category == "invalid_response"
+    assert captured.value.retryable is False
+
+
+@pytest.mark.anyio
+async def test_publication_provenance_must_reference_a_publication_in_the_payload() -> None:
+    payload = _seeded_evidence_payload(
+        field_provenance=[
+            {
+                "field": "h_index",
+                "source_kind": "publication",
+                "source_id": "pub-missing-001",
+                "snippet": None,
+            }
+        ]
+    )
+
+    def handler(_request: httpx.Request) -> httpx.Response:
+        return httpx.Response(200, json=payload)
+
+    async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+        adapter = SearchBaseAdapter(_config(), client=client, sleeper=_noop_sleep)
+        with pytest.raises(SearchBaseAdapterError) as captured:
+            _ = await adapter.get_person_evidence(SEEDED_PERSON_ID, request_id="req-evidence")
+
+    assert captured.value.category == "invalid_response"
+    assert captured.value.retryable is False
+    assert SEEDED_PUBLICATION_ID != "pub-missing-001"

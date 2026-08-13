@@ -18,6 +18,7 @@ REQUEST_ID_HEADER: Final = "X-Request-Id"
 HEALTH_PATH: Final = "/v1/health"
 PERSON_DETAIL_PATH_TEMPLATE: Final = "/v1/persons/{canonical_person_id}"
 PERSON_BATCH_PATH: Final = "/v1/persons/batch"
+PERSON_EVIDENCE_PATH_TEMPLATE: Final = "/v1/persons/{canonical_person_id}/evidence"
 BEARER_SCHEME: Final = "Bearer"
 MAX_PERSON_BATCH_SIZE: Final = 500
 
@@ -33,11 +34,34 @@ type SearchBaseErrorCategory = Literal[
     "invalid_response",
 ]
 type ChineseIdentity = Literal["国内华人", "海外华人", "外国人"]
+type ProvenanceField = Literal[
+    "display_name",
+    "current_affiliation",
+    "country",
+    "chinese_identity",
+    "h_index",
+    "total_citations",
+    "qs_top200_rank",
+    "world_top500_rank",
+    "has_contact",
+]
+type ProvenanceSourceKind = Literal["publication", "profile"]
 
 CHINESE_IDENTITY_VALUES: Final[tuple[ChineseIdentity, ...]] = (
     "国内华人",
     "海外华人",
     "外国人",
+)
+PROVENANCE_FIELDS: Final[tuple[ProvenanceField, ...]] = (
+    "display_name",
+    "current_affiliation",
+    "country",
+    "chinese_identity",
+    "h_index",
+    "total_citations",
+    "qs_top200_rank",
+    "world_top500_rank",
+    "has_contact",
 )
 
 
@@ -119,3 +143,43 @@ class PersonBatchResponse(BaseModel):
     data_version: str = Field(min_length=1)
     persons: tuple[CanonicalPersonFields, ...]
     currently_absent_ids: tuple[str, ...]
+
+
+@final
+class PersonPublication(BaseModel):
+    model_config: ClassVar[ConfigDict] = ConfigDict(extra="ignore", frozen=True)
+
+    publication_id: str = Field(min_length=1)
+    title: str = Field(min_length=1)
+    year: int = Field(ge=0)
+    venue: str = Field(min_length=1)
+    snippet: str | None = None
+
+
+@final
+class FieldProvenanceClaim(BaseModel):
+    model_config: ClassVar[ConfigDict] = ConfigDict(extra="ignore", frozen=True)
+
+    field: ProvenanceField
+    source_kind: ProvenanceSourceKind
+    source_id: str = Field(min_length=1)
+    snippet: str | None = None
+
+
+@final
+class PersonEvidenceFound(BaseModel):
+    model_config: ClassVar[ConfigDict] = ConfigDict(extra="ignore", frozen=True)
+
+    outcome: Literal["found"]
+    request_id: str = Field(min_length=1)
+    data_version: str = Field(min_length=1)
+    canonical_person_id: str = Field(min_length=1)
+    publications: tuple[PersonPublication, ...]
+    field_provenance: tuple[FieldProvenanceClaim, ...]
+
+
+type PersonEvidenceResult = PersonEvidenceFound | PersonCurrentAbsence
+
+PERSON_EVIDENCE_RESPONSE_ADAPTER: Final[TypeAdapter[PersonEvidenceResult]] = TypeAdapter(
+    Annotated[PersonEvidenceFound | PersonCurrentAbsence, Field(discriminator="outcome")]
+)

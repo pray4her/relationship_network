@@ -1,14 +1,19 @@
+import asyncio
+import socket
 import uuid
 from collections.abc import AsyncIterator
 from typing import final
 
 import pytest
+import uvicorn
 from httpx import ASGITransport
 from sqlalchemy import delete
 from sqlalchemy.ext.asyncio import AsyncEngine, AsyncSession, async_sessionmaker
 
 from relationship_network_api.config import load_app_settings
 from relationship_network_api.db import create_engine_from_settings, create_session_factory
+from relationship_network_api.fake_search_base import app as fake_search_base_app
+from relationship_network_api.fake_search_base import reset_fake_search_base
 from relationship_network_api.main import create_app
 from relationship_network_api.models import Tenant, User
 
@@ -62,3 +67,32 @@ async def cleanup(stack: Stack) -> None:
 
 def unique_email() -> str:
     return f"itest-{uuid.uuid4().hex}@example.com"
+
+
+def _unused_port() -> int:
+    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:
+        sock.bind(("127.0.0.1", 0))
+        return int(sock.getsockname()[1])
+
+
+@pytest.fixture
+async def fake_search_base_base_url() -> AsyncIterator[str]:
+    reset_fake_search_base()
+    port = _unused_port()
+    server = uvicorn.Server(
+        uvicorn.Config(fake_search_base_app, host="127.0.0.1", port=port, log_level="warning")
+    )
+    task = asyncio.create_task(server.serve())
+    try:
+        for _ in range(100):
+            if server.started:
+                break
+            await asyncio.sleep(0.05)
+        else:
+            message = "fake search base failed to start"
+            raise RuntimeError(message)
+        yield f"http://127.0.0.1:{port}"
+    finally:
+        server.should_exit = True
+        await task
+        reset_fake_search_base()

@@ -22,12 +22,16 @@ from relationship_network_api.search_base_contract import (
     PERSON_BATCH_PATH,
     PERSON_DETAIL_PATH_TEMPLATE,
     PERSON_DETAIL_RESPONSE_ADAPTER,
+    PERSON_EVIDENCE_PATH_TEMPLATE,
+    PERSON_EVIDENCE_RESPONSE_ADAPTER,
     REQUEST_ID_HEADER,
     SEARCH_CONTRACT_VERSION_V1,
     PersonBatchRequest,
     PersonBatchResponse,
     PersonDetailFound,
     PersonDetailResult,
+    PersonEvidenceFound,
+    PersonEvidenceResult,
     SearchBaseErrorBody,
     SearchBaseHealthResponse,
 )
@@ -177,6 +181,28 @@ class SearchBaseAdapter:
             result.data_version,
             len(result.persons),
             len(result.currently_absent_ids),
+        )
+        return result
+
+    async def get_person_evidence(
+        self,
+        canonical_person_id: str,
+        *,
+        request_id: str | None = None,
+    ) -> PersonEvidenceResult:
+        _reject_blank_person_id(canonical_person_id)
+        resolved_request_id = request_id or str(uuid.uuid4())
+        path = PERSON_EVIDENCE_PATH_TEMPLATE.format(
+            canonical_person_id=quote(canonical_person_id, safe="")
+        )
+        response = await self._request("GET", path, resolved_request_id)
+        result = _parse_person_evidence_response(response, resolved_request_id, canonical_person_id)
+        logger.info(
+            "search-base person evidence %s request_id=%s data_version=%s outcome=%s",
+            canonical_person_id,
+            result.request_id,
+            result.data_version,
+            result.outcome,
         )
         return result
 
@@ -373,6 +399,35 @@ def _parse_person_batch_response(
         raise _invalid_response(response.status_code) from error
     _ensure_echoed_request_id(parsed.request_id, request_id, response.status_code)
     return parsed
+
+
+def _parse_person_evidence_response(
+    response: httpx.Response,
+    request_id: str,
+    canonical_person_id: str,
+) -> PersonEvidenceResult:
+    payload = _load_json_payload(response)
+    _reject_contact_keys(payload, response.status_code)
+    try:
+        parsed = PERSON_EVIDENCE_RESPONSE_ADAPTER.validate_python(payload)
+    except ValidationError as error:
+        raise _invalid_response(response.status_code) from error
+    _ensure_echoed_request_id(parsed.request_id, request_id, response.status_code)
+    if parsed.canonical_person_id != canonical_person_id:
+        raise _invalid_response(response.status_code)
+    if isinstance(parsed, PersonEvidenceFound):
+        _ensure_publication_provenance_ids(parsed, response.status_code)
+    return parsed
+
+
+def _ensure_publication_provenance_ids(
+    evidence: PersonEvidenceFound,
+    status_code: int,
+) -> None:
+    publication_ids = {item.publication_id for item in evidence.publications}
+    for claim in evidence.field_provenance:
+        if claim.source_kind == "publication" and claim.source_id not in publication_ids:
+            raise _invalid_response(status_code)
 
 
 def _load_json_payload(response: httpx.Response) -> object:

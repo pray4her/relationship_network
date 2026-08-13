@@ -19,10 +19,13 @@ from relationship_network_api.search_base_contract import (
     REQUEST_ID_HEADER,
     SEARCH_CONTRACT_VERSION_V1,
     CanonicalPersonFields,
+    FieldProvenanceClaim,
     PersonBatchRequest,
     PersonBatchResponse,
     PersonCurrentAbsence,
     PersonDetailFound,
+    PersonEvidenceFound,
+    PersonPublication,
     SearchBaseErrorBody,
     SearchBaseErrorCategory,
     SearchBaseHealthResponse,
@@ -33,6 +36,9 @@ DEFAULT_DATA_VERSION: Final = "dv-seed-001"
 SEEDED_PERSON_ID: Final = "cp-seed-001"
 SEEDED_PERSON_WITHOUT_RANKS_ID: Final = "cp-seed-002"
 SEEDED_ABSENT_PERSON_ID: Final = "cp-absent-001"
+SEEDED_PUBLICATION_ID: Final = "pub-seed-001"
+SEEDED_PUBLICATION_WITHOUT_SNIPPET_ID: Final = "pub-seed-002"
+SEEDED_SECOND_PERSON_PUBLICATION_ID: Final = "pub-seed-003"
 HTTP_BAD_REQUEST: Final = 400
 HTTP_UNAUTHORIZED: Final = 401
 HTTP_FORBIDDEN: Final = 403
@@ -69,6 +75,71 @@ SEEDED_PERSONS: Final[dict[str, CanonicalPersonFields]] = {
     ),
 }
 
+SEEDED_PUBLICATIONS: Final[dict[str, tuple[PersonPublication, ...]]] = {
+    SEEDED_PERSON_ID: (
+        PersonPublication(
+            publication_id=SEEDED_PUBLICATION_ID,
+            title="Graph representations for talent matching",
+            year=2023,
+            venue="NeurIPS",
+            snippet="We encode co-author neighborhoods as typed graphs.",
+        ),
+        PersonPublication(
+            publication_id=SEEDED_PUBLICATION_WITHOUT_SNIPPET_ID,
+            title="Institution ranking signals in academic search",
+            year=2021,
+            venue="Scientometrics",
+            snippet=None,
+        ),
+    ),
+    SEEDED_PERSON_WITHOUT_RANKS_ID: (
+        PersonPublication(
+            publication_id=SEEDED_SECOND_PERSON_PUBLICATION_ID,
+            title="Medieval legal networks in northern Italy",
+            year=2019,
+            venue="Journal of Historical Sociology",
+            snippet=None,
+        ),
+    ),
+}
+
+SEEDED_FIELD_PROVENANCE: Final[dict[str, tuple[FieldProvenanceClaim, ...]]] = {
+    SEEDED_PERSON_ID: (
+        FieldProvenanceClaim(
+            field="h_index",
+            source_kind="publication",
+            source_id=SEEDED_PUBLICATION_ID,
+            snippet="citation window used for the reported h-index",
+        ),
+        FieldProvenanceClaim(
+            field="current_affiliation",
+            source_kind="publication",
+            source_id=SEEDED_PUBLICATION_WITHOUT_SNIPPET_ID,
+            snippet=None,
+        ),
+        FieldProvenanceClaim(
+            field="has_contact",
+            source_kind="profile",
+            source_id="src-orcid-001",
+            snippet="profile marks a reachable contact without revealing it",
+        ),
+    ),
+    SEEDED_PERSON_WITHOUT_RANKS_ID: (
+        FieldProvenanceClaim(
+            field="country",
+            source_kind="profile",
+            source_id="src-profile-002",
+            snippet=None,
+        ),
+        FieldProvenanceClaim(
+            field="chinese_identity",
+            source_kind="publication",
+            source_id=SEEDED_SECOND_PERSON_PUBLICATION_ID,
+            snippet="affiliation country used for identity classification",
+        ),
+    ),
+}
+
 app = FastAPI(title="Fake Search Base")
 
 
@@ -89,6 +160,8 @@ class FakeSearchBaseState:
     last_authorization: str = ""
     last_contract_version: str = ""
     last_request_id: str = ""
+    last_path: str = ""
+    last_query: str = ""
 
 
 state = FakeSearchBaseState()
@@ -173,11 +246,39 @@ async def person_batch(request: Request) -> Response:
     return _json_payload(payload)
 
 
+@app.get("/v1/persons/{canonical_person_id}/evidence")
+async def person_evidence(canonical_person_id: str, request: Request) -> Response:
+    guarded = await _guard(request)
+    if guarded is not None:
+        return guarded
+    publications = SEEDED_PUBLICATIONS.get(canonical_person_id)
+    request_id = _echo_request_id()
+    if publications is None:
+        payload: PersonEvidenceFound | PersonCurrentAbsence = PersonCurrentAbsence(
+            outcome="current_absence",
+            request_id=request_id,
+            data_version=state.current_data_version,
+            canonical_person_id=canonical_person_id,
+        )
+    else:
+        payload = PersonEvidenceFound(
+            outcome="found",
+            request_id=request_id,
+            data_version=state.current_data_version,
+            canonical_person_id=canonical_person_id,
+            publications=publications,
+            field_provenance=SEEDED_FIELD_PROVENANCE.get(canonical_person_id, ()),
+        )
+    return _json_payload(payload)
+
+
 async def _guard(request: Request) -> Response | None:
     state.request_count += 1
     state.last_authorization = request.headers.get(AUTHORIZATION_HEADER, "")
     state.last_contract_version = request.headers.get(CONTRACT_VERSION_HEADER, "")
     state.last_request_id = request.headers.get(REQUEST_ID_HEADER, "")
+    state.last_path = request.url.path
+    state.last_query = str(request.url.query)
     if state.hang_seconds > 0:
         await asyncio.sleep(state.hang_seconds)
     auth_error = _authentication_error(request)
@@ -212,7 +313,8 @@ def _json_payload(
     payload: SearchBaseHealthResponse
     | PersonDetailFound
     | PersonCurrentAbsence
-    | PersonBatchResponse,
+    | PersonBatchResponse
+    | PersonEvidenceFound,
 ) -> JSONResponse:
     return JSONResponse(
         content=payload.model_dump(mode="json"),
