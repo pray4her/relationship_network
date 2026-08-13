@@ -9,6 +9,7 @@ from relationship_network_api.config import (
     load_app_settings,
     load_database_settings,
 )
+from relationship_network_api.search_base import search_base_adapter_from_settings
 
 
 class AppSettingsWithoutEnvFile(Protocol):
@@ -127,3 +128,46 @@ def test_openrouter_settings_are_environment_only_and_secret_safe(
     assert settings.openrouter_base_url == "https://openrouter.test/api/v1"
     assert settings.openrouter_site_url == "https://relationship.test"
     assert "openrouter-secret" not in repr(settings)
+
+
+def test_search_base_settings_are_environment_only_and_secret_safe(
+    monkeypatch: MonkeyPatch,
+) -> None:
+    monkeypatch.setenv(
+        "RN_DATABASE_URL",
+        "postgresql+asyncpg://app:password@postgres:5432/relationship_network",
+    )
+    monkeypatch.setenv("RN_OBJECT_STORAGE_ACCESS_KEY", "local-access")
+    monkeypatch.setenv("RN_OBJECT_STORAGE_SECRET_KEY", "local-secret")
+    monkeypatch.setenv("RN_SEARCH_BASE_API_KEY", "search-base-secret")
+    monkeypatch.setenv("RN_SEARCH_BASE_BASE_URL", "http://search-base.test")
+    monkeypatch.setenv("RN_SEARCH_BASE_TIMEOUT_SECONDS", "12")
+    monkeypatch.setenv("RN_SEARCH_BASE_CONTRACT_VERSION", "v1")
+
+    settings = load_app_settings()
+
+    assert settings.search_base_api_key is not None
+    assert settings.search_base_api_key.get_secret_value() == "search-base-secret"
+    assert settings.search_base_base_url == "http://search-base.test"
+    assert settings.search_base_timeout_seconds == 12
+    assert settings.search_base_contract_version == "v1"
+    assert "search-base-secret" not in repr(settings)
+    adapter = search_base_adapter_from_settings(settings)
+    assert adapter._config.api_key == "search-base-secret"
+    assert adapter._config.base_url == "http://search-base.test"
+    assert adapter._config.timeout_seconds == 12
+
+
+def test_search_base_timeout_rejects_values_outside_contract(
+    monkeypatch: MonkeyPatch,
+) -> None:
+    monkeypatch.setenv(
+        "RN_DATABASE_URL",
+        "postgresql+asyncpg://app:password@postgres:5432/relationship_network",
+    )
+    monkeypatch.setenv("RN_OBJECT_STORAGE_ACCESS_KEY", "local-access")
+    monkeypatch.setenv("RN_OBJECT_STORAGE_SECRET_KEY", "local-secret")
+    monkeypatch.setenv("RN_SEARCH_BASE_TIMEOUT_SECONDS", "2")
+
+    with pytest.raises(ValidationError):
+        _ = load_app_settings()

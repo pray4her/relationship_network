@@ -45,6 +45,10 @@ class AppSettings(DatabaseSettings):
     openrouter_site_name: str = "Relationship Network"
     llm_raw_response_keys: SecretStr = SecretStr("{}")
     llm_raw_response_active_key_id: str = ""
+    search_base_base_url: str = "http://127.0.0.1:18081"
+    search_base_api_key: SecretStr | None = None
+    search_base_timeout_seconds: int = Field(default=10, ge=3, le=30)
+    search_base_contract_version: str = "v1"
 
 
 def load_app_settings() -> AppSettings:
