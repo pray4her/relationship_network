@@ -11,6 +11,7 @@ import {
 import { CompanyArchiveButton } from "@/components/companies/company-archive-button"
 import { CompanyDocumentUpload } from "@/components/companies/company-document-upload"
 import { CompanyEditForm } from "@/components/companies/company-edit-form"
+import { companyStatusMeta } from "@/components/companies/company-status"
 import {
   DataRegion,
   DataRegionContent,
@@ -31,8 +32,8 @@ import {
   PageSectionTitle,
   PageTitle,
 } from "@/components/layout/page"
+import { StatusBadge } from "@/components/status-badge"
 import { Alert, AlertDescription } from "@/components/ui/alert"
-import { Badge } from "@/components/ui/badge"
 import {
   Breadcrumb,
   BreadcrumbItem,
@@ -53,6 +54,7 @@ import {
 import { apiPublicBaseUrl } from "@/lib/api-url"
 import { createAuthTransport, loadAuthSession, SESSION_COOKIE_NAME } from "@/lib/auth-client"
 import { createCompaniesTransport, loadCompanyDetail } from "@/lib/companies-client"
+import { formatBytes, formatDateTime } from "@/lib/format"
 
 type CompanyDetailPageProps = {
   readonly params: Promise<{ readonly id: string }>
@@ -69,10 +71,6 @@ const eventLabels: Record<string, string> = {
   "company.document_upload": "上传文档",
 }
 
-function formatDateTime(value: string): string {
-  return new Date(value).toLocaleString("zh-CN", { hour12: false })
-}
-
 const headClassName = "font-mono text-xs tracking-wider text-muted-foreground uppercase"
 
 function NoticePage({ children }: { readonly children: React.ReactNode }) {
@@ -81,6 +79,7 @@ function NoticePage({ children }: { readonly children: React.ReactNode }) {
       <PageHeader>
         <PageHeaderContent>
           <PageTitle>企业详情</PageTitle>
+          <PageDescription>查看企业档案、文档与操作记录。</PageDescription>
         </PageHeaderContent>
       </PageHeader>
       <Alert>
@@ -150,11 +149,7 @@ export default async function CompanyDetailPage({ params }: CompanyDetailPagePro
           <PageDescription>{company.profile_text || "暂无企业简介。"}</PageDescription>
         </PageHeaderContent>
         <PageActions>
-          {isActive ? (
-            <Badge variant="success">活跃</Badge>
-          ) : (
-            <Badge variant="secondary">已归档</Badge>
-          )}
+          <StatusBadge {...companyStatusMeta[company.status]} />
         </PageActions>
       </PageHeader>
 
@@ -198,9 +193,11 @@ export default async function CompanyDetailPage({ params }: CompanyDetailPagePro
                 <TableHeader>
                   <TableRow>
                     <TableHead className={headClassName}>文件名</TableHead>
-                    <TableHead className={headClassName}>大小</TableHead>
+                    <TableHead className={headClassName} numeric>
+                      大小
+                    </TableHead>
                     <TableHead className={headClassName}>抽取文本预览</TableHead>
-                    <TableHead className={headClassName}>上传时间</TableHead>
+                    <TableHead className={`${headClassName} max-md:hidden`}>上传时间</TableHead>
                     <TableHead className={headClassName}>下载</TableHead>
                   </TableRow>
                 </TableHeader>
@@ -208,11 +205,11 @@ export default async function CompanyDetailPage({ params }: CompanyDetailPagePro
                   {documents.map((document) => (
                     <TableRow key={document.id}>
                       <TableCell>{document.original_filename}</TableCell>
-                      <TableCell className="tabular-nums">{document.byte_size} B</TableCell>
+                      <TableCell numeric>{formatBytes(document.byte_size)}</TableCell>
                       <TableCell className="max-w-md truncate">
                         {document.extracted_text.slice(0, 120) || "—"}
                       </TableCell>
-                      <TableCell className="tabular-nums">
+                      <TableCell className="tabular-nums max-md:hidden">
                         {formatDateTime(document.created_at)}
                       </TableCell>
                       <TableCell>

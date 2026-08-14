@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import asyncio
 import logging
+import math
 import uuid
 from collections.abc import Awaitable, Callable, Sequence
 from dataclasses import dataclass
@@ -17,6 +18,7 @@ from relationship_network_api.search_base_contract import (
     AUTHORIZATION_HEADER,
     BEARER_SCHEME,
     CONTRACT_VERSION_HEADER,
+    DEFAULT_SEARCH_HIT_LIMIT,
     HEALTH_PATH,
     MAX_PERSON_BATCH_SIZE,
     PERSON_BATCH_PATH,
@@ -26,6 +28,8 @@ from relationship_network_api.search_base_contract import (
     PERSON_EVIDENCE_RESPONSE_ADAPTER,
     REQUEST_ID_HEADER,
     SEARCH_CONTRACT_VERSION_V1,
+    TALENT_SEARCH_PATH,
+    HardCondition,
     PersonBatchRequest,
     PersonBatchResponse,
     PersonDetailFound,
@@ -34,6 +38,9 @@ from relationship_network_api.search_base_contract import (
     PersonEvidenceResult,
     SearchBaseErrorBody,
     SearchBaseHealthResponse,
+    SearchHit,
+    TalentSearchRequest,
+    TalentSearchResponse,
 )
 
 if TYPE_CHECKING:
@@ -69,6 +76,9 @@ FORBIDDEN_CONTACT_KEYS: Final[frozenset[str]] = frozenset(
         "tel",
         "tels",
     }
+)
+FORBIDDEN_MATCH_SCORE_KEYS: Final[frozenset[str]] = frozenset(
+    {"total_score", "match_score", "weights"}
 )
 
 
@@ -203,6 +213,42 @@ class SearchBaseAdapter:
             result.request_id,
             result.data_version,
             result.outcome,
+        )
+        return result
+
+    async def search_talent(
+        self,
+        hard_conditions: Sequence[HardCondition] = (),
+        *,
+        research_topic_query: str = "",
+        hit_limit: int = DEFAULT_SEARCH_HIT_LIMIT,
+        request_id: str | None = None,
+        **rejected: object,
+    ) -> TalentSearchResponse:
+        if rejected:
+            _raise_invalid_query()
+        request = _build_talent_search_request(
+            hard_conditions,
+            research_topic_query=research_topic_query,
+            hit_limit=hit_limit,
+        )
+        resolved_request_id = request_id or str(uuid.uuid4())
+        response = await self._request(
+            "POST",
+            TALENT_SEARCH_PATH,
+            resolved_request_id,
+            json_body=request.model_dump(mode="json"),
+        )
+        result = _parse_talent_search_response(
+            response,
+            resolved_request_id,
+            has_research_topic=request.has_research_topic,
+        )
+        logger.info(
+            "search-base talent search ok request_id=%s data_version=%s hits=%s",
+            result.request_id,
+            result.data_version,
+            len(result.hits),
         )
         return result
 
@@ -353,6 +399,23 @@ def _raise_invalid_query() -> NoReturn:
     raise SearchBaseAdapterError(category, retryable=False)
 
 
+def _build_talent_search_request(
+    hard_conditions: Sequence[HardCondition],
+    *,
+    research_topic_query: str,
+    hit_limit: int,
+) -> TalentSearchRequest:
+    try:
+        return TalentSearchRequest(
+            hard_conditions=tuple(hard_conditions),
+            research_topic_query=research_topic_query,
+            hit_limit=hit_limit,
+        )
+    except ValidationError as error:
+        category = "invalid_query"
+        raise SearchBaseAdapterError(category, retryable=False) from error
+
+
 def _parse_health_response(
     response: httpx.Response,
     request_id: str,
@@ -430,6 +493,61 @@ def _ensure_publication_provenance_ids(
             raise _invalid_response(status_code)
 
 
+def _parse_talent_search_response(
+    response: httpx.Response,
+    request_id: str,
+    *,
+    has_research_topic: bool,
+) -> TalentSearchResponse:
+    payload = _load_json_payload(response)
+    _reject_contact_keys(payload, response.status_code)
+    _reject_match_score_keys(payload, response.status_code)
+    try:
+        parsed = TalentSearchResponse.model_validate(payload)
+    except ValidationError as error:
+        raise _invalid_response(response.status_code) from error
+    _ensure_echoed_request_id(parsed.request_id, request_id, response.status_code)
+    _ensure_hits_ordered(
+        parsed.hits,
+        has_research_topic=has_research_topic,
+        status_code=response.status_code,
+    )
+    return parsed
+
+
+def _ensure_hits_ordered(
+    hits: tuple[SearchHit, ...],
+    *,
+    has_research_topic: bool,
+    status_code: int,
+) -> None:
+    if has_research_topic:
+        _ensure_semantic_hits_ordered(hits, status_code)
+        return
+    _ensure_hard_filter_hits_ordered(hits, status_code)
+
+
+def _ensure_semantic_hits_ordered(hits: tuple[SearchHit, ...], status_code: int) -> None:
+    scores: list[float] = []
+    for hit in hits:
+        score = hit.semantic_score
+        if score is None or not math.isfinite(score):
+            raise _invalid_response(status_code)
+        scores.append(score)
+    if scores != sorted(scores, reverse=True):
+        raise _invalid_response(status_code)
+
+
+def _ensure_hard_filter_hits_ordered(hits: tuple[SearchHit, ...], status_code: int) -> None:
+    if any(hit.semantic_score is not None for hit in hits):
+        raise _invalid_response(status_code)
+    expected = tuple(
+        sorted(hits, key=lambda hit: (-hit.person.h_index, hit.person.canonical_person_id))
+    )
+    if hits != expected:
+        raise _invalid_response(status_code)
+
+
 def _load_json_payload(response: httpx.Response) -> object:
     try:
         return response.json()
@@ -443,22 +561,27 @@ def _ensure_echoed_request_id(echoed: str, request_id: str, status_code: int) ->
 
 
 def _reject_contact_keys(payload: object, status_code: int) -> None:
-    if _payload_contains_contact_keys(payload):
+    if _payload_contains_keys(payload, FORBIDDEN_CONTACT_KEYS):
         raise _invalid_response(status_code)
 
 
-def _payload_contains_contact_keys(payload: object) -> bool:
+def _reject_match_score_keys(payload: object, status_code: int) -> None:
+    if _payload_contains_keys(payload, FORBIDDEN_MATCH_SCORE_KEYS):
+        raise _invalid_response(status_code)
+
+
+def _payload_contains_keys(payload: object, forbidden: frozenset[str]) -> bool:
     if isinstance(payload, dict):
         mapping = cast("dict[object, object]", payload)
         for key, value in mapping.items():
-            if str(key).lower() in FORBIDDEN_CONTACT_KEYS:
+            if str(key).lower() in forbidden:
                 return True
-            if _payload_contains_contact_keys(value):
+            if _payload_contains_keys(value, forbidden):
                 return True
         return False
     if isinstance(payload, list):
         items = cast("list[object]", payload)
-        return any(_payload_contains_contact_keys(item) for item in items)
+        return any(_payload_contains_keys(item, forbidden) for item in items)
     return False
 
 

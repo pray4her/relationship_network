@@ -6,11 +6,22 @@ type FormFieldProps = {
   readonly label: string
   readonly type: "email" | "password" | "text"
   readonly autoComplete?: string
+  readonly inputMode?: "decimal" | "numeric" | "text"
+  readonly maxLength?: number
   readonly error?: string | undefined
   readonly hint?: string
 }
 
-export function FormField({ autoComplete, error, hint, id, label, type }: FormFieldProps) {
+export function FormField({
+  autoComplete,
+  error,
+  hint,
+  id,
+  inputMode,
+  label,
+  maxLength,
+  type,
+}: FormFieldProps) {
   return (
     <Field data-invalid={error ? true : undefined}>
       <FieldLabel htmlFor={id}>{label}</FieldLabel>
@@ -20,6 +31,8 @@ export function FormField({ autoComplete, error, hint, id, label, type }: FormFi
         name={id}
         type={type}
         {...(autoComplete === undefined ? {} : { autoComplete })}
+        {...(inputMode === undefined ? {} : { inputMode })}
+        {...(maxLength === undefined ? {} : { maxLength })}
       />
       {hint ? <FieldDescription>{hint}</FieldDescription> : null}
       {error ? <FieldError>{error}</FieldError> : null}

@@ -5,6 +5,12 @@ import { redirect } from "next/navigation"
 
 import { AdminGateNotice } from "@/components/admin/admin-gate-notice"
 import {
+  adminTableHeadClassName,
+  LlmCallMetadataStatusBadge,
+  LlmCallOutcomeBadge,
+} from "@/components/admin/admin-status-badges"
+import { FilterSelect } from "@/components/admin/filter-select"
+import {
   DataRegion,
   DataRegionContent,
   DataRegionFooter,
@@ -33,6 +39,7 @@ import {
   TableRow,
 } from "@/components/ui/table"
 import { requireAdminView } from "@/lib/admin-guard"
+import { formatDateTime } from "@/lib/format"
 import { createLlmCallTransport, loadLlmCalls } from "@/lib/llm-call-client"
 import {
   llmCallMetadataStatusSchema,
@@ -41,7 +48,6 @@ import {
   llmCallTypeSchema,
 } from "@/lib/llm-call-contract"
 import {
-  formatDiagnosticDateTime,
   llmCallMetadataStatusLabels,
   llmCallOutcomeLabels,
   llmCallScopeLabels,
@@ -52,9 +58,6 @@ export const metadata: Metadata = { title: "LLM 调用记录" }
 
 type SearchParameters = Record<string, string | string[] | undefined>
 type LlmCallListPageProps = { readonly searchParams: Promise<SearchParameters> }
-
-const selectClassName =
-  "h-8 w-full min-w-0 rounded-lg border border-input bg-background px-2.5 text-sm outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50"
 
 function first(value: string | string[] | undefined): string {
   return typeof value === "string" ? value : ""
@@ -72,28 +75,6 @@ function cleanQuery(parameters: SearchParameters): Record<string, string> {
     if (item !== "" && key !== "cursor") query[key] = item
   }
   return query
-}
-
-function OutcomeBadge({ outcome }: { readonly outcome: string | null }) {
-  if (outcome === null) return <Badge variant="outline">等待结果</Badge>
-  const parsed = llmCallOutcomeSchema.safeParse(outcome)
-  if (!parsed.success) return <Badge variant="outline">未知</Badge>
-  const variant =
-    parsed.data === "succeeded" ? "success" : parsed.data === "failed" ? "destructive" : "warning"
-  return <Badge variant={variant}>{llmCallOutcomeLabels[parsed.data]}</Badge>
-}
-
-function MetadataBadge({ status }: { readonly status: string | null }) {
-  if (status === null) return <Badge variant="outline">等待元数据</Badge>
-  const parsed = llmCallMetadataStatusSchema.safeParse(status)
-  if (!parsed.success) return <Badge variant="outline">未知</Badge>
-  const variant =
-    parsed.data === "available"
-      ? "success"
-      : parsed.data === "retry_scheduled"
-        ? "secondary"
-        : "warning"
-  return <Badge variant={variant}>{llmCallMetadataStatusLabels[parsed.data]}</Badge>
 }
 
 export default async function LlmCallListPage({ searchParams }: LlmCallListPageProps) {
@@ -151,10 +132,10 @@ export default async function LlmCallListPage({ searchParams }: LlmCallListPageP
           调用记录筛选与结果
         </h2>
         <PageToolbar render={<form action="/admin/llm-calls" method="get" />}>
-          <Field className="w-36">
+          <Field className="w-36 max-sm:w-full">
             <FieldLabel htmlFor="llm-call-scope">调用范围</FieldLabel>
-            <select
-              className={selectClassName}
+            <FilterSelect
+              className="w-full"
               defaultValue={scope.success ? scope.data : ""}
               id="llm-call-scope"
               name="scope"
@@ -162,12 +143,12 @@ export default async function LlmCallListPage({ searchParams }: LlmCallListPageP
               <option value="">全部范围</option>
               <option value="platform">平台</option>
               <option value="tenant">租户</option>
-            </select>
+            </FilterSelect>
           </Field>
-          <Field className="w-44">
+          <Field className="w-44 max-sm:w-full">
             <FieldLabel htmlFor="llm-call-type">调用类型</FieldLabel>
-            <select
-              className={selectClassName}
+            <FilterSelect
+              className="w-full"
               defaultValue={callType.success ? callType.data : ""}
               id="llm-call-type"
               name="call_type"
@@ -175,12 +156,12 @@ export default async function LlmCallListPage({ searchParams }: LlmCallListPageP
               <option value="">全部类型</option>
               <option value="config_probe">配置探测</option>
               <option value="job_requirement_parsing">职位需求解析</option>
-            </select>
+            </FilterSelect>
           </Field>
-          <Field className="w-36">
+          <Field className="w-36 max-sm:w-full">
             <FieldLabel htmlFor="llm-call-outcome">调用结果</FieldLabel>
-            <select
-              className={selectClassName}
+            <FilterSelect
+              className="w-full"
               defaultValue={outcome.success ? outcome.data : ""}
               id="llm-call-outcome"
               name="outcome"
@@ -191,12 +172,12 @@ export default async function LlmCallListPage({ searchParams }: LlmCallListPageP
                   {llmCallOutcomeLabels[item]}
                 </option>
               ))}
-            </select>
+            </FilterSelect>
           </Field>
-          <Field className="w-36">
+          <Field className="w-36 max-sm:w-full">
             <FieldLabel htmlFor="llm-call-metadata">元数据</FieldLabel>
-            <select
-              className={selectClassName}
+            <FilterSelect
+              className="w-full"
               defaultValue={metadataStatus.success ? metadataStatus.data : ""}
               id="llm-call-metadata"
               name="metadata_status"
@@ -207,7 +188,7 @@ export default async function LlmCallListPage({ searchParams }: LlmCallListPageP
                   {llmCallMetadataStatusLabels[item]}
                 </option>
               ))}
-            </select>
+            </FilterSelect>
           </Field>
           <Field className="min-w-64 flex-1">
             <FieldLabel htmlFor="llm-call-tenant-id">租户 ID</FieldLabel>
@@ -227,11 +208,11 @@ export default async function LlmCallListPage({ searchParams }: LlmCallListPageP
               placeholder="UUID"
             />
           </Field>
-          <Field className="w-44">
+          <Field className="w-44 max-sm:w-full">
             <FieldLabel htmlFor="llm-call-from">开始日期</FieldLabel>
             <Input defaultValue={createdFrom} id="llm-call-from" name="created_from" type="date" />
           </Field>
-          <Field className="w-44">
+          <Field className="w-44 max-sm:w-full">
             <FieldLabel htmlFor="llm-call-to">结束日期</FieldLabel>
             <Input defaultValue={createdTo} id="llm-call-to" name="created_to" type="date" />
           </Field>
@@ -273,13 +254,13 @@ export default async function LlmCallListPage({ searchParams }: LlmCallListPageP
                 <Table className="min-w-[72rem]">
                   <TableHeader>
                     <TableRow>
-                      <TableHead>创建时间</TableHead>
-                      <TableHead>范围 / 类型</TableHead>
-                      <TableHead>模型</TableHead>
-                      <TableHead>请求</TableHead>
-                      <TableHead>结果</TableHead>
-                      <TableHead>元数据</TableHead>
-                      <TableHead>原始响应</TableHead>
+                      <TableHead className={adminTableHeadClassName}>创建时间</TableHead>
+                      <TableHead className={adminTableHeadClassName}>范围 / 类型</TableHead>
+                      <TableHead className={adminTableHeadClassName}>模型</TableHead>
+                      <TableHead className={adminTableHeadClassName}>请求</TableHead>
+                      <TableHead className={adminTableHeadClassName}>结果</TableHead>
+                      <TableHead className={adminTableHeadClassName}>元数据</TableHead>
+                      <TableHead className={adminTableHeadClassName}>原始响应</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -290,7 +271,7 @@ export default async function LlmCallListPage({ searchParams }: LlmCallListPageP
                             className="font-medium text-primary underline underline-offset-4"
                             href={`/admin/llm-calls/${call.id}`}
                           >
-                            {formatDiagnosticDateTime(call.created_at)}
+                            {formatDateTime(call.created_at)}
                           </Link>
                         </TableCell>
                         <TableCell>
@@ -306,10 +287,10 @@ export default async function LlmCallListPage({ searchParams }: LlmCallListPageP
                           #{call.request_number}
                         </TableCell>
                         <TableCell>
-                          <OutcomeBadge outcome={call.outcome} />
+                          <LlmCallOutcomeBadge outcome={call.outcome} />
                         </TableCell>
                         <TableCell>
-                          <MetadataBadge status={call.metadata_status} />
+                          <LlmCallMetadataStatusBadge status={call.metadata_status} />
                         </TableCell>
                         <TableCell>
                           <Badge variant={call.raw_response_available ? "secondary" : "outline"}>

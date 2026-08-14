@@ -33,18 +33,33 @@ from relationship_network_api.durable_task import (
     MAX_STRUCTURED_INVALID_CALLS,
     lease_seconds_for_timeout,
 )
+from relationship_network_api.job_requirement_validation import (
+    RequirementResultValidationError,
+    validate_requirement_result,
+)
+from relationship_network_api.llm_assets import manifest
+from relationship_network_api.llm_assets.manifest import (
+    CALL_TYPE_JOB_REQUIREMENT_PARSING,
+    CALL_TYPE_SEARCH_INTERPRETATION,
+    DECLARED_CALL_TYPES,
+)
 from relationship_network_api.models import (
     LlmCallOutcomeEvent,
     LlmCallRecord,
     LlmConfigurationAttempt,
+    LlmConfigurationCallBinding,
     LlmConfigurationVersion,
 )
 from relationship_network_api.openrouter import (
+    PARSING_PROBE_SOURCES,
     CandidateConfiguration,
     OpenRouterAdapter,
     OpenRouterAdapterError,
     OpenRouterClientConfig,
-    OpenRouterProbeResult,
+)
+from relationship_network_api.search_interpretation_validation import (
+    SearchInterpretationValidationError,
+    validate_search_interpretation,
 )
 
 if TYPE_CHECKING:
@@ -54,6 +69,8 @@ if TYPE_CHECKING:
 
 LEASE_SECONDS: Final = lease_seconds_for_timeout(300)
 ACTIVATION_ACTION: Final = "llm_configuration.activate"
+INCOMPATIBLE_CANDIDATE_SNAPSHOT: Final = "incompatible_candidate_snapshot"
+SUCCEEDED_CALL_TYPES_KEY: Final = "succeeded_call_types"
 
 
 def retry_delay_seconds(request_number: int) -> int:
@@ -72,6 +89,7 @@ class ClaimedAttempt:
     id: uuid.UUID
     lease_token: uuid.UUID
     candidate: CandidateConfiguration
+    succeeded_call_types: tuple[str, ...]
 
 
 @final
@@ -79,10 +97,14 @@ class ClaimedAttempt:
 class PreparedCall:
     call_id: uuid.UUID
     request_number: int
-    schema_version_id: str
+    call_type: str
+    catalog_schema_id: str
+    output_schema_id: str
+    system_prompt: str
+    schema: dict[str, object]
 
 
-async def process_attempt(
+async def process_attempt(  # noqa: C901, PLR0911, PLR0915
     attempt_id: uuid.UUID,
     *,
     settings: PlatformLlmSettings | None = None,
@@ -117,17 +139,6 @@ async def process_attempt(
                 error_code="raw_response_encryption_not_configured",
             )
             return
-        try:
-            prepared = await prepare_call(session_factory, claim=claim)
-        except service.IncompatibleLlmAssetsError:
-            await fail_without_call(
-                session_factory,
-                claim=claim,
-                error_code=service.INCOMPATIBLE_LLM_ASSETS,
-            )
-            return
-        if prepared is None:
-            return
         adapter = OpenRouterAdapter(
             OpenRouterClientConfig(
                 api_key=resolved_settings.openrouter_api_key.get_secret_value(),
@@ -144,31 +155,93 @@ async def process_attempt(
                 claim,
                 stop_heartbeat,
             )
-            started_ns = time.monotonic_ns()
+            remaining = [
+                call_type
+                for call_type in DECLARED_CALL_TYPES
+                if call_type not in claim.succeeded_call_types
+            ]
             try:
-                result = await adapter.probe(claim.candidate)
-            except OpenRouterAdapterError as error:
-                duration_ms = max((time.monotonic_ns() - started_ns) // 1_000_000, 0)
+                for call_type in remaining:
+                    try:
+                        prepared = await prepare_call(
+                            session_factory,
+                            claim=claim,
+                            call_type=call_type,
+                        )
+                    except service.IncompatibleLlmAssetsError:
+                        stop_heartbeat.set()
+                        await fail_without_call(
+                            session_factory,
+                            claim=claim,
+                            error_code=service.INCOMPATIBLE_LLM_ASSETS,
+                        )
+                        return
+                    if prepared is None:
+                        stop_heartbeat.set()
+                        return
+                    started_ns = time.monotonic_ns()
+                    try:
+                        result = await adapter.probe(
+                            claim.candidate,
+                            call_type=prepared.call_type,
+                            system_prompt=prepared.system_prompt,
+                            schema=prepared.schema,
+                        )
+                    except OpenRouterAdapterError as error:
+                        duration_ms = max((time.monotonic_ns() - started_ns) // 1_000_000, 0)
+                        stop_heartbeat.set()
+                        await handle_probe_error(
+                            session_factory,
+                            claim=claim,
+                            prepared=prepared,
+                            error=error,
+                            key_ring=key_ring,
+                            duration_ms=duration_ms,
+                        )
+                        return
+                    duration_ms = max((time.monotonic_ns() - started_ns) // 1_000_000, 0)
+                    validation_error = _probe_validation_error(prepared, result.content)
+                    if validation_error is not None:
+                        stop_heartbeat.set()
+                        await handle_probe_error(
+                            session_factory,
+                            claim=claim,
+                            prepared=prepared,
+                            error=OpenRouterAdapterError(
+                                validation_error,
+                                retryable=True,
+                                exchange=result.exchange,
+                            ),
+                            key_ring=key_ring,
+                            duration_ms=duration_ms,
+                        )
+                        return
+                    persisted = await call_audit.persist_call_response(
+                        session_factory,
+                        call_id=prepared.call_id,
+                        key_ring=key_ring,
+                        requested_outcome="succeeded",
+                        category="",
+                        exchange=result.exchange,
+                        result=result,
+                        duration_ms=duration_ms,
+                    )
+                    if persisted.is_late_response:
+                        stop_heartbeat.set()
+                        return
+                    recorded = await record_type_success(
+                        session_factory,
+                        claim=claim,
+                        prepared=prepared,
+                    )
+                    if recorded is None:
+                        stop_heartbeat.set()
+                        return
+                    claim = recorded
                 stop_heartbeat.set()
-                await handle_probe_error(
-                    session_factory,
-                    claim=claim,
-                    prepared=prepared,
-                    error=error,
-                    key_ring=key_ring,
-                    duration_ms=duration_ms,
-                )
-            else:
-                duration_ms = max((time.monotonic_ns() - started_ns) // 1_000_000, 0)
+                await enable_probed_configuration(session_factory, claim=claim)
+            finally:
                 stop_heartbeat.set()
-                await handle_probe_success(
-                    session_factory,
-                    claim=claim,
-                    prepared=prepared,
-                    result=result,
-                    key_ring=key_ring,
-                    duration_ms=duration_ms,
-                )
     finally:
         await engine.dispose()
 
@@ -189,32 +262,54 @@ async def claim_attempt(
         attempt.lease_expires_at = now + timedelta(seconds=LEASE_SECONDS)
         attempt.last_heartbeat_at = now
         attempt.next_attempt_at = None
+        try:
+            candidate = CandidateConfiguration.from_snapshot(attempt.candidate_snapshot)
+        except (KeyError, TypeError, ValueError):
+            attempt.status = "failed"
+            attempt.error_code = INCOMPATIBLE_CANDIDATE_SNAPSHOT
+            attempt.lease_token = None
+            attempt.lease_expires_at = None
+            attempt.last_heartbeat_at = None
+            _ = await service.append_attempt_event(
+                session,
+                attempt=attempt,
+                payload={"error_code": INCOMPATIBLE_CANDIDATE_SNAPSHOT, "retryable": False},
+            )
+            return None
+        if not candidate.has_declared_call_types():
+            attempt.status = "failed"
+            attempt.error_code = INCOMPATIBLE_CANDIDATE_SNAPSHOT
+            attempt.lease_token = None
+            attempt.lease_expires_at = None
+            attempt.last_heartbeat_at = None
+            _ = await service.append_attempt_event(
+                session,
+                attempt=attempt,
+                payload={"error_code": INCOMPATIBLE_CANDIDATE_SNAPSHOT, "retryable": False},
+            )
+            return None
         _ = await service.append_attempt_event(session, attempt=attempt, payload={})
-        candidate = CandidateConfiguration(
-            model=cast("str", attempt.candidate_snapshot["model"]),
-            prompt_version_id=cast("str", attempt.candidate_snapshot["prompt_version_id"]),
-            temperature=cast("float", attempt.candidate_snapshot["temperature"]),
-            max_output_tokens=cast("int", attempt.candidate_snapshot["max_output_tokens"]),
-            request_timeout_seconds=cast(
-                "int", attempt.candidate_snapshot["request_timeout_seconds"]
-            ),
-            input_character_limit=cast(
-                "int", attempt.candidate_snapshot.get("input_character_limit", 100_000)
-            ),
+        return ClaimedAttempt(
+            id=attempt.id,
+            lease_token=token,
+            candidate=candidate,
+            succeeded_call_types=_succeeded_call_types(attempt.probe_progress),
         )
-        return ClaimedAttempt(id=attempt.id, lease_token=token, candidate=candidate)
 
 
 async def prepare_call(
     session_factory: async_sessionmaker[AsyncSession],
     *,
     claim: ClaimedAttempt,
+    call_type: str,
 ) -> PreparedCall | None:
     async with session_factory() as session, session.begin():
         attempt = await _locked_attempt(session, claim.id)
         if attempt is None or not _holds_running_lease(attempt, claim.lease_token):
             return None
-        prompt, schema = await service.validate_candidate_assets(session, claim.candidate)
+        validated = await service.validate_candidate_assets(session, claim.candidate)
+        binding = validated[call_type]
+        timeout_seconds = claim.candidate.binding_for(call_type).request_timeout_seconds
         request_number = attempt.external_call_count + 1
         if request_number > MAX_EXTERNAL_CALLS:
             attempt.status = "failed"
@@ -223,11 +318,26 @@ async def prepare_call(
             _ = await service.append_attempt_event(
                 session,
                 attempt=attempt,
-                payload={"error_code": attempt.error_code, "retryable": False},
+                payload={
+                    "error_code": attempt.error_code,
+                    "probed_call_type": call_type,
+                    "retryable": False,
+                    SUCCEEDED_CALL_TYPES_KEY: list(_succeeded_call_types(attempt.probe_progress)),
+                },
             )
             return None
-        request_hash = _probe_request_hash(claim.candidate)
-        input_sha256, input_length = _probe_input_fingerprint(claim.candidate)
+        request_hash = _probe_request_hash(
+            claim.candidate,
+            call_type=call_type,
+            system_prompt=binding.system_prompt,
+            schema=binding.output_schema,
+        )
+        input_sha256, input_length = _probe_input_fingerprint(
+            claim.candidate,
+            call_type=call_type,
+            system_prompt=binding.system_prompt,
+            schema=binding.output_schema,
+        )
         previous_call_id = await _previous_unknown_call_id(
             session,
             attempt_id=attempt.id,
@@ -245,16 +355,21 @@ async def prepare_call(
             correlation_call_id=previous_call_id,
             request_number=request_number,
             model=claim.candidate.model,
-            prompt_version_id=claim.candidate.prompt_version_id,
-            prompt_sha256=prompt.sha256,
-            requirement_schema_version_id=schema.id,
-            requirement_schema_sha256=schema.sha256,
-            input_sources_summary={"kind": "fixed_platform_probe", "contains_business_data": False},
+            prompt_version_id=binding.prompt.id,
+            prompt_sha256=binding.prompt.sha256,
+            requirement_schema_version_id=binding.catalog_schema.id,
+            requirement_schema_sha256=binding.catalog_schema.sha256,
+            input_sources_summary={
+                "contains_business_data": False,
+                "kind": "fixed_platform_probe",
+                "output_schema_id": binding.output_schema_id,
+                "probed_call_type": call_type,
+            },
             input_sha256=input_sha256,
             input_length=input_length,
             parameters={
                 "max_output_tokens": claim.candidate.max_output_tokens,
-                "request_timeout_seconds": claim.candidate.request_timeout_seconds,
+                "request_timeout_seconds": timeout_seconds,
                 "temperature": claim.candidate.temperature,
             },
             request_hash=request_hash,
@@ -265,7 +380,11 @@ async def prepare_call(
         return PreparedCall(
             call_id=call.id,
             request_number=request_number,
-            schema_version_id=schema.id,
+            call_type=call_type,
+            catalog_schema_id=binding.catalog_schema.id,
+            output_schema_id=binding.output_schema_id,
+            system_prompt=binding.system_prompt,
+            schema=binding.output_schema,
         )
 
 
@@ -288,27 +407,48 @@ async def heartbeat_loop(
             attempt.lease_expires_at = now + timedelta(seconds=LEASE_SECONDS)
 
 
-async def handle_probe_success(  # noqa: PLR0913
+async def record_type_success(
     session_factory: async_sessionmaker[AsyncSession],
     *,
     claim: ClaimedAttempt,
     prepared: PreparedCall,
-    result: OpenRouterProbeResult,
-    key_ring: call_audit.RawResponseKeyRing,
-    duration_ms: int,
+) -> ClaimedAttempt | None:
+    async with session_factory() as session, session.begin():
+        attempt = await _locked_attempt(session, claim.id)
+        if attempt is None:
+            return None
+        if attempt.status == "cancel_requested":
+            attempt.status = "cancelled"
+            _clear_lease(attempt)
+            _ = await service.append_attempt_event(session, attempt=attempt, payload={})
+            return None
+        if not _holds_running_lease(attempt, claim.lease_token):
+            return None
+        succeeded = list(_succeeded_call_types(attempt.probe_progress))
+        if prepared.call_type not in succeeded:
+            succeeded.append(prepared.call_type)
+        attempt.probe_progress = {SUCCEEDED_CALL_TYPES_KEY: succeeded}
+        _ = await service.append_attempt_event(
+            session,
+            attempt=attempt,
+            payload={
+                "probed_call_type": prepared.call_type,
+                SUCCEEDED_CALL_TYPES_KEY: succeeded,
+            },
+        )
+        return ClaimedAttempt(
+            id=claim.id,
+            lease_token=claim.lease_token,
+            candidate=claim.candidate,
+            succeeded_call_types=tuple(succeeded),
+        )
+
+
+async def enable_probed_configuration(
+    session_factory: async_sessionmaker[AsyncSession],
+    *,
+    claim: ClaimedAttempt,
 ) -> None:
-    persisted = await call_audit.persist_call_response(
-        session_factory,
-        call_id=prepared.call_id,
-        key_ring=key_ring,
-        requested_outcome="succeeded",
-        category="",
-        exchange=result.exchange,
-        result=result,
-        duration_ms=duration_ms,
-    )
-    if persisted.is_late_response:
-        return
     async with session_factory() as session:
         async with session.begin():
             attempt = await _locked_attempt(session, claim.id)
@@ -321,6 +461,8 @@ async def handle_probe_success(  # noqa: PLR0913
                 return
             if not _holds_running_lease(attempt, claim.lease_token):
                 return
+            validated = await service.validate_candidate_assets(session, claim.candidate)
+            parsing = validated[CALL_TYPE_JOB_REQUIREMENT_PARSING]
             next_number = (
                 int(
                     (
@@ -338,11 +480,13 @@ async def handle_probe_success(  # noqa: PLR0913
                 version_number=next_number,
                 provider="openrouter",
                 model=claim.candidate.model,
-                prompt_version_id=claim.candidate.prompt_version_id,
-                requirement_schema_version_id=prepared.schema_version_id,
+                prompt_version_id=parsing.prompt.id,
+                requirement_schema_version_id=parsing.catalog_schema.id,
                 temperature=claim.candidate.temperature,
                 max_output_tokens=claim.candidate.max_output_tokens,
-                request_timeout_seconds=claim.candidate.request_timeout_seconds,
+                request_timeout_seconds=claim.candidate.binding_for(
+                    CALL_TYPE_JOB_REQUIREMENT_PARSING
+                ).request_timeout_seconds,
                 input_character_limit=claim.candidate.input_character_limit,
                 privacy_routing={
                     "data_collection": "deny",
@@ -355,6 +499,15 @@ async def handle_probe_success(  # noqa: PLR0913
             )
             session.add(version)
             await session.flush()
+            for binding in claim.candidate.bindings:
+                session.add(
+                    LlmConfigurationCallBinding(
+                        configuration_version_id=version.id,
+                        call_type=binding.call_type,
+                        prompt_version_id=binding.prompt_version_id,
+                        request_timeout_seconds=binding.request_timeout_seconds,
+                    )
+                )
             activated = bool(
                 (
                     await session.execute(
@@ -375,7 +528,10 @@ async def handle_probe_success(  # noqa: PLR0913
                 _ = await service.append_attempt_event(
                     session,
                     attempt=attempt,
-                    payload={"configuration_version_id": str(version.id)},
+                    payload={
+                        "configuration_version_id": str(version.id),
+                        SUCCEEDED_CALL_TYPES_KEY: list(claim.succeeded_call_types),
+                    },
                 )
                 audit_service.record_event(
                     session,
@@ -443,12 +599,19 @@ async def handle_probe_error(  # noqa: PLR0913
             payload: dict[str, object] = {
                 "error_code": error.category,
                 "next_attempt_at": next_attempt_at.isoformat(),
+                "probed_call_type": prepared.call_type,
                 "retryable": True,
+                SUCCEEDED_CALL_TYPES_KEY: list(_succeeded_call_types(attempt.probe_progress)),
             }
         else:
             attempt.status = "failed"
             attempt.next_attempt_at = None
-            payload = {"error_code": error.category, "retryable": False}
+            payload = {
+                "error_code": error.category,
+                "probed_call_type": prepared.call_type,
+                "retryable": False,
+                SUCCEEDED_CALL_TYPES_KEY: list(_succeeded_call_types(attempt.probe_progress)),
+            }
         _clear_lease(attempt)
         _ = await service.append_attempt_event(session, attempt=attempt, payload=payload)
         audit_service.record_event(
@@ -602,22 +765,77 @@ def _clear_lease(attempt: LlmConfigurationAttempt) -> None:
     attempt.last_heartbeat_at = None
 
 
-def _probe_request_hash(candidate: CandidateConfiguration) -> str:
+def _probe_request_hash(
+    candidate: CandidateConfiguration,
+    *,
+    call_type: str,
+    system_prompt: str,
+    schema: dict[str, object],
+) -> str:
     payload = OpenRouterAdapter(
         OpenRouterClientConfig(api_key="not-persisted")
-    ).build_probe_payload(candidate)
+    ).build_probe_payload(
+        candidate,
+        call_type=call_type,
+        system_prompt=system_prompt,
+        schema=schema,
+    )
     serialized = json.dumps(payload, ensure_ascii=False, separators=(",", ":"), sort_keys=True)
     return hashlib.sha256(serialized.encode()).hexdigest()
 
 
-def _probe_input_fingerprint(candidate: CandidateConfiguration) -> tuple[str, int]:
+def _probe_input_fingerprint(
+    candidate: CandidateConfiguration,
+    *,
+    call_type: str,
+    system_prompt: str,
+    schema: dict[str, object],
+) -> tuple[str, int]:
     payload = OpenRouterAdapter(
         OpenRouterClientConfig(api_key="not-persisted")
-    ).build_probe_payload(candidate)
+    ).build_probe_payload(
+        candidate,
+        call_type=call_type,
+        system_prompt=system_prompt,
+        schema=schema,
+    )
     messages = cast("list[dict[str, str]]", payload["messages"])
     serialized = json.dumps(messages, ensure_ascii=False, separators=(",", ":"), sort_keys=True)
     content_length = sum(len(message["content"]) for message in messages)
     return hashlib.sha256(serialized.encode()).hexdigest(), content_length
+
+
+def _succeeded_call_types(progress: dict[str, object]) -> tuple[str, ...]:
+    raw = progress.get(SUCCEEDED_CALL_TYPES_KEY, [])
+    if not isinstance(raw, list):
+        return ()
+    return tuple(item for item in raw if isinstance(item, str))
+
+
+def _probe_validation_error(prepared: PreparedCall, content: dict[str, object]) -> str | None:
+    catalog = manifest.schema_asset(prepared.catalog_schema_id)
+    try:
+        if prepared.call_type == CALL_TYPE_JOB_REQUIREMENT_PARSING:
+            source_texts = {
+                source["source_id"]: source["content"] for source in PARSING_PROBE_SOURCES
+            }
+            _ = validate_requirement_result(
+                content,
+                schema=prepared.schema,
+                asset=catalog,
+                source_texts=source_texts,
+            )
+        else:
+            if prepared.call_type != CALL_TYPE_SEARCH_INTERPRETATION:
+                return "invalid_structured_output"
+            _ = validate_search_interpretation(
+                content,
+                schema=prepared.schema,
+                catalog_asset=catalog,
+            )
+    except (RequirementResultValidationError, SearchInterpretationValidationError):
+        return "invalid_structured_output"
+    return None
 
 
 async def _previous_unknown_call_id(

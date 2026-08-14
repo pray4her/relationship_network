@@ -4,6 +4,7 @@ import Link from "next/link"
 import { redirect } from "next/navigation"
 
 import { cancelSubscriptionAction, submitOrderAction } from "@/app/actions/orders"
+import { billingStatusMeta, orderStatusMeta } from "@/components/billing/billing-status"
 import { CancelSubscriptionAction } from "@/components/billing/cancel-subscription-action"
 import { OrderRequestForm } from "@/components/billing/order-request-form"
 import { ReadOnlyBanner } from "@/components/billing/read-only-banner"
@@ -25,8 +26,8 @@ import {
   PageSectionTitle,
   PageTitle,
 } from "@/components/layout/page"
+import { StatusBadge } from "@/components/status-badge"
 import { Alert, AlertDescription } from "@/components/ui/alert"
-import { Badge } from "@/components/ui/badge"
 import { Empty, EmptyHeader, EmptyTitle } from "@/components/ui/empty"
 import {
   Table,
@@ -38,19 +39,13 @@ import {
 } from "@/components/ui/table"
 import { createAuthTransport, loadAuthSession, SESSION_COOKIE_NAME } from "@/lib/auth-client"
 import { createBillingTransport, loadBillingSummary } from "@/lib/billing-client"
-import type { BillingMetric, BillingStatus } from "@/lib/billing-contract"
+import type { BillingMetric } from "@/lib/billing-contract"
+import { formatDateTime } from "@/lib/format"
 import { createOrdersTransport, listOrders, type OrderListResult } from "@/lib/orders-client"
-import { formatAmountCents, orderStatusLabels } from "@/lib/orders-view"
+import { formatAmountCents } from "@/lib/orders-view"
 
 export const metadata: Metadata = {
   title: "用量与套餐",
-}
-
-const billingStatusLabels: Record<BillingStatus, string> = {
-  active: "已订阅",
-  cancelled: "已取消",
-  expired: "已过期",
-  trialing: "试用中",
 }
 
 const billingMetricLabels: Record<BillingMetric, string> = {
@@ -62,10 +57,6 @@ const billingMetricLabels: Record<BillingMetric, string> = {
   searches: "搜索次数",
 }
 
-function formatDateTime(value: string): string {
-  return new Date(value).toLocaleString("zh-CN", { hour12: false })
-}
-
 const headClassName = "font-mono text-xs tracking-wider text-muted-foreground uppercase"
 
 function NoticePage({ children }: { readonly children: React.ReactNode }) {
@@ -74,6 +65,7 @@ function NoticePage({ children }: { readonly children: React.ReactNode }) {
       <PageHeader>
         <PageHeaderContent>
           <PageTitle>用量与套餐</PageTitle>
+          <PageDescription>查看套餐状态、配额使用与订单记录。</PageDescription>
         </PageHeaderContent>
       </PageHeader>
       <Alert>
@@ -123,7 +115,7 @@ function OrderSections({ canManage, ordersResult }: OrderSectionsProps) {
             ) : ordersResult.orders.length === 0 ? (
               <Empty>
                 <EmptyHeader>
-                  <EmptyTitle>暂无订单记录。</EmptyTitle>
+                  <EmptyTitle>暂无订单记录</EmptyTitle>
                 </EmptyHeader>
               </Empty>
             ) : (
@@ -131,7 +123,9 @@ function OrderSections({ canManage, ordersResult }: OrderSectionsProps) {
                 <TableHeader>
                   <TableRow>
                     <TableHead className={headClassName}>套餐</TableHead>
-                    <TableHead className={headClassName}>金额</TableHead>
+                    <TableHead className={headClassName} numeric>
+                      金额
+                    </TableHead>
                     <TableHead className={headClassName}>付款凭证号</TableHead>
                     <TableHead className={headClassName}>状态</TableHead>
                     <TableHead className={headClassName}>提交时间</TableHead>
@@ -144,14 +138,10 @@ function OrderSections({ canManage, ordersResult }: OrderSectionsProps) {
                       <TableCell>
                         {order.plan_code} v{order.plan_version}
                       </TableCell>
-                      <TableCell className="tabular-nums">
-                        {formatAmountCents(order.amount_cents)}
-                      </TableCell>
+                      <TableCell numeric>{formatAmountCents(order.amount_cents)}</TableCell>
                       <TableCell>{order.payment_reference}</TableCell>
                       <TableCell>
-                        <Badge variant={order.status === "pending" ? "default" : "secondary"}>
-                          {orderStatusLabels[order.status]}
-                        </Badge>
+                        <StatusBadge {...orderStatusMeta[order.status]} />
                       </TableCell>
                       <TableCell className="tabular-nums">
                         {formatDateTime(order.created_at)}
@@ -274,7 +264,7 @@ export default async function UsagePage() {
             {isReadOnly ? <ReadOnlyBanner /> : null}
             <p>
               当前套餐：{summary.plan.name} v{summary.plan.version}{" "}
-              <Badge variant="default">{billingStatusLabels[summary.status]}</Badge>
+              <StatusBadge {...billingStatusMeta[summary.status]} />
             </p>
             {summary.status === "trialing" && summary.trial_ends_at !== null ? (
               <p className="tabular-nums">试用到期时间：{formatDateTime(summary.trial_ends_at)}</p>
@@ -302,28 +292,44 @@ export default async function UsagePage() {
         </PageSectionHeader>
         <DataRegion>
           <DataRegionContent>
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead className={headClassName}>指标</TableHead>
-                  <TableHead className={headClassName}>限额</TableHead>
-                  <TableHead className={headClassName}>已用</TableHead>
-                  <TableHead className={headClassName}>预占中</TableHead>
-                  <TableHead className={headClassName}>剩余</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {summary.metrics.map((metric) => (
-                  <TableRow key={metric.metric}>
-                    <TableCell>{billingMetricLabels[metric.metric]}</TableCell>
-                    <TableCell className="tabular-nums">{metric.limit}</TableCell>
-                    <TableCell className="tabular-nums">{metric.used}</TableCell>
-                    <TableCell className="tabular-nums">{metric.reserved}</TableCell>
-                    <TableCell className="tabular-nums">{metric.remaining}</TableCell>
+            {summary.metrics.length === 0 ? (
+              <Empty>
+                <EmptyHeader>
+                  <EmptyTitle>暂无配额数据</EmptyTitle>
+                </EmptyHeader>
+              </Empty>
+            ) : (
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead className={headClassName}>指标</TableHead>
+                    <TableHead className={headClassName} numeric>
+                      限额
+                    </TableHead>
+                    <TableHead className={headClassName} numeric>
+                      已用
+                    </TableHead>
+                    <TableHead className={headClassName} numeric>
+                      预占中
+                    </TableHead>
+                    <TableHead className={headClassName} numeric>
+                      剩余
+                    </TableHead>
                   </TableRow>
-                ))}
-              </TableBody>
-            </Table>
+                </TableHeader>
+                <TableBody>
+                  {summary.metrics.map((metric) => (
+                    <TableRow key={metric.metric}>
+                      <TableCell>{billingMetricLabels[metric.metric]}</TableCell>
+                      <TableCell numeric>{metric.limit}</TableCell>
+                      <TableCell numeric>{metric.used}</TableCell>
+                      <TableCell numeric>{metric.reserved}</TableCell>
+                      <TableCell numeric>{metric.remaining}</TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            )}
           </DataRegionContent>
         </DataRegion>
       </PageSection>

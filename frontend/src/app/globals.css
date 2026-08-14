@@ -172,8 +172,9 @@
 
   --radius-sm: calc(var(--radius) * 0.8);
   --radius-md: var(--radius);
-  --radius-lg: calc(var(--radius) * 1.4);
-  --radius-xl: calc(var(--radius) * 1.8);
+  /* ADR 0024 单一 5px 圆角：lg/xl 与 md 同值，仅胶囊徽章保留更大圆角 */
+  --radius-lg: var(--radius);
+  --radius-xl: var(--radius);
   --radius-2xl: calc(var(--radius) * 2.2);
   --radius-3xl: calc(var(--radius) * 2.6);
   --radius-4xl: calc(var(--radius) * 3);

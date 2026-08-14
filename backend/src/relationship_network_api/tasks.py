@@ -13,6 +13,7 @@ from relationship_network_api.celery_app import celery_app
 from relationship_network_api.config import load_app_settings, load_database_settings
 from relationship_network_api.db import (
     LLM_MAINTENANCE_DATABASE_ROLE,
+    REQUIREMENT_MAINTENANCE_DATABASE_ROLE,
     create_engine_from_settings,
     create_session_factory,
 )
@@ -60,6 +61,9 @@ RECOVER_EXPIRED_LLM_CONFIGURATION_LEASES_TASK_NAME: Final = (
 FETCH_LLM_CALL_METADATA_TASK_NAME: Final = "relationship_network.fetch_llm_call_metadata"
 CLEANUP_EXPIRED_LLM_RAW_RESPONSES_TASK_NAME: Final = (
     "relationship_network.cleanup_expired_llm_raw_responses"
+)
+CLEANUP_EXPIRED_REQUIREMENT_INPUT_BODIES_TASK_NAME: Final = (
+    "relationship_network.cleanup_expired_requirement_input_bodies"
 )
 PROCESS_JOB_REQUIREMENT_TASK_NAME: Final = "relationship_network.process_job_requirement_task"
 FETCH_TENANT_LLM_CALL_METADATA_TASK_NAME: Final = (
@@ -216,6 +220,11 @@ def cleanup_expired_llm_raw_responses_payload() -> int:
     return anyio.run(_cleanup_expired_llm_raw_responses)
 
 
+def cleanup_expired_requirement_input_bodies_payload() -> int:
+    """Purge one bounded batch of expired input bodies via the maintenance role."""
+    return anyio.run(_cleanup_expired_requirement_input_bodies)
+
+
 def process_job_requirement_task_payload(tenant_id: str, task_id: str) -> None:
     """Run one idempotently claimed tenant parsing task under tenant RLS."""
     anyio.run(process_requirement_task, uuid.UUID(tenant_id), uuid.UUID(task_id))
@@ -257,6 +266,27 @@ async def _cleanup_expired_llm_raw_responses() -> int:
         await engine.dispose()
 
 
+async def _cleanup_expired_requirement_input_bodies() -> int:
+    settings = load_database_settings()
+    engine = create_engine_from_settings(
+        settings,
+        database_role=REQUIREMENT_MAINTENANCE_DATABASE_ROLE,
+    )
+    try:
+        factory = create_session_factory(engine)
+        async with factory() as session:
+            purged = (
+                await session.execute(
+                    text("SELECT cleanup_expired_requirement_input_bodies(:batch_size)"),
+                    {"batch_size": 1000},
+                )
+            ).scalar_one()
+            await session.commit()
+            return int(purged)
+    finally:
+        await engine.dispose()
+
+
 process_llm_configuration_attempt = cast(
     "Task",
     celery_app.task(
@@ -289,6 +319,12 @@ cleanup_expired_llm_raw_responses = cast(
     "Task",
     celery_app.task(name=CLEANUP_EXPIRED_LLM_RAW_RESPONSES_TASK_NAME)(
         cleanup_expired_llm_raw_responses_payload
+    ),
+)
+cleanup_expired_requirement_input_bodies = cast(
+    "Task",
+    celery_app.task(name=CLEANUP_EXPIRED_REQUIREMENT_INPUT_BODIES_TASK_NAME)(
+        cleanup_expired_requirement_input_bodies_payload
     ),
 )
 process_job_requirement_task = cast(

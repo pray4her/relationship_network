@@ -23,11 +23,49 @@ def test_deployed_job_requirement_assets_are_hash_verified_and_compatible() -> N
         == manifest.JOB_REQUIREMENT_SCHEMA_V2.id
     )
     assert "hard_conditions" in prompt
+    assert manifest.JOB_REQUIREMENT_PROMPT_V1.call_type == (
+        manifest.CALL_TYPE_JOB_REQUIREMENT_PARSING
+    )
     assert manifest.JOB_REQUIREMENT_SCHEMA_V1.chinese_identity_values == (
         "国内华人",
         "海外华人",
         "外国人",
     )
+
+
+def test_search_interpretation_assets_are_hash_verified_and_catalog_compatible() -> None:
+    manifest.validate_deployed_assets()
+
+    schema = manifest.read_search_interpretation_schema(manifest.SEARCH_INTERPRETATION_SCHEMA_V1.id)
+    prompt = manifest.read_prompt(manifest.SEARCH_INTERPRETATION_PROMPT_V1.id)
+    asset = manifest.SEARCH_INTERPRETATION_PROMPT_V1
+
+    assert schema["$id"] == "urn:relationship-network:search-interpretation-schema:v1"
+    assert schema["additionalProperties"] is False
+    assert "preference_conditions" not in cast("dict[str, object]", schema["properties"])
+    assert "source_conflicts" not in cast("dict[str, object]", schema["properties"])
+    assert asset.call_type == manifest.CALL_TYPE_SEARCH_INTERPRETATION
+    assert asset.compatible_schema_version_id == manifest.JOB_REQUIREMENT_SCHEMA_V1.id
+    assert asset.output_schema_version_id == manifest.SEARCH_INTERPRETATION_SCHEMA_V1.id
+    assert "hard_conditions" in prompt
+    assert "preference_conditions" in prompt
+
+    result = {
+        "hard_conditions": [
+            {
+                "field": "h_index",
+                "operator": "gte",
+                "value": 10,
+                "description": "H 指数至少 10",
+            }
+        ],
+        "research_topic_query": "condensed matter",
+        "unsupported_conditions": [],
+    }
+    validator = Draft202012Validator(schema)
+    assert list(validator.iter_errors(result)) == []
+    result["preference_conditions"] = []
+    assert list(validator.iter_errors(result))
 
 
 def test_v2_schema_uses_closed_condition_objects_and_rejects_extra_fields() -> None:

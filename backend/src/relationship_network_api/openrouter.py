@@ -8,16 +8,24 @@ from typing import Final, cast, final
 
 import httpx
 
-PROBE_SCHEMA: Final[dict[str, object]] = {
-    "additionalProperties": False,
-    "properties": {"capability": {"const": "ok", "type": "string"}},
-    "required": ["capability"],
-    "type": "object",
-}
+from relationship_network_api.llm_assets.manifest import (
+    CALL_TYPE_JOB_REQUIREMENT_PARSING,
+    CALL_TYPE_SEARCH_INTERPRETATION,
+    DECLARED_CALL_TYPES,
+    JOB_REQUIREMENT_JSON_SCHEMA_NAME,
+    SEARCH_INTERPRETATION_JSON_SCHEMA_NAME,
+)
+
 MIN_OUTPUT_TOKENS: Final = 1024
 MAX_OUTPUT_TOKENS: Final = 16384
-MIN_TIMEOUT_SECONDS: Final = 30
-MAX_TIMEOUT_SECONDS: Final = 300
+MIN_PARSING_TIMEOUT_SECONDS: Final = 30
+MAX_PARSING_TIMEOUT_SECONDS: Final = 300
+MIN_SEARCH_TIMEOUT_SECONDS: Final = 5
+MAX_SEARCH_TIMEOUT_SECONDS: Final = 30
+DEFAULT_PARSING_TIMEOUT_SECONDS: Final = 180
+DEFAULT_SEARCH_TIMEOUT_SECONDS: Final = 15
+MIN_TIMEOUT_SECONDS: Final = MIN_PARSING_TIMEOUT_SECONDS
+MAX_TIMEOUT_SECONDS: Final = MAX_PARSING_TIMEOUT_SECONDS
 INPUT_CHARACTER_LIMIT: Final = 100_000
 MAX_REQUIREMENT_RESPONSE_BYTES: Final = 2_000_000
 HTTP_BAD_REQUEST: Final = 400
@@ -32,21 +40,51 @@ HTTP_SERVER_ERROR: Final = 500
 
 
 @dataclass(frozen=True)
+class CallTypeBinding:
+    call_type: str
+    prompt_version_id: str
+    request_timeout_seconds: int
+
+    def __post_init__(self) -> None:
+        """Validate timeout range for the bound call type."""
+        if not self.prompt_version_id.strip():
+            message = "prompt_version_id must not be empty"
+            raise ValueError(message)
+        if self.call_type == CALL_TYPE_JOB_REQUIREMENT_PARSING:
+            minimum, maximum = MIN_PARSING_TIMEOUT_SECONDS, MAX_PARSING_TIMEOUT_SECONDS
+        elif self.call_type == CALL_TYPE_SEARCH_INTERPRETATION:
+            minimum, maximum = MIN_SEARCH_TIMEOUT_SECONDS, MAX_SEARCH_TIMEOUT_SECONDS
+        else:
+            message = f"unsupported call type: {self.call_type}"
+            raise ValueError(message)
+        if not minimum <= self.request_timeout_seconds <= maximum:
+            message = (
+                f"request_timeout_seconds for {self.call_type} must be between "
+                f"{minimum} and {maximum}"
+            )
+            raise ValueError(message)
+
+    def as_snapshot(self) -> dict[str, object]:
+        return {
+            "prompt_version_id": self.prompt_version_id,
+            "request_timeout_seconds": self.request_timeout_seconds,
+        }
+
+
+@dataclass(frozen=True)
 class CandidateConfiguration:
     model: str
-    prompt_version_id: str
+    prompt_version_id: str = ""
     temperature: float = 0
     max_output_tokens: int = 8192
-    request_timeout_seconds: int = 180
+    request_timeout_seconds: int = DEFAULT_PARSING_TIMEOUT_SECONDS
     input_character_limit: int = INPUT_CHARACTER_LIMIT
+    bindings: tuple[CallTypeBinding, ...] = ()
 
     def __post_init__(self) -> None:
         """Validate the deliberately small online configuration surface."""
         if not self.model.strip():
             message = "model must not be empty"
-            raise ValueError(message)
-        if not self.prompt_version_id.strip():
-            message = "prompt_version_id must not be empty"
             raise ValueError(message)
         if not 0 <= self.temperature <= 1:
             message = "temperature must be between 0 and 1"
@@ -54,21 +92,104 @@ class CandidateConfiguration:
         if not MIN_OUTPUT_TOKENS <= self.max_output_tokens <= MAX_OUTPUT_TOKENS:
             message = "max_output_tokens must be between 1024 and 16384"
             raise ValueError(message)
-        if not MIN_TIMEOUT_SECONDS <= self.request_timeout_seconds <= MAX_TIMEOUT_SECONDS:
-            message = "request_timeout_seconds must be between 30 and 300"
-            raise ValueError(message)
         if self.input_character_limit != INPUT_CHARACTER_LIMIT:
             message = "input_character_limit is a frozen system value"
             raise ValueError(message)
+        resolved = self.bindings
+        if not resolved:
+            if not self.prompt_version_id.strip():
+                message = "prompt_version_id must not be empty"
+                raise ValueError(message)
+            resolved = (
+                CallTypeBinding(
+                    call_type=CALL_TYPE_JOB_REQUIREMENT_PARSING,
+                    prompt_version_id=self.prompt_version_id,
+                    request_timeout_seconds=self.request_timeout_seconds,
+                ),
+            )
+            object.__setattr__(self, "bindings", resolved)
+        types = [binding.call_type for binding in resolved]
+        if len(types) != len(set(types)):
+            message = "duplicate call type binding"
+            raise ValueError(message)
+        parsing = next(
+            (
+                binding
+                for binding in resolved
+                if binding.call_type == CALL_TYPE_JOB_REQUIREMENT_PARSING
+            ),
+            None,
+        )
+        if parsing is not None:
+            object.__setattr__(self, "prompt_version_id", parsing.prompt_version_id)
+            object.__setattr__(self, "request_timeout_seconds", parsing.request_timeout_seconds)
+        elif not self.prompt_version_id.strip():
+            message = "prompt_version_id must not be empty"
+            raise ValueError(message)
+
+    def binding_for(self, call_type: str) -> CallTypeBinding:
+        binding = next((item for item in self.bindings if item.call_type == call_type), None)
+        if binding is None:
+            message = f"missing call type binding: {call_type}"
+            raise KeyError(message)
+        return binding
+
+    def has_declared_call_types(self) -> bool:
+        bound = {binding.call_type for binding in self.bindings}
+        return bound == set(DECLARED_CALL_TYPES)
 
     def sanitized_snapshot(self) -> dict[str, object]:
-        return {
+        snapshot: dict[str, object] = {
+            "call_bindings": {
+                binding.call_type: binding.as_snapshot() for binding in self.bindings
+            },
             "max_output_tokens": self.max_output_tokens,
             "model": self.model,
-            "prompt_version_id": self.prompt_version_id,
-            "request_timeout_seconds": self.request_timeout_seconds,
             "temperature": self.temperature,
         }
+        parsing = next(
+            (
+                binding
+                for binding in self.bindings
+                if binding.call_type == CALL_TYPE_JOB_REQUIREMENT_PARSING
+            ),
+            None,
+        )
+        if parsing is not None:
+            snapshot["prompt_version_id"] = parsing.prompt_version_id
+            snapshot["request_timeout_seconds"] = parsing.request_timeout_seconds
+        return snapshot
+
+    @classmethod
+    def from_snapshot(cls, snapshot: dict[str, object]) -> CandidateConfiguration:
+        raw_bindings = snapshot.get("call_bindings")
+        if not isinstance(raw_bindings, dict) or not raw_bindings:
+            message = "incompatible_candidate_snapshot"
+            raise ValueError(message)
+        typed_bindings = cast("dict[str, object]", raw_bindings)
+        parsed: list[CallTypeBinding] = []
+        for call_type, payload in typed_bindings.items():
+            if not isinstance(payload, dict):
+                continue
+            binding = cast("dict[str, object]", payload)
+            parsed.append(
+                CallTypeBinding(
+                    call_type=call_type,
+                    prompt_version_id=str(binding["prompt_version_id"]),
+                    request_timeout_seconds=int(
+                        cast("int | str", binding["request_timeout_seconds"])
+                    ),
+                )
+            )
+        return cls(
+            model=str(snapshot["model"]),
+            temperature=float(cast("int | float | str", snapshot["temperature"])),
+            max_output_tokens=int(cast("int | str", snapshot["max_output_tokens"])),
+            input_character_limit=int(
+                cast("int | str", snapshot.get("input_character_limit", INPUT_CHARACTER_LIMIT))
+            ),
+            bindings=tuple(parsed),
+        )
 
 
 @dataclass(frozen=True)
@@ -85,6 +206,7 @@ class OpenRouterProbeResult:
     actual_model: str | None
     actual_provider: str | None
     exchange: OpenRouterResponseExchange
+    content: dict[str, object]
 
 
 @dataclass(frozen=True)
@@ -138,6 +260,20 @@ class OpenRouterAdapterError(RuntimeError):
         self.exchange: OpenRouterResponseExchange | None = exchange
 
 
+PARSING_PROBE_SOURCES: Final[list[dict[str, str]]] = [
+    {
+        "content": (
+            "Example University seeks a researcher with h-index above 10. "
+            "Research topic: condensed matter."
+        ),
+        "source_id": "platform-probe",
+    }
+]
+SEARCH_PROBE_UTTERANCE: Final = (
+    "Find researchers at Example University with h-index above 10 working on condensed matter."
+)
+
+
 @final
 class OpenRouterAdapter:
     def __init__(
@@ -149,10 +285,23 @@ class OpenRouterAdapter:
         self._config: OpenRouterClientConfig = config
         self._client: httpx.AsyncClient | None = client
 
-    async def probe(self, candidate: CandidateConfiguration) -> OpenRouterProbeResult:
-        payload = self.build_probe_payload(candidate)
+    async def probe(
+        self,
+        candidate: CandidateConfiguration,
+        *,
+        call_type: str,
+        system_prompt: str,
+        schema: dict[str, object],
+    ) -> OpenRouterProbeResult:
+        binding = candidate.binding_for(call_type)
+        payload = self.build_probe_payload(
+            candidate,
+            call_type=call_type,
+            system_prompt=system_prompt,
+            schema=schema,
+        )
         try:
-            response = await self._post(payload, timeout_seconds=candidate.request_timeout_seconds)
+            response = await self._post(payload, timeout_seconds=binding.request_timeout_seconds)
         except httpx.TimeoutException as error:
             category = "timeout"
             raise OpenRouterAdapterError(
@@ -187,6 +336,42 @@ class OpenRouterAdapter:
         )
         try:
             response = await self._post(payload, timeout_seconds=candidate.request_timeout_seconds)
+        except httpx.TimeoutException as error:
+            category = "timeout"
+            raise OpenRouterAdapterError(
+                category,
+                retryable=True,
+                outcome_unknown=True,
+            ) from error
+        except httpx.NetworkError as error:
+            category = "network_error"
+            raise OpenRouterAdapterError(
+                category,
+                retryable=True,
+                outcome_unknown=True,
+            ) from error
+        if response.status_code >= HTTP_BAD_REQUEST:
+            raise self._classify_http_error(response)
+        return self._parse_requirement_response(response)
+
+    async def generate_search_interpretation(
+        self,
+        candidate: CandidateConfiguration,
+        *,
+        system_prompt: str,
+        schema: dict[str, object],
+        utterance: str,
+    ) -> OpenRouterRequirementResult:
+        """Interpret a natural-language search utterance into structured conditions."""
+        binding = candidate.binding_for(CALL_TYPE_SEARCH_INTERPRETATION)
+        payload = self.build_search_interpretation_payload(
+            candidate,
+            system_prompt=system_prompt,
+            schema=schema,
+            utterance=utterance,
+        )
+        try:
+            response = await self._post(payload, timeout_seconds=binding.request_timeout_seconds)
         except httpx.TimeoutException as error:
             category = "timeout"
             raise OpenRouterAdapterError(
@@ -270,36 +455,30 @@ class OpenRouterAdapter:
             exchange=exchange,
         )
 
-    def build_probe_payload(self, candidate: CandidateConfiguration) -> dict[str, object]:
-        return {
-            "max_tokens": candidate.max_output_tokens,
-            "messages": [
-                {
-                    "content": (
-                        "Return only the JSON object required by the response schema. "
-                        "This is a fixed platform capability probe and contains no business data."
-                    ),
-                    "role": "system",
-                },
-                {"content": "Report capability as ok.", "role": "user"},
-            ],
-            "model": candidate.model,
-            "provider": {
-                "data_collection": "deny",
-                "require_parameters": True,
-                "zdr": True,
-            },
-            "response_format": {
-                "json_schema": {
-                    "name": "relationship_network_config_probe",
-                    "schema": PROBE_SCHEMA,
-                    "strict": True,
-                },
-                "type": "json_schema",
-            },
-            "stream": False,
-            "temperature": candidate.temperature,
-        }
+    def build_probe_payload(
+        self,
+        candidate: CandidateConfiguration,
+        *,
+        call_type: str,
+        system_prompt: str,
+        schema: dict[str, object],
+    ) -> dict[str, object]:
+        if call_type == CALL_TYPE_JOB_REQUIREMENT_PARSING:
+            return self.build_requirement_payload(
+                candidate,
+                system_prompt=system_prompt,
+                schema=schema,
+                sources=PARSING_PROBE_SOURCES,
+            )
+        if call_type == CALL_TYPE_SEARCH_INTERPRETATION:
+            return self.build_search_interpretation_payload(
+                candidate,
+                system_prompt=system_prompt,
+                schema=schema,
+                utterance=SEARCH_PROBE_UTTERANCE,
+            )
+        message = f"unsupported probe call type: {call_type}"
+        raise ValueError(message)
 
     def build_requirement_payload(
         self,
@@ -328,7 +507,44 @@ class OpenRouterAdapter:
             },
             "response_format": {
                 "json_schema": {
-                    "name": "relationship_network_job_requirement",
+                    "name": JOB_REQUIREMENT_JSON_SCHEMA_NAME,
+                    "schema": schema,
+                    "strict": True,
+                },
+                "type": "json_schema",
+            },
+            "stream": False,
+            "temperature": candidate.temperature,
+        }
+
+    def build_search_interpretation_payload(
+        self,
+        candidate: CandidateConfiguration,
+        *,
+        system_prompt: str,
+        schema: dict[str, object],
+        utterance: str,
+    ) -> dict[str, object]:
+        user_payload = json.dumps(
+            {"search_utterance": utterance},
+            ensure_ascii=False,
+            separators=(",", ":"),
+        )
+        return {
+            "max_tokens": candidate.max_output_tokens,
+            "messages": [
+                {"content": system_prompt, "role": "system"},
+                {"content": user_payload, "role": "user"},
+            ],
+            "model": candidate.model,
+            "provider": {
+                "data_collection": "deny",
+                "require_parameters": True,
+                "zdr": True,
+            },
+            "response_format": {
+                "json_schema": {
+                    "name": SEARCH_INTERPRETATION_JSON_SCHEMA_NAME,
                     "schema": schema,
                     "strict": True,
                 },
@@ -399,12 +615,13 @@ class OpenRouterAdapter:
     def _parse_probe_response(response: httpx.Response) -> OpenRouterProbeResult:
         exchange = _response_exchange(response)
         try:
-            body = cast("dict[str, object]", json.loads(exchange.raw_body))
+            body = _object_mapping(json.loads(exchange.raw_body))
             choices = cast("list[object]", body["choices"])
-            choice = cast("dict[str, object]", choices[0])
-            message = cast("dict[str, object]", choice["message"])
+            choice = _object_mapping(choices[0])
+            message = _object_mapping(choice["message"])
             raw_content = message["content"]
             content = json.loads(raw_content) if isinstance(raw_content, str) else raw_content
+            parsed_content = _object_mapping(content)
         except (IndexError, KeyError, TypeError, ValueError, json.JSONDecodeError) as error:
             category = "invalid_structured_output"
             raise OpenRouterAdapterError(
@@ -412,14 +629,12 @@ class OpenRouterAdapter:
                 retryable=True,
                 exchange=exchange,
             ) from error
-        if content != {"capability": "ok"}:
-            category = "invalid_structured_output"
-            raise OpenRouterAdapterError(category, retryable=True, exchange=exchange)
         return OpenRouterProbeResult(
             provider_request_id=_optional_string(body.get("id")),
             actual_model=_optional_string(body.get("model")),
             actual_provider=_optional_string(body.get("provider")),
             exchange=exchange,
+            content=parsed_content,
         )
 
     @staticmethod

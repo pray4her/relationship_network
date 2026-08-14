@@ -49,6 +49,7 @@ class AppSettings(DatabaseSettings):
     search_base_api_key: SecretStr | None = None
     search_base_timeout_seconds: int = Field(default=10, ge=3, le=30)
     search_base_contract_version: str = "v1"
+    search_run_creation_limit_per_hour: int = Field(default=20, ge=1)
 
 
 def load_app_settings() -> AppSettings:

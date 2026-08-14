@@ -1,8 +1,10 @@
 "use client"
 
-import { useActionState, useId, useState } from "react"
+import { useActionState, useEffect, useId, useRef, useState } from "react"
+import { toast } from "sonner"
 
 import type { TenantStatusActionState } from "@/app/actions/admin"
+import { Alert, AlertDescription } from "@/components/ui/alert"
 import {
   AlertDialog,
   AlertDialogAction,
@@ -29,8 +31,22 @@ type TenantStatusActionProps = {
 export function TenantStatusAction({ action, status, tenantId }: TenantStatusActionProps) {
   const [state, formAction, isPending] = useActionState(action, { formError: null })
   const [open, setOpen] = useState(false)
+  const submitted = useRef(false)
   const formId = useId()
   const suspend = status === "active"
+
+  useEffect(() => {
+    if (isPending) {
+      submitted.current = true
+      return
+    }
+    if (!submitted.current) return
+    submitted.current = false
+    if (state.formError === null) {
+      setOpen(false)
+      toast.success(suspend ? "租户已暂停" : "租户已恢复")
+    }
+  }, [isPending, state.formError, suspend])
 
   return (
     <div className="flex flex-wrap items-center gap-2">
@@ -49,11 +65,16 @@ export function TenantStatusAction({ action, status, tenantId }: TenantStatusAct
               {suspend ? "确定要暂停该租户吗？" : "确定要恢复该租户吗？"}
             </AlertDialogDescription>
           </AlertDialogHeader>
+          {state.formError !== null ? (
+            <Alert variant="destructive">
+              <AlertDescription>{state.formError}</AlertDescription>
+            </Alert>
+          ) : null}
           <AlertDialogFooter>
             <AlertDialogCancel>取消</AlertDialogCancel>
             <AlertDialogAction
               form={formId}
-              onClick={() => setOpen(false)}
+              pending={isPending}
               type="submit"
               variant={suspend ? "destructive" : "default"}
             >
@@ -62,11 +83,6 @@ export function TenantStatusAction({ action, status, tenantId }: TenantStatusAct
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
-      {state.formError ? (
-        <p className="text-sm text-destructive" role="alert">
-          {state.formError}
-        </p>
-      ) : null}
     </div>
   )
 }

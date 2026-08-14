@@ -52,12 +52,12 @@ export function JobsFilter({ companies }: JobsFilterProps) {
   return (
     <div className="flex flex-wrap items-end gap-4">
       <Field>
-        <FieldLabel>状态</FieldLabel>
+        <FieldLabel id="jobs-filter-status-label">状态</FieldLabel>
         <Select
           onValueChange={(value) => applyFilter({ status: typeof value === "string" ? value : "" })}
           value={status || ALL}
         >
-          <SelectTrigger className="w-40">
+          <SelectTrigger aria-labelledby="jobs-filter-status-label" className="w-40">
             <SelectValue placeholder="全部状态">
               {(value) => {
                 if (value === null || value === ALL) {
@@ -80,14 +80,14 @@ export function JobsFilter({ companies }: JobsFilterProps) {
 
       {companies.length > 0 ? (
         <Field>
-          <FieldLabel>企业</FieldLabel>
+          <FieldLabel id="jobs-filter-company-label">企业</FieldLabel>
           <Select
             onValueChange={(value) =>
               applyFilter({ companyId: typeof value === "string" ? value : "" })
             }
             value={companyId || ALL}
           >
-            <SelectTrigger className="w-56">
+            <SelectTrigger aria-labelledby="jobs-filter-company-label" className="w-56">
               <SelectValue placeholder="全部企业">
                 {(value) => {
                   if (value === null || value === ALL) {

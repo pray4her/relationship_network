@@ -29,12 +29,14 @@ export function MfaDisableForm({ action }: MfaDisableFormProps) {
         error={state.fieldErrors.code}
         hint="输入当前身份验证器验证码以停用两步验证"
         id="code"
+        inputMode="numeric"
         label="当前验证码"
+        maxLength={6}
         type="text"
       />
       <div>
-        <Button type="submit" variant="secondary" disabled={isPending}>
-          {isPending ? "停用中…" : "停用两步验证"}
+        <Button pending={isPending} type="submit" variant="secondary">
+          停用两步验证
         </Button>
       </div>
     </form>

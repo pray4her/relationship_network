@@ -2,6 +2,7 @@
 
 import { useRouter } from "next/navigation"
 import { useState, useTransition } from "react"
+import { toast } from "sonner"
 
 import { copyCurrentRequirementVersionAction } from "@/app/actions/job-requirements"
 import { DataRegion, DataRegionContent, DataRegionHeader } from "@/components/layout/page"
@@ -19,7 +20,6 @@ import {
 } from "@/components/ui/alert-dialog"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
-import { Spinner } from "@/components/ui/spinner"
 import {
   Table,
   TableBody,
@@ -57,17 +57,15 @@ export function RequirementVersionHistory({
 }) {
   const router = useRouter()
   const [pending, startTransition] = useTransition()
-  const [message, setMessage] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
   const canCopy = canManage && !archived && versions.some((item) => item.is_current)
 
   const copyCurrent = () => {
     startTransition(async () => {
-      setMessage(null)
       setError(null)
       const result = await copyCurrentRequirementVersionAction(jobId)
       if (result.kind === "ok") {
-        setMessage(result.message)
+        toast.success(result.message)
         router.refresh()
         return
       }
@@ -83,12 +81,9 @@ export function RequirementVersionHistory({
     <DataRegion>
       <DataRegionHeader>
         <div className="flex flex-wrap items-start justify-between gap-3">
-          <div>
-            <h3 className="text-base font-medium">版本历史</h3>
-            <p className="text-sm text-muted-foreground">
-              确认后的职位需求版本不可修改；修订请复制为新草稿。
-            </p>
-          </div>
+          <p className="m-0 text-sm text-muted-foreground">
+            确认后的职位需求版本不可修改；修订请复制为新草稿。
+          </p>
           {canCopy ? (
             <AlertDialog>
               <AlertDialogTrigger
@@ -110,8 +105,7 @@ export function RequirementVersionHistory({
                 </AlertDialogHeader>
                 <AlertDialogFooter>
                   <AlertDialogCancel disabled={pending}>取消</AlertDialogCancel>
-                  <AlertDialogAction disabled={pending || hasEditableDraft} onClick={copyCurrent}>
-                    {pending ? <Spinner aria-hidden="true" data-icon="inline-start" /> : null}
+                  <AlertDialogAction onClick={copyCurrent} pending={pending}>
                     {pending ? "正在复制…" : "复制为新草稿"}
                   </AlertDialogAction>
                 </AlertDialogFooter>
@@ -121,14 +115,8 @@ export function RequirementVersionHistory({
         </div>
       </DataRegionHeader>
       <DataRegionContent className="flex flex-col gap-3">
-        {message ? (
-          <Alert>
-            <AlertTitle>操作完成</AlertTitle>
-            <AlertDescription>{message}</AlertDescription>
-          </Alert>
-        ) : null}
         {error ? (
-          <Alert>
+          <Alert variant="destructive">
             <AlertTitle>无法复制版本</AlertTitle>
             <AlertDescription>{error}</AlertDescription>
           </Alert>
@@ -142,39 +130,39 @@ export function RequirementVersionHistory({
         {versions.length === 0 ? (
           <p className="text-sm text-muted-foreground">尚无确认的职位需求版本。</p>
         ) : (
-          <div className="overflow-x-auto">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>版本</TableHead>
-                  <TableHead>Schema</TableHead>
-                  <TableHead>确认时间</TableHead>
-                  <TableHead>来源版本</TableHead>
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>版本</TableHead>
+                <TableHead>Schema</TableHead>
+                <TableHead>确认时间</TableHead>
+                <TableHead>来源版本</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {versions.map((version) => (
+                <TableRow key={version.id}>
+                  <TableCell className="font-medium tabular-nums">
+                    v{version.version_number}
+                    {version.is_current ? (
+                      <Badge className="ml-2" variant="secondary">
+                        当前
+                      </Badge>
+                    ) : null}
+                  </TableCell>
+                  <TableCell className="font-mono text-xs" translate="no">
+                    {version.requirement_schema_version_id}
+                  </TableCell>
+                  <TableCell className="tabular-nums">
+                    {formatConfirmedAt(version.confirmed_at)}
+                  </TableCell>
+                  <TableCell className="tabular-nums text-muted-foreground">
+                    {version.source_version_id === null ? "—" : "已引用"}
+                  </TableCell>
                 </TableRow>
-              </TableHeader>
-              <TableBody>
-                {versions.map((version) => (
-                  <TableRow key={version.id}>
-                    <TableCell className="font-medium tabular-nums">
-                      v{version.version_number}
-                      {version.is_current ? (
-                        <Badge className="ml-2" variant="secondary">
-                          当前
-                        </Badge>
-                      ) : null}
-                    </TableCell>
-                    <TableCell className="font-mono text-xs" translate="no">
-                      {version.requirement_schema_version_id}
-                    </TableCell>
-                    <TableCell>{formatConfirmedAt(version.confirmed_at)}</TableCell>
-                    <TableCell className="tabular-nums text-muted-foreground">
-                      {version.source_version_id === null ? "—" : "已引用"}
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          </div>
+              ))}
+            </TableBody>
+          </Table>
         )}
       </DataRegionContent>
     </DataRegion>

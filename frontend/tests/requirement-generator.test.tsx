@@ -16,7 +16,9 @@ const mocks = vi.hoisted(() => ({
   action: vi.fn(),
   cancelAction: vi.fn(),
   refresh: vi.fn(),
+  resolveUpgradeAction: vi.fn(),
   saveDraftAction: vi.fn(),
+  upgradeSchemaAction: vi.fn(),
 }))
 
 vi.mock("next/navigation", () => ({ useRouter: () => ({ refresh: mocks.refresh }) }))
@@ -24,7 +26,9 @@ vi.mock("@/app/actions/job-requirements", () => ({
   cancelRequirementTaskAction: mocks.cancelAction,
   generateRequirementDraftAction: mocks.action,
   abandonRequirementDraftAction: mocks.abandonDraftAction,
+  resolveUpgradeLossyItemsAction: mocks.resolveUpgradeAction,
   saveRequirementDraftAction: mocks.saveDraftAction,
+  upgradeSchemaAction: mocks.upgradeSchemaAction,
 }))
 
 const jobId = "00000000-0000-4000-8000-000000000011"
@@ -112,6 +116,7 @@ function editableDraft(overrides: Partial<RequirementDraft> = {}): RequirementDr
       current_affiliation: ["eq", "in"],
     },
     chinese_identity_values: ["国内华人", "海外华人", "外国人"],
+    pending_upgrade_items: [],
     created_at: "2026-08-11T08:03:00+00:00",
     updated_at: "2026-08-11T08:03:00+00:00",
     ...overrides,
@@ -172,7 +177,9 @@ beforeEach(() => {
   mocks.action.mockReset()
   mocks.cancelAction.mockReset()
   mocks.abandonDraftAction.mockReset()
+  mocks.resolveUpgradeAction.mockReset()
   mocks.saveDraftAction.mockReset()
+  mocks.upgradeSchemaAction.mockReset()
   mocks.refresh.mockReset()
 })
 
@@ -320,6 +327,10 @@ test("read-only members can inspect sources but cannot edit or submit", () => {
 
   expect(screen.getAllByLabelText("修正文案").at(0)).toBeDisabled()
   expect(screen.queryByRole("button", { name: "生成职位需求草稿" })).not.toBeInTheDocument()
+  // 未选中来源的原文默认折叠，展开后可查看
+  const collapsedTrigger = screen.getAllByRole("button", { name: /原始提取文本（已折叠）/ }).at(0)
+  if (!collapsedTrigger) throw new Error("collapsed source trigger is missing")
+  fireEvent.click(collapsedTrigger)
   expect(screen.getAllByDisplayValue("负责人才检索")).toHaveLength(2)
 })
 
@@ -350,7 +361,9 @@ test("renders the complete validated draft in explicit groups", () => {
   expect(screen.getByRole("heading", { name: "硬条件" })).toBeInTheDocument()
   expect(screen.getByDisplayValue("H 指数至少 30")).toBeInTheDocument()
   expect(screen.getByLabelText("研究主题查询")).toHaveValue("人工智能 AND 医疗")
-  expect(screen.getByRole("heading", { name: "未支持条件" })).toBeInTheDocument()
+  expect(screen.getByRole("heading", { name: /未支持条件/ })).toBeInTheDocument()
+  // 未支持条件默认折叠，展开后可见
+  fireEvent.click(screen.getByRole("button", { name: "展开未支持条件" }))
   expect(screen.getByText("要求有创业经验")).toBeInTheDocument()
 })
 
@@ -504,4 +517,84 @@ test("requires destructive confirmation before abandoning a draft", async () => 
   )
   expect(await screen.findByText("草稿已放弃。")).toBeInTheDocument()
   expect(screen.queryByRole("button", { name: "保存草稿" })).not.toBeInTheDocument()
+})
+
+test("upgrades the draft schema after explicit confirmation", async () => {
+  const upgraded = editableDraft({ revision: 2 })
+  mocks.upgradeSchemaAction.mockResolvedValue({
+    kind: "ok",
+    draft: upgraded,
+    message: "已升级草稿 Schema 至 job-requirement-schema-v2。",
+  })
+  renderGenerator(workspace({ draft: editableDraft() }))
+
+  fireEvent.click(screen.getByRole("button", { name: "升级 Schema" }))
+  expect(mocks.upgradeSchemaAction).not.toHaveBeenCalled()
+  fireEvent.click(await screen.findByRole("button", { name: "确认升级" }))
+
+  await waitFor(() =>
+    expect(mocks.upgradeSchemaAction).toHaveBeenCalledWith(jobId, editableDraft().id, 1),
+  )
+  await waitFor(() => expect(mocks.refresh).toHaveBeenCalled())
+})
+
+test("keeps the draft unchanged when the schema upgrade is unavailable", async () => {
+  mocks.upgradeSchemaAction.mockResolvedValue({
+    kind: "error",
+    code: "requirement_schema_upgrade_unavailable",
+    message: "当前没有可升级的目标 Schema 版本。",
+  })
+  renderGenerator(workspace({ draft: editableDraft() }))
+
+  fireEvent.click(screen.getByRole("button", { name: "升级 Schema" }))
+  fireEvent.click(await screen.findByRole("button", { name: "确认升级" }))
+
+  await waitFor(() => expect(mocks.upgradeSchemaAction).toHaveBeenCalledOnce())
+  await waitFor(() => expect(mocks.refresh).toHaveBeenCalled())
+  expect(screen.getByText(/修订 1/)).toBeInTheDocument()
+})
+
+test("resolves pending upgrade items before the draft can be confirmed", async () => {
+  const lossyItemId = "00000000-0000-4000-8000-000000000077"
+  const pendingItem = {
+    item_id: lossyItemId,
+    kind: "preference_condition" as const,
+    snapshot: {
+      item_id: lossyItemId,
+      origin: "model" as const,
+      field: "chinese_identity" as const,
+      operator: "eq" as const,
+      value: "海外华人" as const,
+      description: "限定海外华人",
+      evidence,
+      model_snapshot: null,
+      last_modified_by: null,
+      last_modified_at: null,
+    },
+  }
+  const resolved = editableDraft({ revision: 2, pending_upgrade_items: [] })
+  mocks.resolveUpgradeAction.mockResolvedValue({
+    kind: "ok",
+    draft: resolved,
+    message: "升级项处理已保存。",
+  })
+  renderGenerator(workspace({ draft: editableDraft({ pending_upgrade_items: [pendingItem] }) }))
+
+  expect(screen.getByRole("heading", { name: /待解决升级项/ })).toBeInTheDocument()
+  expect(screen.getByText(/限定海外华人/)).toBeInTheDocument()
+  expect(screen.getByRole("button", { name: "确认版本" })).toBeDisabled()
+  expect(screen.getByText("存在待解决的升级项，处理完成后才能确认")).toBeInTheDocument()
+
+  fireEvent.click(screen.getByRole("radio", { name: "丢弃" }))
+  fireEvent.click(screen.getByRole("button", { name: "提交处理方式" }))
+
+  await waitFor(() =>
+    expect(mocks.resolveUpgradeAction).toHaveBeenCalledWith(jobId, editableDraft().id, 1, [
+      { item_id: lossyItemId, resolution: "drop" },
+    ]),
+  )
+  expect(await screen.findByText("升级项处理已保存。")).toBeInTheDocument()
+  await waitFor(() =>
+    expect(screen.queryByRole("heading", { name: /待解决升级项/ })).not.toBeInTheDocument(),
+  )
 })

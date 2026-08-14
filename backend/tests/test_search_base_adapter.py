@@ -1,7 +1,9 @@
+import json
 from collections.abc import AsyncIterator
 
 import httpx
 import pytest
+from pydantic import ValidationError
 
 from relationship_network_api.fake_search_base import (
     DEFAULT_DATA_VERSION,
@@ -13,6 +15,8 @@ from relationship_network_api.fake_search_base import (
     SEEDED_PERSONS,
     SEEDED_PUBLICATION_ID,
     SEEDED_PUBLICATIONS,
+    SEEDED_SEARCH_HIT_PUBLICATIONS,
+    SEEDED_SEARCH_SEMANTIC_SCORES,
     app,
     reset_fake_search_base,
     state,
@@ -30,12 +34,17 @@ from relationship_network_api.search_base_contract import (
     CHINESE_IDENTITY_VALUES,
     CONTRACT_VERSION_HEADER,
     EXECUTABLE_SCHEMA_VERSIONS,
+    HARD_CONDITION_FIELD_CATALOG,
     MAX_PERSON_BATCH_SIZE,
+    MAX_RESEARCH_TOPIC_QUERY_CHARACTERS,
     REQUEST_ID_HEADER,
     SEARCH_CONTRACT_VERSION_V1,
+    HardCondition,
     PersonCurrentAbsence,
     PersonDetailFound,
     PersonEvidenceFound,
+    TalentSearchRequest,
+    TalentSearchResponse,
 )
 
 
@@ -292,6 +301,17 @@ def test_client_config_rejects_non_positive_timeout() -> None:
 
 def test_chinese_identity_values_match_schema_catalog() -> None:
     assert JOB_REQUIREMENT_SCHEMA_V1.chinese_identity_values == CHINESE_IDENTITY_VALUES
+
+
+def test_hard_condition_catalog_matches_schema_catalog() -> None:
+    assert {
+        field: frozenset(operators)
+        for field, operators in JOB_REQUIREMENT_SCHEMA_V1.field_catalog.items()
+    } == HARD_CONDITION_FIELD_CATALOG
+    assert (
+        JOB_REQUIREMENT_SCHEMA_V1.output_limits["research_topic_query_characters"]
+        == MAX_RESEARCH_TOPIC_QUERY_CHARACTERS
+    )
 
 
 @pytest.mark.anyio
@@ -802,3 +822,527 @@ async def test_publication_provenance_must_reference_a_publication_in_the_payloa
     assert captured.value.category == "invalid_response"
     assert captured.value.retryable is False
     assert SEEDED_PUBLICATION_ID != "pub-missing-001"
+
+
+@pytest.mark.anyio
+async def test_talent_search_returns_sorted_hits(fake_client: httpx.AsyncClient) -> None:
+    adapter = SearchBaseAdapter(_config(), client=fake_client)
+    result = await adapter.search_talent(
+        [HardCondition(field="chinese_identity", operator="eq", value="国内华人")],
+        research_topic_query="人工智能",
+        request_id="req-search-1",
+    )
+
+    assert isinstance(result, TalentSearchResponse)
+    assert result.request_id == "req-search-1"
+    assert result.data_version == DEFAULT_DATA_VERSION
+    assert len(result.hits) == 1
+    hit = result.hits[0]
+    assert hit.person == SEEDED_PERSONS[SEEDED_PERSON_ID]
+    assert hit.hit_publications == SEEDED_SEARCH_HIT_PUBLICATIONS[SEEDED_PERSON_ID]
+    assert hit.hit_publications[0].title
+    assert hit.hit_publications[0].year
+    assert hit.hit_publications[0].venue
+    assert hit.semantic_score == SEEDED_SEARCH_SEMANTIC_SCORES[SEEDED_PERSON_ID]
+    assert hit.person.has_contact is True
+    assert state.last_path == "/v1/search"
+    assert state.request_count == 1
+
+
+@pytest.mark.anyio
+async def test_talent_search_empty_hard_conditions_allows_semantic_only_recall(
+    fake_client: httpx.AsyncClient,
+) -> None:
+    adapter = SearchBaseAdapter(_config(), client=fake_client)
+    result = await adapter.search_talent(
+        [],
+        research_topic_query="人工智能",
+        request_id="req-search-empty",
+    )
+
+    assert [hit.person.canonical_person_id for hit in result.hits] == [
+        SEEDED_PERSON_WITHOUT_RANKS_ID,
+        SEEDED_PERSON_ID,
+    ]
+    assert [hit.semantic_score for hit in result.hits] == [
+        SEEDED_SEARCH_SEMANTIC_SCORES[SEEDED_PERSON_WITHOUT_RANKS_ID],
+        SEEDED_SEARCH_SEMANTIC_SCORES[SEEDED_PERSON_ID],
+    ]
+    assert state.request_count == 1
+
+
+@pytest.mark.parametrize("topic", ["", "   "])
+@pytest.mark.anyio
+async def test_talent_search_empty_query_is_rejected_before_http(
+    fake_client: httpx.AsyncClient,
+    topic: str,
+) -> None:
+    adapter = SearchBaseAdapter(_config(), client=fake_client)
+    with pytest.raises(SearchBaseAdapterError) as captured:
+        _ = await adapter.search_talent([], research_topic_query=topic, request_id="req-blank")
+
+    assert captured.value.category == "invalid_query"
+    assert captured.value.retryable is False
+    assert state.request_count == 0
+
+
+@pytest.mark.anyio
+async def test_talent_search_hard_filter_only_omits_semantic_scores(
+    fake_client: httpx.AsyncClient,
+) -> None:
+    adapter = SearchBaseAdapter(_config(), client=fake_client)
+    result = await adapter.search_talent(
+        [HardCondition(field="h_index", operator="gte", value=1)],
+        request_id="req-hard-filter",
+    )
+
+    assert [hit.person.canonical_person_id for hit in result.hits] == [
+        SEEDED_PERSON_ID,
+        SEEDED_PERSON_WITHOUT_RANKS_ID,
+    ]
+    assert all(hit.semantic_score is None for hit in result.hits)
+    assert result.hits[0].hit_publications == SEEDED_SEARCH_HIT_PUBLICATIONS[SEEDED_PERSON_ID]
+    assert (
+        result.hits[1].hit_publications
+        == (SEEDED_SEARCH_HIT_PUBLICATIONS[SEEDED_PERSON_WITHOUT_RANKS_ID])
+    )
+    assert state.request_count == 1
+
+
+@pytest.mark.anyio
+async def test_talent_search_blank_topic_with_hard_conditions_is_hard_filter_only(
+    fake_client: httpx.AsyncClient,
+) -> None:
+    adapter = SearchBaseAdapter(_config(), client=fake_client)
+    result = await adapter.search_talent(
+        [HardCondition(field="h_index", operator="gte", value=1)],
+        research_topic_query="   ",
+        request_id="req-hard-filter-blank",
+    )
+
+    assert [hit.person.canonical_person_id for hit in result.hits] == [
+        SEEDED_PERSON_ID,
+        SEEDED_PERSON_WITHOUT_RANKS_ID,
+    ]
+    assert all(hit.semantic_score is None for hit in result.hits)
+    assert state.request_count == 1
+
+
+@pytest.mark.parametrize("hit_limit", [0, 501])
+@pytest.mark.anyio
+async def test_talent_search_hit_limit_out_of_bounds_is_rejected_before_http(
+    fake_client: httpx.AsyncClient,
+    hit_limit: int,
+) -> None:
+    adapter = SearchBaseAdapter(_config(), client=fake_client)
+    with pytest.raises(SearchBaseAdapterError) as captured:
+        _ = await adapter.search_talent(
+            [],
+            research_topic_query="人工智能",
+            hit_limit=hit_limit,
+        )
+
+    assert captured.value.category == "invalid_query"
+    assert captured.value.retryable is False
+    assert state.request_count == 0
+
+
+@pytest.mark.anyio
+async def test_talent_search_unknown_field_is_rejected_before_http(
+    fake_client: httpx.AsyncClient,
+) -> None:
+    adapter = SearchBaseAdapter(_config(), client=fake_client)
+    with pytest.raises(SearchBaseAdapterError) as captured:
+        _ = await adapter.search_talent(
+            [HardCondition(field="email", operator="eq", value="x")],
+            research_topic_query="人工智能",
+            request_id="req-unknown-field",
+        )
+
+    assert captured.value.category == "invalid_query"
+    assert captured.value.retryable is False
+    assert state.request_count == 0
+
+
+@pytest.mark.anyio
+async def test_talent_search_unknown_operator_is_rejected_before_http(
+    fake_client: httpx.AsyncClient,
+) -> None:
+    adapter = SearchBaseAdapter(_config(), client=fake_client)
+    with pytest.raises(SearchBaseAdapterError) as captured:
+        _ = await adapter.search_talent(
+            [HardCondition(field="h_index", operator="eq", value=30)],
+            research_topic_query="人工智能",
+            request_id="req-unknown-operator",
+        )
+
+    assert captured.value.category == "invalid_query"
+    assert captured.value.retryable is False
+    assert state.request_count == 0
+
+
+@pytest.mark.anyio
+async def test_talent_search_illegal_chinese_identity_is_rejected_before_http(
+    fake_client: httpx.AsyncClient,
+) -> None:
+    adapter = SearchBaseAdapter(_config(), client=fake_client)
+    with pytest.raises(SearchBaseAdapterError) as captured:
+        _ = await adapter.search_talent(
+            [HardCondition(field="chinese_identity", operator="eq", value="汉族")],
+            research_topic_query="人工智能",
+            request_id="req-illegal-identity",
+        )
+
+    assert captured.value.category == "invalid_query"
+    assert captured.value.retryable is False
+    assert state.request_count == 0
+
+
+def test_talent_search_request_forbids_preference_and_unsupported_keys() -> None:
+    with pytest.raises(ValidationError):
+        _ = TalentSearchRequest.model_validate(
+            {
+                "hard_conditions": [],
+                "research_topic_query": "人工智能",
+                "preference_conditions": [{"field": "h_index", "operator": "gte", "value": 30}],
+            }
+        )
+    with pytest.raises(ValidationError):
+        _ = TalentSearchRequest.model_validate(
+            {
+                "hard_conditions": [],
+                "research_topic_query": "人工智能",
+                "unsupported_conditions": [{"description": "创业经验", "evidence": []}],
+            }
+        )
+    with pytest.raises(ValidationError):
+        _ = TalentSearchRequest.model_validate(
+            {
+                "hard_conditions": [],
+                "research_topic_query": "人工智能",
+                "search_utterance": "找清华大学的人",
+            }
+        )
+    with pytest.raises(ValidationError):
+        _ = TalentSearchRequest.model_validate(
+            {
+                "hard_conditions": [],
+                "research_topic_query": "人工智能",
+                "sort_by": "h_index",
+            }
+        )
+
+
+def test_talent_search_request_allows_hard_filter_only_and_rejects_both_empty() -> None:
+    request = TalentSearchRequest(
+        hard_conditions=(HardCondition(field="h_index", operator="gte", value=10),)
+    )
+    assert request.research_topic_query == ""
+    assert request.has_research_topic is False
+    with pytest.raises(ValidationError):
+        _ = TalentSearchRequest()
+
+
+@pytest.mark.anyio
+async def test_talent_search_forbidden_inputs_are_rejected_before_http(
+    fake_client: httpx.AsyncClient,
+) -> None:
+    adapter = SearchBaseAdapter(_config(), client=fake_client)
+    with pytest.raises(SearchBaseAdapterError) as preference_error:
+        _ = await adapter.search_talent(
+            [],
+            research_topic_query="人工智能",
+            preference_conditions=[{"field": "h_index", "operator": "gte", "value": 30}],
+        )
+    with pytest.raises(SearchBaseAdapterError) as unsupported_error:
+        _ = await adapter.search_talent(
+            [],
+            research_topic_query="人工智能",
+            unsupported_conditions=[{"description": "创业经验"}],
+        )
+    with pytest.raises(SearchBaseAdapterError) as utterance_error:
+        _ = await adapter.search_talent(
+            [],
+            research_topic_query="人工智能",
+            search_utterance="找清华大学的人",
+        )
+    with pytest.raises(SearchBaseAdapterError) as job_text_error:
+        _ = await adapter.search_talent(
+            [],
+            research_topic_query="人工智能",
+            job_description="招聘研究员",
+        )
+    with pytest.raises(SearchBaseAdapterError) as sort_error:
+        _ = await adapter.search_talent(
+            [],
+            research_topic_query="人工智能",
+            sort_by="h_index",
+        )
+
+    for captured in (
+        preference_error,
+        unsupported_error,
+        utterance_error,
+        job_text_error,
+        sort_error,
+    ):
+        assert captured.value.category == "invalid_query"
+        assert captured.value.retryable is False
+    assert state.request_count == 0
+
+
+@pytest.mark.anyio
+async def test_talent_search_invalid_query_from_provider_is_not_retried(
+    fake_client: httpx.AsyncClient,
+) -> None:
+    state.invalid_query = True
+    adapter = SearchBaseAdapter(_config(), client=fake_client, sleeper=_noop_sleep)
+    with pytest.raises(SearchBaseAdapterError) as captured:
+        _ = await adapter.search_talent(
+            [],
+            research_topic_query="人工智能",
+            request_id="req-invalid-provider",
+        )
+
+    assert captured.value.category == "invalid_query"
+    assert captured.value.retryable is False
+    assert state.request_count == 1
+
+
+@pytest.mark.anyio
+async def test_talent_search_response_with_email_is_invalid_response() -> None:
+    payload = {
+        "request_id": "req-contact-search",
+        "data_version": DEFAULT_DATA_VERSION,
+        "hits": [
+            {
+                "person": SEEDED_PERSONS[SEEDED_PERSON_ID].model_dump(mode="json"),
+                "hit_publications": [
+                    SEEDED_SEARCH_HIT_PUBLICATIONS[SEEDED_PERSON_ID][0].model_dump(mode="json")
+                ],
+                "semantic_score": 0.91,
+            }
+        ],
+        "email": "wei@example.com",
+    }
+
+    def handler(_request: httpx.Request) -> httpx.Response:
+        return httpx.Response(200, json=payload)
+
+    async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+        adapter = SearchBaseAdapter(_config(), client=client, sleeper=_noop_sleep)
+        with pytest.raises(SearchBaseAdapterError) as captured:
+            _ = await adapter.search_talent(
+                [],
+                research_topic_query="人工智能",
+                request_id="req-contact-search",
+            )
+
+    assert captured.value.category == "invalid_response"
+    assert captured.value.retryable is False
+
+
+@pytest.mark.anyio
+async def test_talent_search_response_misordered_is_invalid_response() -> None:
+    def handler(_request: httpx.Request) -> httpx.Response:
+        return httpx.Response(
+            200,
+            json={
+                "request_id": "req-order",
+                "data_version": DEFAULT_DATA_VERSION,
+                "hits": [
+                    {
+                        "person": SEEDED_PERSONS[SEEDED_PERSON_WITHOUT_RANKS_ID].model_dump(
+                            mode="json"
+                        ),
+                        "hit_publications": [],
+                        "semantic_score": 0.2,
+                    },
+                    {
+                        "person": SEEDED_PERSONS[SEEDED_PERSON_ID].model_dump(mode="json"),
+                        "hit_publications": [],
+                        "semantic_score": 0.9,
+                    },
+                ],
+            },
+        )
+
+    async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+        adapter = SearchBaseAdapter(_config(), client=client, sleeper=_noop_sleep)
+        with pytest.raises(SearchBaseAdapterError) as captured:
+            _ = await adapter.search_talent(
+                [],
+                research_topic_query="人工智能",
+                request_id="req-order",
+            )
+
+    assert captured.value.category == "invalid_response"
+    assert captured.value.retryable is False
+
+
+@pytest.mark.anyio
+async def test_talent_search_response_non_finite_score_is_invalid_response() -> None:
+    payload = {
+        "request_id": "req-nan",
+        "data_version": DEFAULT_DATA_VERSION,
+        "hits": [
+            {
+                "person": SEEDED_PERSONS[SEEDED_PERSON_ID].model_dump(mode="json"),
+                "hit_publications": [],
+                "semantic_score": float("nan"),
+            }
+        ],
+    }
+
+    def handler(_request: httpx.Request) -> httpx.Response:
+        return httpx.Response(
+            200,
+            content=json.dumps(payload).encode("utf-8"),
+            headers={"content-type": "application/json"},
+        )
+
+    async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+        adapter = SearchBaseAdapter(_config(), client=client, sleeper=_noop_sleep)
+        with pytest.raises(SearchBaseAdapterError) as captured:
+            _ = await adapter.search_talent(
+                [],
+                research_topic_query="人工智能",
+                request_id="req-nan",
+            )
+
+    assert captured.value.category == "invalid_response"
+    assert captured.value.retryable is False
+
+
+@pytest.mark.anyio
+async def test_talent_search_response_missing_data_version_is_invalid_response() -> None:
+    def handler(_request: httpx.Request) -> httpx.Response:
+        return httpx.Response(200, json={"request_id": "req-missing-dv", "hits": []})
+
+    async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+        adapter = SearchBaseAdapter(_config(), client=client, sleeper=_noop_sleep)
+        with pytest.raises(SearchBaseAdapterError) as captured:
+            _ = await adapter.search_talent(
+                [],
+                research_topic_query="人工智能",
+                request_id="req-missing-dv",
+            )
+
+    assert captured.value.category == "invalid_response"
+    assert captured.value.retryable is False
+
+
+def _search_hit_json(
+    person_id: str,
+    *,
+    semantic_score: float | None = None,
+    include_score: bool = True,
+) -> dict[str, object]:
+    body: dict[str, object] = {
+        "person": SEEDED_PERSONS[person_id].model_dump(mode="json"),
+        "hit_publications": [
+            publication.model_dump(mode="json")
+            for publication in SEEDED_SEARCH_HIT_PUBLICATIONS[person_id]
+        ],
+    }
+    if include_score:
+        body["semantic_score"] = semantic_score
+    return body
+
+
+@pytest.mark.anyio
+async def test_talent_search_response_with_match_score_is_invalid_response() -> None:
+    payload = {
+        "request_id": "req-match-score",
+        "data_version": DEFAULT_DATA_VERSION,
+        "hits": [_search_hit_json(SEEDED_PERSON_ID, semantic_score=0.91)],
+        "total_score": 12.5,
+    }
+
+    def handler(_request: httpx.Request) -> httpx.Response:
+        return httpx.Response(200, json=payload)
+
+    async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+        adapter = SearchBaseAdapter(_config(), client=client, sleeper=_noop_sleep)
+        with pytest.raises(SearchBaseAdapterError) as captured:
+            _ = await adapter.search_talent(
+                [],
+                research_topic_query="人工智能",
+                request_id="req-match-score",
+            )
+
+    assert captured.value.category == "invalid_response"
+    assert captured.value.retryable is False
+
+
+@pytest.mark.anyio
+async def test_talent_search_hard_filter_response_with_score_is_invalid() -> None:
+    payload = {
+        "request_id": "req-hard-score",
+        "data_version": DEFAULT_DATA_VERSION,
+        "hits": [_search_hit_json(SEEDED_PERSON_ID, semantic_score=0)],
+    }
+
+    def handler(_request: httpx.Request) -> httpx.Response:
+        return httpx.Response(200, json=payload)
+
+    async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+        adapter = SearchBaseAdapter(_config(), client=client, sleeper=_noop_sleep)
+        with pytest.raises(SearchBaseAdapterError) as captured:
+            _ = await adapter.search_talent(
+                [HardCondition(field="h_index", operator="gte", value=1)],
+                request_id="req-hard-score",
+            )
+
+    assert captured.value.category == "invalid_response"
+    assert captured.value.retryable is False
+
+
+@pytest.mark.anyio
+async def test_talent_search_hard_filter_misordered_is_invalid_response() -> None:
+    payload = {
+        "request_id": "req-hard-order",
+        "data_version": DEFAULT_DATA_VERSION,
+        "hits": [
+            _search_hit_json(SEEDED_PERSON_WITHOUT_RANKS_ID, include_score=False),
+            _search_hit_json(SEEDED_PERSON_ID, include_score=False),
+        ],
+    }
+
+    def handler(_request: httpx.Request) -> httpx.Response:
+        return httpx.Response(200, json=payload)
+
+    async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+        adapter = SearchBaseAdapter(_config(), client=client, sleeper=_noop_sleep)
+        with pytest.raises(SearchBaseAdapterError) as captured:
+            _ = await adapter.search_talent(
+                [HardCondition(field="h_index", operator="gte", value=1)],
+                request_id="req-hard-order",
+            )
+
+    assert captured.value.category == "invalid_response"
+    assert captured.value.retryable is False
+
+
+@pytest.mark.anyio
+async def test_talent_search_topic_response_missing_score_is_invalid() -> None:
+    payload = {
+        "request_id": "req-missing-score",
+        "data_version": DEFAULT_DATA_VERSION,
+        "hits": [_search_hit_json(SEEDED_PERSON_ID, include_score=False)],
+    }
+
+    def handler(_request: httpx.Request) -> httpx.Response:
+        return httpx.Response(200, json=payload)
+
+    async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+        adapter = SearchBaseAdapter(_config(), client=client, sleeper=_noop_sleep)
+        with pytest.raises(SearchBaseAdapterError) as captured:
+            _ = await adapter.search_talent(
+                [],
+                research_topic_query="人工智能",
+                request_id="req-missing-score",
+            )
+
+    assert captured.value.category == "invalid_response"
+    assert captured.value.retryable is False

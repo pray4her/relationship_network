@@ -23,7 +23,7 @@ test("shows every dependency as available when the platform is ready", () => {
   expect(screen.getByText("PostgreSQL")).toBeInTheDocument()
   expect(screen.getByText("Redis")).toBeInTheDocument()
   expect(screen.getByText("MinIO 对象存储")).toBeInTheDocument()
-  expect(screen.getAllByText("ONLINE")).toHaveLength(4)
+  expect(screen.getAllByText("在线")).toHaveLength(4)
 })
 
 test("shows individual dependency failures while the API remains available", () => {
@@ -40,8 +40,8 @@ test("shows individual dependency failures while the API remains available", () 
 
   expect(screen.getByRole("heading", { level: 1, name: "部分服务不可用" })).toBeInTheDocument()
   expect(screen.getByText("FastAPI")).toBeInTheDocument()
-  expect(screen.getAllByText("ONLINE")).toHaveLength(3)
-  expect(screen.getByText("OFFLINE")).toBeInTheDocument()
+  expect(screen.getAllByText("在线")).toHaveLength(3)
+  expect(screen.getByText("离线")).toBeInTheDocument()
 })
 
 test("shows an actionable unavailable state when the API cannot be reached", () => {

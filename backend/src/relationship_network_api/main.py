@@ -23,6 +23,8 @@ from relationship_network_api.routers.llm_configuration import router as llm_con
 from relationship_network_api.routers.members import router as members_router
 from relationship_network_api.routers.mfa import router as mfa_router
 from relationship_network_api.routers.rbac import router as rbac_router
+from relationship_network_api.routers.search_runs import router as search_runs_router
+from relationship_network_api.routers.talents import router as talents_router
 from relationship_network_api.routers.tenants import router as tenants_router
 
 
@@ -52,6 +54,8 @@ def create_app(
     app.include_router(llm_configuration_router)
     app.include_router(llm_calls_router)
     app.include_router(billing_router)
+    app.include_router(talents_router)
+    app.include_router(search_runs_router)
 
     @app.get("/health/live", tags=["health"])
     async def liveness() -> LiveStatus:

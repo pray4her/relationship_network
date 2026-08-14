@@ -18,7 +18,7 @@ test("shows live dependency status from the API", async ({ page }, testInfo) => 
   await expect(page.getByText("PostgreSQL")).toBeVisible()
   await expect(page.getByText("Redis")).toBeVisible()
   await expect(page.getByText("MinIO 对象存储")).toBeVisible()
-  await expect(page.getByText("ONLINE")).toHaveCount(4)
+  await expect(page.getByText("在线")).toHaveCount(4)
 
   await testInfo.attach("health-dashboard", {
     body: await page.screenshot({ fullPage: true }),

@@ -55,6 +55,13 @@ def create_celery_app(settings: WorkerSettings) -> Celery:
                 "schedule": 86400.0,
                 "options": {"queue": "maintenance"},
             },
+            # Task name kept in sync with
+            # CLEANUP_EXPIRED_REQUIREMENT_INPUT_BODIES_TASK_NAME in tasks.py.
+            "cleanup-expired-requirement-input-bodies": {
+                "task": "relationship_network.cleanup_expired_requirement_input_bodies",
+                "schedule": 86400.0,
+                "options": {"queue": "maintenance"},
+            },
         },
     )
     return app

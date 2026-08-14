@@ -3,6 +3,7 @@
 import { useActionState } from "react"
 
 import type { JobActionState } from "@/app/actions/jobs"
+import { Alert, AlertDescription } from "@/components/ui/alert"
 import {
   AlertDialog,
   AlertDialogAction,
@@ -29,7 +30,7 @@ export function JobArchiveButton({ action, jobId }: JobArchiveButtonProps) {
       <AlertDialog>
         <AlertDialogTrigger
           render={
-            <Button type="button" variant="secondary" disabled={isPending}>
+            <Button type="button" variant="secondary" pending={isPending}>
               {isPending ? "归档中…" : "归档职位"}
             </Button>
           }
@@ -45,7 +46,7 @@ export function JobArchiveButton({ action, jobId }: JobArchiveButtonProps) {
             <AlertDialogCancel>取消</AlertDialogCancel>
             <form action={formAction}>
               <input name="job_id" type="hidden" value={jobId} />
-              <AlertDialogAction type="submit" variant="destructive" disabled={isPending}>
+              <AlertDialogAction type="submit" variant="destructive" pending={isPending}>
                 {isPending ? "归档中…" : "归档职位"}
               </AlertDialogAction>
             </form>
@@ -53,9 +54,9 @@ export function JobArchiveButton({ action, jobId }: JobArchiveButtonProps) {
         </AlertDialogContent>
       </AlertDialog>
       {state.formError ? (
-        <p className="text-sm text-destructive" role="alert">
-          {state.formError}
-        </p>
+        <Alert variant="destructive">
+          <AlertDescription>{state.formError}</AlertDescription>
+        </Alert>
       ) : null}
     </div>
   )

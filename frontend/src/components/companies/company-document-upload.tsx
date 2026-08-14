@@ -34,8 +34,8 @@ export function CompanyDocumentUpload({ action, companyId }: CompanyDocumentUplo
         />
       </Field>
       <div>
-        <Button type="submit" disabled={isPending}>
-          {isPending ? "上传中…" : "上传文档"}
+        <Button pending={isPending} type="submit">
+          上传文档
         </Button>
       </div>
     </form>

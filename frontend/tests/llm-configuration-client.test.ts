@@ -8,7 +8,19 @@ import {
   loadLlmWorkspace,
 } from "@/lib/llm-configuration-client"
 
+const callBindings = {
+  job_requirement_parsing: {
+    prompt_version_id: "job-requirement-prompt-v1",
+    request_timeout_seconds: 180,
+  },
+  search_interpretation: {
+    prompt_version_id: "search-interpretation-prompt-v1",
+    request_timeout_seconds: 15,
+  },
+} as const
+
 const version = {
+  call_bindings: callBindings,
   created_at: "2026-08-11T08:00:00+00:00",
   created_by: null,
   id: "00000000-0000-0000-0000-000000000110",
@@ -28,6 +40,7 @@ const version = {
 
 const attempt = {
   candidate: {
+    call_bindings: callBindings,
     max_output_tokens: 8192,
     model: "x-ai/grok-4.5",
     prompt_version_id: "job-requirement-prompt-v1",
@@ -41,6 +54,7 @@ const attempt = {
   external_call_count: 0,
   id: "00000000-0000-0000-0000-000000000220",
   next_attempt_at: null,
+  probe_progress: {},
   source_version_id: null,
   status: "queued",
   structured_invalid_count: 0,
@@ -74,6 +88,7 @@ test("parses the immutable LLM configuration workspace", async () => {
     history: [version],
     prompt_versions: [
       {
+        call_type: "job_requirement_parsing",
         compatible_schema_version_id: "job-requirement-schema-v1",
         id: "job-requirement-prompt-v1",
         sha256: "a".repeat(64),

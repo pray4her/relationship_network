@@ -11,6 +11,7 @@ import {
   updateJobAction,
   uploadJobMaterialAction,
 } from "@/app/actions/jobs"
+import { ReadOnlyBanner } from "@/components/billing/read-only-banner"
 import { JobActivateButton } from "@/components/jobs/job-activate-button"
 import {
   buildJobActivationChecklistItems,
@@ -22,7 +23,13 @@ import { JobDetailTabs } from "@/components/jobs/job-detail-tabs"
 import { JobEditForm } from "@/components/jobs/job-edit-form"
 import { JobEventsTable } from "@/components/jobs/job-events-table"
 import { JobMaterialUpload } from "@/components/jobs/job-material-upload"
+import {
+  JobStatusBadge,
+  jobStatusMeta,
+  jobsTableHeadClassName,
+} from "@/components/jobs/job-status-badge"
 import { JobRequirementGenerator } from "@/components/jobs/requirement-generator"
+import { RequirementHistoryView } from "@/components/jobs/requirement-history"
 import {
   RequirementMatchingGateAlert,
   RequirementVersionHistory,
@@ -48,7 +55,6 @@ import {
   PageTitle,
 } from "@/components/layout/page"
 import { Alert, AlertDescription } from "@/components/ui/alert"
-import { Badge } from "@/components/ui/badge"
 import {
   Breadcrumb,
   BreadcrumbItem,
@@ -68,11 +74,16 @@ import {
 } from "@/components/ui/table"
 import { apiPublicBaseUrl } from "@/lib/api-url"
 import { createAuthTransport, loadAuthSession, SESSION_COOKIE_NAME } from "@/lib/auth-client"
+import { createBillingTransport, loadBillingSummary } from "@/lib/billing-client"
 import { createCompaniesTransport, loadCompanies } from "@/lib/companies-client"
+import { formatBytes, formatDateTime } from "@/lib/format"
 import { resolveJobDetailTab } from "@/lib/job-detail-tabs"
-import { createRequirementTransport, loadRequirementWorkspace } from "@/lib/job-requirement-client"
+import {
+  createRequirementTransport,
+  loadRequirementHistory,
+  loadRequirementWorkspace,
+} from "@/lib/job-requirement-client"
 import { createJobsTransport, loadJobDetail } from "@/lib/jobs-client"
-import type { JobStatus } from "@/lib/jobs-contract"
 
 type JobDetailPageProps = {
   readonly params: Promise<{ readonly id: string }>
@@ -83,25 +94,7 @@ export const metadata: Metadata = {
   title: "职位详情",
 }
 
-const statusLabels: Record<JobStatus, string> = {
-  draft: "草稿",
-  active: "活跃",
-  closed: "已关闭",
-  archived: "已归档",
-}
-
-const headClassName = "font-mono text-xs tracking-wider text-muted-foreground uppercase"
 const linkClassName = "font-medium underline underline-offset-4"
-
-function StatusBadge({ status }: { readonly status: JobStatus }) {
-  if (status === "active") {
-    return <Badge className="bg-success/10 text-success">{statusLabels[status]}</Badge>
-  }
-  if (status === "draft") {
-    return <Badge variant="outline">{statusLabels[status]}</Badge>
-  }
-  return <Badge variant="secondary">{statusLabels[status]}</Badge>
-}
 
 function NoticePage({ children }: { readonly children: React.ReactNode }) {
   return (
@@ -109,6 +102,7 @@ function NoticePage({ children }: { readonly children: React.ReactNode }) {
       <PageHeader>
         <PageHeaderContent>
           <PageTitle>职位详情</PageTitle>
+          <PageDescription>查看职位材料、操作记录与需求版本。</PageDescription>
         </PageHeaderContent>
       </PageHeader>
       <Alert>
@@ -146,11 +140,16 @@ export default async function JobDetailPage({ params, searchParams }: JobDetailP
   }
 
   const permissions = auth.view.permissions
-  const [detail, requirement, companiesResult] = await Promise.all([
+  const requirementTransport = createRequirementTransport()
+  const [detail, requirement, history, companiesResult, billing] = await Promise.all([
     loadJobDetail(createJobsTransport(), session, id),
-    loadRequirementWorkspace(createRequirementTransport(), session, id),
+    loadRequirementWorkspace(requirementTransport, session, id),
+    loadRequirementHistory(requirementTransport, session, id),
     permissions.includes("companies:read")
       ? loadCompanies(createCompaniesTransport(), session)
+      : Promise.resolve(null),
+    permissions.includes("billing:read")
+      ? loadBillingSummary(createBillingTransport(), session)
       : Promise.resolve(null),
   ])
   if (detail.kind === "mfaRequired") {
@@ -166,9 +165,17 @@ export default async function JobDetailPage({ params, searchParams }: JobDetailP
   if (requirement.kind === "mfaRequired") {
     redirect("/settings/security")
   }
+  if (history.kind === "mfaRequired") {
+    redirect("/settings/security")
+  }
 
   const { job, materials, events } = detail
   const canManage = permissions.includes("jobs:manage")
+  const isReadOnly =
+    billing?.kind === "ok" &&
+    (billing.summary.status === "expired" ||
+      billing.summary.status === "cancelled" ||
+      Date.parse(billing.summary.current_period_end) <= Date.now())
   const isDraft = job.status === "draft"
   const isActive = job.status === "active"
   const isClosed = job.status === "closed"
@@ -232,7 +239,7 @@ export default async function JobDetailPage({ params, searchParams }: JobDetailP
           </PageDescription>
         </PageHeaderContent>
         <PageActions>
-          <StatusBadge status={job.status} />
+          <JobStatusBadge status={job.status} />
           {canManage ? (
             <>
               {isDraft ? (
@@ -252,6 +259,8 @@ export default async function JobDetailPage({ params, searchParams }: JobDetailP
           ) : null}
         </PageActions>
       </PageHeader>
+
+      {isReadOnly ? <ReadOnlyBanner /> : null}
 
       {showChecklist ? <JobActivationChecklist items={checklistItems} jobId={job.id} /> : null}
 
@@ -300,25 +309,27 @@ export default async function JobDetailPage({ params, searchParams }: JobDetailP
                     <Table>
                       <TableHeader>
                         <TableRow>
-                          <TableHead className={headClassName}>文件名</TableHead>
-                          <TableHead className={headClassName}>大小</TableHead>
-                          <TableHead className={headClassName}>抽取文本预览</TableHead>
-                          <TableHead className={headClassName}>上传时间</TableHead>
-                          <TableHead className={headClassName}>下载</TableHead>
+                          <TableHead className={jobsTableHeadClassName}>文件名</TableHead>
+                          <TableHead className={jobsTableHeadClassName} numeric>
+                            大小
+                          </TableHead>
+                          <TableHead className={jobsTableHeadClassName}>抽取文本预览</TableHead>
+                          <TableHead className={jobsTableHeadClassName}>上传时间</TableHead>
+                          <TableHead className={jobsTableHeadClassName}>下载</TableHead>
                         </TableRow>
                       </TableHeader>
                       <TableBody>
                         {materials.map((material) => (
                           <TableRow key={material.id}>
                             <TableCell>{material.original_filename}</TableCell>
-                            <TableCell className="tabular-nums">{material.byte_size} B</TableCell>
+                            <TableCell numeric>{formatBytes(material.byte_size)}</TableCell>
                             <TableCell className="max-w-md truncate">
-                              {material.extracted_text.slice(0, 120) || "暂无提取文本"}
+                              {material.extracted_text.slice(0, 120) || (
+                                <span className="text-muted-foreground">暂无提取文本</span>
+                              )}
                             </TableCell>
                             <TableCell className="tabular-nums">
-                              {new Date(material.created_at).toLocaleString("zh-CN", {
-                                hour12: false,
-                              })}
+                              {formatDateTime(material.created_at)}
                             </TableCell>
                             <TableCell>
                               <a
@@ -369,7 +380,7 @@ export default async function JobDetailPage({ params, searchParams }: JobDetailP
                   <DataRegion>
                     <DataRegionContent className="flex flex-col gap-3 px-5 py-4">
                       <p className="m-0 text-sm text-muted-foreground">
-                        状态：{statusLabels[job.status]}
+                        状态：{jobStatusMeta[job.status].label}
                         {companyName ? ` · 企业：${companyName}` : null}
                       </p>
                       <p className="m-0 whitespace-pre-wrap break-words text-sm leading-normal">
@@ -439,6 +450,22 @@ export default async function JobDetailPage({ params, searchParams }: JobDetailP
                 </Alert>
               )}
             </PageSection>
+          }
+          history={
+            history.kind === "ok" ? (
+              <RequirementHistoryView history={history.history} />
+            ) : (
+              <PageSection aria-labelledby="requirement-history-heading">
+                <PageSectionHeader>
+                  <PageSectionHeaderContent>
+                    <PageSectionTitle id="requirement-history-heading">需求历史</PageSectionTitle>
+                  </PageSectionHeaderContent>
+                </PageSectionHeader>
+                <Alert>
+                  <AlertDescription>职位需求历史暂时不可用，请稍后重试。</AlertDescription>
+                </Alert>
+              </PageSection>
+            )
           }
         />
       </Suspense>

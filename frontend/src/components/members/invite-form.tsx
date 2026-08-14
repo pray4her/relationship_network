@@ -1,6 +1,7 @@
 "use client"
 
-import { useActionState } from "react"
+import { useActionState, useEffect, useRef } from "react"
+import { toast } from "sonner"
 
 import type { InviteFormState } from "@/app/actions/members"
 import { FormField } from "@/components/form-field"
@@ -20,11 +21,19 @@ export function InviteForm({ action }: InviteFormProps) {
     fieldErrors: {},
     formError: null,
   })
+  const lastInvitation = useRef(state.createdInvitation)
+
+  useEffect(() => {
+    if (state.createdInvitation !== null && state.createdInvitation !== lastInvitation.current) {
+      toast.success("邀请已创建")
+    }
+    lastInvitation.current = state.createdInvitation
+  }, [state.createdInvitation])
 
   return (
     <div className="flex flex-col gap-4">
       {state.createdInvitation ? (
-        <Alert role="status">
+        <Alert role="status" variant="success">
           <AlertDescription className="flex flex-col gap-2">
             <p>邀请已创建。请将此链接发送给被邀请人（链接与令牌仅显示一次）：</p>
             <p className={monoValueClassName}>{state.createdInvitation.inviteUrl}</p>
@@ -46,7 +55,7 @@ export function InviteForm({ action }: InviteFormProps) {
         ) : null}
 
         <FormField
-          autoComplete="off"
+          autoComplete="email"
           error={state.fieldErrors.email}
           id="email"
           label="被邀请人邮箱"
@@ -54,8 +63,8 @@ export function InviteForm({ action }: InviteFormProps) {
         />
 
         <div>
-          <Button type="submit" disabled={isPending}>
-            {isPending ? "创建中…" : "邀请"}
+          <Button pending={isPending} type="submit">
+            邀请
           </Button>
         </div>
       </form>

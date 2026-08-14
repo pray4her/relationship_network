@@ -12,18 +12,22 @@ import {
   useState,
   useTransition,
 } from "react"
+import { toast } from "sonner"
 
 import {
   abandonRequirementDraftAction,
   type ConfirmRequirementActionState,
   confirmRequirementDraftAction,
   type RequirementDraftActionState,
+  resolveUpgradeLossyItemsAction,
   saveRequirementDraftAction,
+  upgradeSchemaAction,
 } from "@/app/actions/job-requirements"
 import {
   DataRegion,
   DataRegionContent,
   DataRegionFooter,
+  DataRegionHeader,
   FormSectionDescription,
   FormSectionTitle,
   PageSectionTitle,
@@ -42,7 +46,6 @@ import {
 } from "@/components/ui/alert-dialog"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
-import { Card, CardAction, CardContent, CardDescription, CardHeader } from "@/components/ui/card"
 import { Checkbox } from "@/components/ui/checkbox"
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible"
 import {
@@ -62,6 +65,7 @@ import {
   FieldSet,
 } from "@/components/ui/field"
 import { Input } from "@/components/ui/input"
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
 import {
   Select,
   SelectContent,
@@ -70,15 +74,16 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
-import { Spinner } from "@/components/ui/spinner"
 import { Textarea } from "@/components/ui/textarea"
 import { truncateLabel } from "@/lib/job-detail-tabs"
 import type {
   EditableExecutableCondition,
   EditableUnsupportedCondition,
+  PendingUpgradeItem,
   RequirementDraft,
   RequirementDraftSubmission,
   RequirementEvidence,
+  SchemaUpgradeResolutionInput,
 } from "@/lib/job-requirement-contract"
 
 type ConditionValue = string | number | Array<string | number>
@@ -148,6 +153,8 @@ type DraftEditorActions = {
   readonly validateBeforeSubmit: (event: React.FormEvent<HTMLFormElement>) => void
   readonly abandon: () => void
   readonly confirm: () => void
+  readonly upgradeSchema: () => void
+  readonly resolveUpgrades: (resolutions: readonly SchemaUpgradeResolutionInput[]) => void
 }
 
 type DraftEditorMeta = {
@@ -157,6 +164,8 @@ type DraftEditorMeta = {
   readonly pending: boolean
   readonly abandoning: boolean
   readonly confirming: boolean
+  readonly upgrading: boolean
+  readonly resolving: boolean
   readonly confirmBlockedReason: string | null
   readonly errors: Readonly<Record<string, string>>
   readonly feedback: RequirementDraftActionState | ConfirmRequirementActionState
@@ -306,8 +315,11 @@ function RequirementDraftEditorProvider({
   const [errors, setErrors] = useState<Record<string, string>>({})
   const [abandonFeedback, setAbandonFeedback] = useState<RequirementDraftActionState | null>(null)
   const [confirmFeedback, setConfirmFeedback] = useState<ConfirmRequirementActionState | null>(null)
+  const [resolveFeedback, setResolveFeedback] = useState<RequirementDraftActionState | null>(null)
   const [abandoning, startAbandonTransition] = useTransition()
   const [confirming, startConfirmTransition] = useTransition()
+  const [upgrading, startUpgradeTransition] = useTransition()
+  const [resolving, startResolveTransition] = useTransition()
   const feedbackRef = useRef<HTMLDivElement>(null)
   const baselineRef = useRef(
     JSON.stringify(submissionFromState(editorStateFromDraft(initialDraft))),
@@ -320,7 +332,7 @@ function RequirementDraftEditorProvider({
   const submission = submissionFromState(state)
   const dirty = JSON.stringify(submission) !== baselineRef.current
   const canEdit = canManage && draft.status === "editable" && draft.read_only_reason === null
-  const feedback = confirmFeedback ?? abandonFeedback ?? saveFeedback
+  const feedback = confirmFeedback ?? abandonFeedback ?? resolveFeedback ?? saveFeedback
   const unresolvedConflicts = state.sourceConflicts.filter((item) => !item.resolved)
   const confirmBlockedReason = !canEdit
     ? "当前草稿不可确认。"
@@ -330,7 +342,9 @@ function RequirementDraftEditorProvider({
         ? "研究主题查询不能为空。"
         : unresolvedConflicts.length > 0
           ? `还有 ${unresolvedConflicts.length} 个来源冲突未解决。`
-          : null
+          : draft.pending_upgrade_items.length > 0
+            ? "存在待解决的升级项，处理完成后才能确认"
+            : null
 
   useEffect(() => {
     if (initialDraft.id === draft.id) {
@@ -551,11 +565,60 @@ function RequirementDraftEditorProvider({
     })
   }
 
+  const applyServerDraft = (nextDraft: RequirementDraft) => {
+    const next = editorStateFromDraft(nextDraft)
+    setDraft(nextDraft)
+    setState(next)
+    baselineRef.current = JSON.stringify(submissionFromState(next))
+    setErrors({})
+    onDirtyChange?.(false)
+  }
+
+  const upgradeSchema = () => {
+    if (!canEdit || dirty || draft.pending_upgrade_items.length > 0) return
+    startUpgradeTransition(async () => {
+      setAbandonFeedback(null)
+      setConfirmFeedback(null)
+      setResolveFeedback(null)
+      const result = await upgradeSchemaAction(jobId, draft.id, draft.revision)
+      if (result.kind === "ok") {
+        applyServerDraft(result.draft)
+        toast.success(result.message)
+      } else if (result.kind !== "idle") {
+        if (result.kind === "revisionConflict") applyServerDraft(result.draft)
+        toast.error(result.message)
+      }
+      router.refresh()
+    })
+  }
+
+  const resolveUpgrades = (resolutions: readonly SchemaUpgradeResolutionInput[]) => {
+    if (!canEdit || resolutions.length === 0) return
+    startResolveTransition(async () => {
+      setAbandonFeedback(null)
+      setConfirmFeedback(null)
+      const result = await resolveUpgradeLossyItemsAction(
+        jobId,
+        draft.id,
+        draft.revision,
+        resolutions,
+      )
+      setResolveFeedback(result)
+      if (result.kind === "ok" || result.kind === "revisionConflict") {
+        applyServerDraft(result.draft)
+        router.refresh()
+      }
+      feedbackRef.current?.focus()
+    })
+  }
+
   const value: DraftEditorContextValue = {
     state,
     actions: {
       abandon,
       confirm,
+      resolveUpgrades,
+      upgradeSchema,
       addPreferenceCondition,
       changeConditionField,
       changeConditionOperator,
@@ -606,7 +669,9 @@ function RequirementDraftEditorProvider({
       feedbackRef,
       formAction,
       pending,
+      resolving,
       submission,
+      upgrading,
     },
   }
 
@@ -631,32 +696,35 @@ function EditorFrame({ children }: { readonly children: React.ReactNode }) {
 function EditorHeader() {
   const { meta, state } = useRequirementDraftEditor()
   const unresolved = state.sourceConflicts.filter((conflict) => !conflict.resolved).length
+  const pendingUpgrades = meta.draft.pending_upgrade_items.length
   const hasNotices =
     meta.draft.read_only_reason === "replacement_in_progress" ||
     meta.draft.read_only_reason === "job_archived" ||
     (!meta.canEdit && meta.draft.read_only_reason === null)
   return (
-    <Card size="sm">
-      <CardHeader className={hasNotices ? "border-b" : undefined}>
+    <DataRegion>
+      <DataRegionHeader className={hasNotices ? undefined : "border-b-0"}>
         <div className="min-w-0">
           <PageSectionTitle>审阅职位需求草稿</PageSectionTitle>
-          <CardDescription className="tabular-nums" translate="no">
+          <p className="m-0 text-sm text-muted-foreground tabular-nums" translate="no">
             Schema {meta.draft.requirement_schema_version_id}，修订 {meta.draft.revision}
-          </CardDescription>
+          </p>
         </div>
-        <CardAction>
-          <div className="flex flex-wrap gap-2">
-            {meta.dirty ? <Badge variant="warning">有未保存修改</Badge> : <Badge>已保存</Badge>}
-            {unresolved > 0 ? (
-              <Badge variant="warning">{unresolved} 个冲突未解决</Badge>
-            ) : (
-              <Badge variant="success">冲突已处理</Badge>
-            )}
-          </div>
-        </CardAction>
-      </CardHeader>
+        <div className="flex flex-wrap items-center gap-2">
+          {meta.dirty ? <Badge variant="warning">有未保存修改</Badge> : <Badge>已保存</Badge>}
+          {unresolved > 0 ? (
+            <Badge variant="warning">{unresolved} 个冲突未解决</Badge>
+          ) : (
+            <Badge variant="success">冲突已处理</Badge>
+          )}
+          {pendingUpgrades > 0 ? (
+            <Badge variant="warning">{pendingUpgrades} 个升级项待解决</Badge>
+          ) : null}
+          {meta.canEdit ? <UpgradeSchemaButton /> : null}
+        </div>
+      </DataRegionHeader>
       {hasNotices ? (
-        <CardContent className="flex flex-col gap-3">
+        <DataRegionContent className="flex flex-col gap-3 px-5 py-4">
           {meta.draft.read_only_reason === "replacement_in_progress" ? (
             <Alert>
               <AlertTitle>重新解析正在进行</AlertTitle>
@@ -676,9 +744,148 @@ function EditorHeader() {
               你可以查看完整草稿，但没有管理权限。
             </p>
           ) : null}
-        </CardContent>
+        </DataRegionContent>
       ) : null}
-    </Card>
+    </DataRegion>
+  )
+}
+
+function UpgradeSchemaButton() {
+  const { actions, meta } = useRequirementDraftEditor()
+  const blocked =
+    meta.pending ||
+    meta.abandoning ||
+    meta.confirming ||
+    meta.resolving ||
+    meta.upgrading ||
+    meta.dirty ||
+    meta.draft.pending_upgrade_items.length > 0
+  return (
+    <AlertDialog>
+      <AlertDialogTrigger
+        render={<Button disabled={blocked} size="sm" type="button" variant="outline" />}
+      >
+        升级 Schema
+      </AlertDialogTrigger>
+      <AlertDialogContent size="sm">
+        <AlertDialogHeader>
+          <AlertDialogTitle>升级草稿 Schema？</AlertDialogTitle>
+          <AlertDialogDescription>
+            将使用确定性转换器把草稿升级到当前 Schema 版本，不调用模型重新解析。
+            无法无损转换的条件会列为待解决升级项，处理完成后才能确认版本。
+          </AlertDialogDescription>
+        </AlertDialogHeader>
+        <AlertDialogFooter>
+          <AlertDialogCancel disabled={meta.upgrading}>取消</AlertDialogCancel>
+          <AlertDialogAction onClick={actions.upgradeSchema} pending={meta.upgrading} type="button">
+            {meta.upgrading ? "正在升级…" : "确认升级"}
+          </AlertDialogAction>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
+  )
+}
+
+function PendingUpgradeItemCard({
+  choice,
+  item,
+  onChoiceChange,
+}: {
+  readonly choice: SchemaUpgradeResolutionInput["resolution"]
+  readonly item: PendingUpgradeItem
+  readonly onChoiceChange: (resolution: SchemaUpgradeResolutionInput["resolution"]) => void
+}) {
+  const { meta } = useRequirementDraftEditor()
+  const snapshot = item.snapshot
+  return (
+    <DataRegion>
+      <DataRegionContent className="flex flex-col gap-3 px-5 py-4">
+        <p className="m-0 break-words font-medium">
+          {item.kind === "hard_condition" ? "硬条件" : "偏好条件"} · {snapshot.description}
+        </p>
+        <p className="m-0 text-sm text-muted-foreground" translate="no">
+          {fieldLabels[snapshot.field] ?? snapshot.field} ·{" "}
+          {operatorLabels[snapshot.operator] ?? snapshot.operator} ·{" "}
+          {formatConditionValue(snapshot.value)}
+        </p>
+        <RadioGroup
+          disabled={!meta.canEdit}
+          name={`upgrade-resolution-${item.item_id}`}
+          onValueChange={(value) => {
+            if (value === "drop" || value === "downgrade_unsupported") onChoiceChange(value)
+          }}
+          value={choice}
+        >
+          <label
+            className="flex min-h-11 items-center gap-3 text-sm"
+            htmlFor={`upgrade-downgrade-${item.item_id}`}
+          >
+            <RadioGroupItem
+              id={`upgrade-downgrade-${item.item_id}`}
+              value="downgrade_unsupported"
+            />
+            转为未支持条件
+          </label>
+          <label
+            className="flex min-h-11 items-center gap-3 text-sm"
+            htmlFor={`upgrade-drop-${item.item_id}`}
+          >
+            <RadioGroupItem id={`upgrade-drop-${item.item_id}`} value="drop" />
+            丢弃
+          </label>
+        </RadioGroup>
+      </DataRegionContent>
+    </DataRegion>
+  )
+}
+
+function PendingUpgradeSection() {
+  const { actions, meta } = useRequirementDraftEditor()
+  const [choices, setChoices] = useState<
+    Readonly<Record<string, SchemaUpgradeResolutionInput["resolution"]>>
+  >({})
+  const items = meta.draft.pending_upgrade_items
+  if (items.length === 0) return null
+  const submit = () => {
+    actions.resolveUpgrades(
+      items.map((item) => ({
+        item_id: item.item_id,
+        resolution: choices[item.item_id] ?? "downgrade_unsupported",
+      })),
+    )
+  }
+  return (
+    <section aria-labelledby="draft-upgrade-heading" className="flex min-w-0 flex-col gap-4">
+      <div className="min-w-0">
+        <FormSectionTitle id="draft-upgrade-heading">
+          待解决升级项 · {items.length.toLocaleString("zh-CN")} 条
+        </FormSectionTitle>
+        <FormSectionDescription>
+          Schema 升级无法无损转换以下条件。逐条选择处理方式并提交，处理完成后才能确认版本。
+        </FormSectionDescription>
+      </div>
+      {items.map((item) => (
+        <PendingUpgradeItemCard
+          choice={choices[item.item_id] ?? "downgrade_unsupported"}
+          item={item}
+          key={item.item_id}
+          onChoiceChange={(resolution) =>
+            setChoices((current) => ({ ...current, [item.item_id]: resolution }))
+          }
+        />
+      ))}
+      {meta.canEdit ? (
+        <div>
+          <Button disabled={meta.resolving} onClick={submit} type="button">
+            {meta.resolving ? "正在提交…" : "提交处理方式"}
+          </Button>
+        </div>
+      ) : (
+        <p className="m-0 text-sm text-muted-foreground">
+          存在待解决的升级项，需要具有管理权限的成员处理。
+        </p>
+      )}
+    </section>
   )
 }
 
@@ -687,8 +894,8 @@ function ResearchTopicSection() {
   const error = meta.errors["research_topic_query"]
   const modelValue = meta.draft.result.research_topic_query.model_value
   return (
-    <Card size="sm">
-      <CardContent>
+    <DataRegion>
+      <DataRegionContent className="flex flex-col gap-4 px-5 py-4">
         <Field data-invalid={error ? true : undefined}>
           <FieldLabel htmlFor="draft-field-research_topic_query">研究主题查询</FieldLabel>
           <FieldDescription>用于论文召回与相关性评分。</FieldDescription>
@@ -709,7 +916,7 @@ function ResearchTopicSection() {
               render={<Button className="w-fit justify-start px-0" size="sm" variant="link" />}
             >
               查看模型原值
-              <ChevronDownIcon data-icon="inline-end" />
+              <ChevronDownIcon aria-hidden="true" data-icon="inline-end" data-slot="chevron" />
             </CollapsibleTrigger>
             <CollapsibleContent>
               <FieldDescription className="break-words">{modelValue}</FieldDescription>
@@ -717,8 +924,8 @@ function ResearchTopicSection() {
           </Collapsible>
           <FieldError>{error}</FieldError>
         </Field>
-      </CardContent>
-    </Card>
+      </DataRegionContent>
+    </DataRegion>
   )
 }
 
@@ -1081,7 +1288,7 @@ function Provenance({ condition }: { readonly condition: DraftConditionState }) 
         render={<Button className="w-fit justify-start px-0" size="sm" variant="link" />}
       >
         查看原始模型值与来源证据
-        <ChevronDownIcon data-icon="inline-end" />
+        <ChevronDownIcon aria-hidden="true" data-icon="inline-end" data-slot="chevron" />
       </CollapsibleTrigger>
       <CollapsibleContent className="flex flex-col gap-2 text-sm text-muted-foreground">
         {condition.modelSnapshot ? (
@@ -1148,7 +1355,7 @@ function UnsupportedSection() {
               render={<Button className="w-fit" size="sm" type="button" variant="outline" />}
             >
               {open ? "收起未支持条件" : "展开未支持条件"}
-              <ChevronDownIcon data-icon="inline-end" />
+              <ChevronDownIcon aria-hidden="true" data-icon="inline-end" data-slot="chevron" />
             </CollapsibleTrigger>
           </div>
           <CollapsibleContent className="flex min-w-0 flex-col gap-3">
@@ -1257,7 +1464,8 @@ function ConflictsSection() {
 
 function EditorActions() {
   const { actions, meta } = useRequirementDraftEditor()
-  const busy = meta.pending || meta.abandoning || meta.confirming
+  const busy =
+    meta.pending || meta.abandoning || meta.confirming || meta.upgrading || meta.resolving
   return (
     <DataRegion aria-live="polite" ref={meta.feedbackRef} tabIndex={-1}>
       <DataRegionContent>
@@ -1308,20 +1516,23 @@ function EditorActions() {
               <AlertDialogFooter>
                 <AlertDialogCancel disabled={meta.abandoning}>继续编辑</AlertDialogCancel>
                 <AlertDialogAction
-                  disabled={meta.abandoning}
                   onClick={actions.abandon}
+                  pending={meta.abandoning}
                   type="button"
                   variant="destructive"
                 >
-                  {meta.abandoning ? <Spinner aria-hidden="true" data-icon="inline-start" /> : null}
                   {meta.abandoning ? "正在放弃…" : "确认放弃草稿"}
                 </AlertDialogAction>
               </AlertDialogFooter>
             </AlertDialogContent>
           </AlertDialog>
           <div className="flex flex-wrap gap-3">
-            <Button disabled={busy || !meta.dirty} type="submit" variant="outline">
-              {meta.pending ? <Spinner aria-hidden="true" data-icon="inline-start" /> : null}
+            <Button
+              disabled={busy || !meta.dirty}
+              pending={meta.pending}
+              type="submit"
+              variant="outline"
+            >
               {meta.pending ? "正在保存…" : "保存草稿"}
             </Button>
             <AlertDialog>
@@ -1343,13 +1554,10 @@ function EditorActions() {
                 <AlertDialogFooter>
                   <AlertDialogCancel disabled={meta.confirming}>继续编辑</AlertDialogCancel>
                   <AlertDialogAction
-                    disabled={meta.confirming}
                     onClick={actions.confirm}
+                    pending={meta.confirming}
                     type="button"
                   >
-                    {meta.confirming ? (
-                      <Spinner aria-hidden="true" data-icon="inline-start" />
-                    ) : null}
                     {meta.confirming ? "正在确认…" : "确认版本"}
                   </AlertDialogAction>
                 </AlertDialogFooter>
@@ -1371,7 +1579,7 @@ function EvidenceList({ evidence }: { readonly evidence: readonly RequirementEvi
       >
         来源证据 · {evidence.length.toLocaleString("zh-CN")}
         {evidence[0] ? ` · ${truncateLabel(evidence[0].quote, 32)}` : null}
-        <ChevronDownIcon data-icon="inline-end" />
+        <ChevronDownIcon aria-hidden="true" data-icon="inline-end" data-slot="chevron" />
       </CollapsibleTrigger>
       <CollapsibleContent>
         <ul className="m-0 flex list-none flex-col gap-1 p-0">
@@ -1465,6 +1673,7 @@ export const RequirementDraftEditor = {
   Conflicts: ConflictsSection,
   Frame: EditorFrame,
   Header: EditorHeader,
+  PendingUpgrades: PendingUpgradeSection,
   Provider: RequirementDraftEditorProvider,
   ResearchTopic: ResearchTopicSection,
   Unsupported: UnsupportedSection,
@@ -1490,6 +1699,7 @@ export function JobRequirementDraftEditor({
     >
       <RequirementDraftEditor.Frame>
         <RequirementDraftEditor.Header />
+        <RequirementDraftEditor.PendingUpgrades />
         <RequirementDraftEditor.ResearchTopic />
         <RequirementDraftEditor.Conditions section="hard_conditions" title="硬条件" />
         <RequirementDraftEditor.Conditions section="preference_conditions" title="偏好条件" />

@@ -16,6 +16,7 @@ import {
 } from "@/components/layout/page"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { createAuthTransport, loadAuthSession, SESSION_COOKIE_NAME } from "@/lib/auth-client"
+import { formatDateTime } from "@/lib/format"
 import { createInvitationsTransport, previewInvitation } from "@/lib/invitations-client"
 
 export const metadata: Metadata = {
@@ -24,10 +25,6 @@ export const metadata: Metadata = {
 
 type InvitePageProps = {
   readonly params: Promise<{ readonly token: string }>
-}
-
-function formatDateTime(value: string): string {
-  return new Date(value).toLocaleString("zh-CN", { hour12: false })
 }
 
 export default async function InvitePage({ params }: InvitePageProps) {

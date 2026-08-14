@@ -35,6 +35,10 @@ function formString(formData: FormData, field: string): string {
   return typeof value === "string" ? value : ""
 }
 
+function formNumber(formData: FormData, field: string): number {
+  return Number(formString(formData, field))
+}
+
 async function requireSession(): Promise<string> {
   const store = await cookies()
   const session = store.get(SESSION_COOKIE_NAME)?.value
@@ -60,17 +64,25 @@ export async function submitLlmConfigurationAction(
   formData: FormData,
 ): Promise<LlmConfigurationActionResult> {
   const parsed = submissionSchema.safeParse({
+    call_bindings: {
+      job_requirement_parsing: {
+        prompt_version_id: formString(formData, "parsing_prompt_version_id"),
+        request_timeout_seconds: formNumber(formData, "parsing_request_timeout_seconds"),
+      },
+      search_interpretation: {
+        prompt_version_id: formString(formData, "search_prompt_version_id"),
+        request_timeout_seconds: formNumber(formData, "search_request_timeout_seconds"),
+      },
+    },
     expected_current_version_id: formString(formData, "expected_current_version_id"),
-    max_output_tokens: Number(formString(formData, "max_output_tokens")),
+    max_output_tokens: formNumber(formData, "max_output_tokens"),
     model: formString(formData, "model"),
-    prompt_version_id: formString(formData, "prompt_version_id"),
-    request_timeout_seconds: Number(formString(formData, "request_timeout_seconds")),
-    temperature: Number(formString(formData, "temperature")),
+    temperature: formNumber(formData, "temperature"),
   })
   if (!parsed.success) {
     const fieldErrors: Record<string, string> = {}
     for (const issue of parsed.error.issues) {
-      const field = String(issue.path[0] ?? "form")
+      const field = issue.path.map(String).join(".") || "form"
       fieldErrors[field] ??= issue.message
     }
     return { fieldErrors, formError: "请修正标出的字段后重试。", kind: "error" }

@@ -31,7 +31,19 @@ beforeEach(() => {
   vi.stubGlobal("EventSource", FakeEventSource)
 })
 
+const callBindings = {
+  job_requirement_parsing: {
+    prompt_version_id: "job-requirement-prompt-v1",
+    request_timeout_seconds: 180,
+  },
+  search_interpretation: {
+    prompt_version_id: "search-interpretation-prompt-v1",
+    request_timeout_seconds: 15,
+  },
+} as const
+
 const current = {
+  call_bindings: callBindings,
   created_at: "2026-08-11T08:00:00+00:00",
   created_by: null,
   id: "00000000-0000-0000-0000-000000000110",
@@ -56,6 +68,7 @@ function workspace(status: LlmAttemptStatus | null): LlmWorkspace {
         ? null
         : {
             candidate: {
+              call_bindings: callBindings,
               max_output_tokens: 8192,
               model: current.model,
               prompt_version_id: current.prompt_version_id,
@@ -69,6 +82,7 @@ function workspace(status: LlmAttemptStatus | null): LlmWorkspace {
             external_call_count: status === "queued" ? 0 : 1,
             id: "00000000-0000-0000-0000-000000000220",
             next_attempt_at: status === "retry_scheduled" ? "2026-08-11T08:05:00+00:00" : null,
+            probe_progress: {},
             source_version_id: null,
             status,
             structured_invalid_count: 0,
@@ -78,9 +92,16 @@ function workspace(status: LlmAttemptStatus | null): LlmWorkspace {
     history: [current],
     prompt_versions: [
       {
+        call_type: "job_requirement_parsing",
         compatible_schema_version_id: "job-requirement-schema-v1",
         id: current.prompt_version_id,
         sha256: "a".repeat(64),
+      },
+      {
+        call_type: "search_interpretation",
+        compatible_schema_version_id: "job-requirement-schema-v1",
+        id: "search-interpretation-prompt-v1",
+        sha256: "b".repeat(64),
       },
     ],
     schema_versions: [],
@@ -93,9 +114,14 @@ test("renders current configuration, candidate boundaries and immutable history"
   expect(screen.getAllByText("x-ai/grok-4.5").length).toBeGreaterThan(0)
   expect(screen.getByLabelText("最大输出 tokens")).toHaveAttribute("min", "1024")
   expect(screen.getByLabelText("最大输出 tokens")).toHaveAttribute("max", "16384")
-  expect(screen.getByLabelText("请求超时（秒）")).toHaveAttribute("min", "30")
+  const timeouts = screen.getAllByLabelText("请求超时（秒）")
+  expect(timeouts[0]).toHaveAttribute("min", "30")
+  expect(timeouts[0]).toHaveAttribute("max", "300")
+  expect(timeouts[1]).toHaveAttribute("min", "5")
+  expect(timeouts[1]).toHaveAttribute("max", "30")
   expect(screen.getByText("版本不可原地修改；恢复会生成新的版本。")).toBeInTheDocument()
-  expect(screen.getByRole("button", { name: "提交并探测" })).toBeEnabled()
+  expect(screen.getByRole("button", { name: "提交并探测全部调用类型" })).toBeEnabled()
+  expect(screen.getAllByText("search-interpretation-prompt-v1").length).toBeGreaterThan(0)
 })
 
 test.each([

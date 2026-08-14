@@ -29,6 +29,11 @@ export const requirementErrorDetails = [
   "requirement_creation_rate_limited",
   "requirement_task_not_found",
   "requirement_task_terminal",
+  "requirement_schema_upgrade_unavailable",
+  "requirement_schema_upgrade_not_found",
+  "requirement_schema_upgrade_resolution_invalid",
+  "schema_upgrade_lossy_unresolved",
+  "requirement_input_purged",
   "subscription_read_only",
   "permission_denied",
   "mfa_required",
@@ -264,6 +269,7 @@ export const requirementTaskErrorCodeSchema = z.enum([
   "requirement_draft_exists",
   "requirement_draft_replacement_conflict",
   "job_archived",
+  "requirement_input_purged",
 ])
 
 export const requirementTaskSchema = z
@@ -297,6 +303,16 @@ export const requirementTaskEventSchema = z
   })
   .strict()
 
+const upgradeItemKindSchema = z.enum(["hard_condition", "preference_condition"])
+
+export const pendingUpgradeItemSchema = z
+  .object({
+    item_id: uuidSchema,
+    kind: upgradeItemKindSchema,
+    snapshot: editableExecutableConditionSchema,
+  })
+  .strict()
+
 export const requirementDraftSchema = z
   .object({
     id: uuidSchema,
@@ -314,6 +330,7 @@ export const requirementDraftSchema = z
       .nullable(),
     field_catalog: z.record(z.string(), z.array(z.string())),
     chinese_identity_values: z.array(chineseIdentitySchema).length(3),
+    pending_upgrade_items: z.array(pendingUpgradeItemSchema).max(100),
     created_at: dateTimeSchema,
     updated_at: dateTimeSchema,
   })
@@ -349,6 +366,129 @@ export const requirementSourceSchema = z
     original_text: z.string(),
     scan_status: z.string(),
     created_at: dateTimeSchema.nullable(),
+  })
+  .strict()
+
+const schemaUpgradeItemMappingSchema = z
+  .object({
+    item_id: uuidSchema,
+    kind: upgradeItemKindSchema,
+    mapping: z.string().min(1),
+    lossless: z.boolean(),
+  })
+  .strict()
+
+const schemaUpgradeLossyResolutionSchema = z
+  .object({
+    item_id: uuidSchema,
+    kind: upgradeItemKindSchema,
+    snapshot: editableExecutableConditionSchema,
+    resolution: z
+      .object({
+        choice: z.enum(["drop", "downgrade_unsupported"]),
+        resolved_by: uuidSchema,
+        resolved_at: dateTimeSchema,
+      })
+      .strict()
+      .nullable(),
+  })
+  .strict()
+
+export const schemaUpgradeRecordSchema = z
+  .object({
+    id: uuidSchema,
+    draft_id: uuidSchema,
+    from_schema_version_id: z.string(),
+    to_schema_version_id: z.string(),
+    converter_version: z.string(),
+    item_mappings: z.array(schemaUpgradeItemMappingSchema).max(200),
+    lossy_resolutions: z.array(schemaUpgradeLossyResolutionSchema).max(200),
+    actor_user_id: uuidSchema.nullable(),
+    created_at: dateTimeSchema,
+  })
+  .strict()
+
+export const schemaUpgradeResponseSchema = z
+  .object({
+    draft: requirementDraftSchema,
+    upgrade: schemaUpgradeRecordSchema,
+  })
+  .strict()
+
+export const schemaUpgradeResolutionInputSchema = z
+  .object({
+    item_id: uuidSchema,
+    resolution: z.enum(["drop", "downgrade_unsupported"]),
+  })
+  .strict()
+
+export const upgradeRequirementDraftSchemaInputSchema = z
+  .object({ jobId: uuidSchema, draftId: uuidSchema, expectedRevision: z.number().int().positive() })
+  .strict()
+
+export const resolveSchemaUpgradeLossyItemsInputSchema = z
+  .object({
+    jobId: uuidSchema,
+    draftId: uuidSchema,
+    expectedRevision: z.number().int().positive(),
+    resolutions: z.array(schemaUpgradeResolutionInputSchema).min(1).max(100),
+  })
+  .strict()
+
+export const historyDraftSchema = z
+  .object({
+    id: uuidSchema,
+    task_id: uuidSchema.nullable(),
+    input_snapshot_id: uuidSchema.nullable(),
+    source_version_id: uuidSchema.nullable(),
+    requirement_schema_version_id: z.string(),
+    status: z.enum(["editable", "confirmed", "replaced", "abandoned"]),
+    revision: z.number().int().positive(),
+    created_by: uuidSchema.nullable(),
+    updated_by: uuidSchema.nullable(),
+    status_changed_at: dateTimeSchema,
+    created_at: dateTimeSchema,
+    updated_at: dateTimeSchema,
+  })
+  .strict()
+
+export const historySourceSchema = z
+  .object({
+    snapshot_id: uuidSchema,
+    source_id: z.string().min(1).max(128),
+    source_kind: z.enum(["job-description", "job-material"]),
+    material_id: uuidSchema.nullable(),
+    position: z.number().int().nonnegative(),
+    original_sha256: z.string().length(64),
+    sent_sha256: z.string().length(64),
+    unicode_characters: z.number().int().nonnegative(),
+    edited_by: uuidSchema.nullable(),
+    edited_at: dateTimeSchema,
+    body_purged_at: dateTimeSchema.nullable(),
+  })
+  .strict()
+
+export const historyEventSchema = z
+  .object({
+    id: uuidSchema,
+    actor_user_id: uuidSchema.nullable(),
+    action: z.string().min(1),
+    target_type: z.string().min(1),
+    target_id: z.string().min(1),
+    result: z.enum(["success", "failure"]),
+    detail: z.string(),
+    created_at: dateTimeSchema,
+  })
+  .strict()
+
+export const requirementHistorySchema = z
+  .object({
+    tasks: z.array(requirementTaskSchema),
+    drafts: z.array(historyDraftSchema),
+    versions: z.array(requirementVersionSummarySchema),
+    schema_upgrades: z.array(schemaUpgradeRecordSchema),
+    sources: z.array(historySourceSchema),
+    change_events: z.array(historyEventSchema),
   })
   .strict()
 
@@ -450,10 +590,15 @@ export type ExecutableCondition = z.infer<typeof executableConditionSchema>
 export type EditableExecutableCondition = z.infer<typeof editableExecutableConditionSchema>
 export type EditableSourceConflict = z.infer<typeof editableSourceConflictSchema>
 export type EditableUnsupportedCondition = z.infer<typeof editableUnsupportedConditionSchema>
+export type HistoryDraft = z.infer<typeof historyDraftSchema>
+export type HistoryEvent = z.infer<typeof historyEventSchema>
+export type HistorySource = z.infer<typeof historySourceSchema>
+export type PendingUpgradeItem = z.infer<typeof pendingUpgradeItemSchema>
 export type RequirementDraft = z.infer<typeof requirementDraftSchema>
 export type RequirementDraftSubmission = z.infer<typeof requirementDraftSubmissionSchema>
 export type RequirementErrorDetail = z.infer<typeof requirementErrorSchema>["detail"]
 export type RequirementEvidence = z.infer<typeof requirementEvidenceSchema>
+export type RequirementHistory = z.infer<typeof requirementHistorySchema>
 export type RequirementSource = z.infer<typeof requirementSourceSchema>
 export type RequirementTask = z.infer<typeof requirementTaskSchema>
 export type RequirementTaskEvent = z.infer<typeof requirementTaskEventSchema>
@@ -461,4 +606,7 @@ export type RequirementTaskStatus = z.infer<typeof requirementTaskStatusSchema>
 export type RequirementVersion = z.infer<typeof requirementVersionSchema>
 export type RequirementVersionSummary = z.infer<typeof requirementVersionSummarySchema>
 export type RequirementWorkspace = z.infer<typeof requirementWorkspaceSchema>
+export type SchemaUpgradeRecord = z.infer<typeof schemaUpgradeRecordSchema>
+export type SchemaUpgradeResolutionInput = z.infer<typeof schemaUpgradeResolutionInputSchema>
+export type SchemaUpgradeResponse = z.infer<typeof schemaUpgradeResponseSchema>
 export type ConfirmRequirementResponse = z.infer<typeof confirmRequirementResponseSchema>

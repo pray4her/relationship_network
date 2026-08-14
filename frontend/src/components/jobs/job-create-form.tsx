@@ -42,13 +42,13 @@ export function JobCreateForm({ action, companies }: JobCreateFormProps) {
       ) : null}
 
       <Field data-invalid={state.fieldErrors.company_id ? true : undefined}>
-        <FieldLabel>所属企业</FieldLabel>
+        <FieldLabel id="job-create-company-label">所属企业</FieldLabel>
         <input name="company_id" type="hidden" value={companyId} />
         <Select
           onValueChange={(value) => setCompanyId(typeof value === "string" ? value : "")}
           value={companyId || undefined}
         >
-          <SelectTrigger className="w-full">
+          <SelectTrigger aria-labelledby="job-create-company-label" className="w-full">
             <SelectValue placeholder="请选择企业" />
           </SelectTrigger>
           <SelectContent>
@@ -81,7 +81,7 @@ export function JobCreateForm({ action, companies }: JobCreateFormProps) {
       </Field>
 
       <div>
-        <Button type="submit" disabled={isPending}>
+        <Button pending={isPending} type="submit">
           {isPending ? "创建中…" : "创建职位"}
         </Button>
       </div>

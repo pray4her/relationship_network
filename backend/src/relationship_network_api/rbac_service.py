@@ -30,6 +30,8 @@ SYSTEM_PERMISSIONS: Final[dict[str, str]] = {
     "companies:manage": "创建、编辑、归档企业并上传文档",
     "jobs:read": "查看职位及其材料与操作记录",
     "jobs:manage": "创建、编辑、启用、关闭、归档职位并上传材料",
+    "search:run": "发起自然语言人才搜索",
+    "search:read": "查看本租户的自然语言搜索运行",
 }
 """System-defined permission catalog; codes are stable and assigned to roles."""
 

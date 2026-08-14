@@ -60,7 +60,8 @@ describe("AppNavbar", () => {
       "page",
     )
     expect(screen.queryByRole("link", { name: "企业" })).not.toBeInTheDocument()
-    expect(screen.getByRole("link", { name: "登录" })).toBeInTheDocument()
-    expect(screen.getByRole("link", { name: "注册" })).toBeInTheDocument()
+    // 桌面按钮 + 移动菜单项（md:hidden，jsdom 下均可见）
+    expect(screen.getAllByRole("link", { name: "登录" })).toHaveLength(2)
+    expect(screen.getAllByRole("link", { name: "注册" })).toHaveLength(2)
   })
 })

@@ -11,15 +11,14 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog"
+import { formatDateTime } from "@/lib/format"
 import {
   type LlmRawResponse,
   llmCallErrorSchema,
   llmRawResponseSchema,
 } from "@/lib/llm-call-contract"
-import { formatDiagnosticDateTime } from "@/lib/llm-call-view"
 
 type ViewState =
-  | { readonly kind: "idle" }
   | { readonly kind: "loading" }
   | { readonly kind: "success"; readonly response: LlmRawResponse }
   | { readonly kind: "expired" }
@@ -39,9 +38,8 @@ function formatBody(response: LlmRawResponse): string {
 
 function ResponseState({ state }: { readonly state: ViewState }) {
   switch (state.kind) {
-    case "idle":
     case "loading":
-      return <p>{state.kind === "loading" ? "正在解密并读取原始响应…" : "尚未请求原始响应。"}</p>
+      return <p>正在解密并读取原始响应…</p>
     case "expired":
       return (
         <Alert>
@@ -84,12 +82,10 @@ function ResponseState({ state }: { readonly state: ViewState }) {
             </div>
             <div>
               <dt className="text-muted-foreground">到期时间</dt>
-              <dd className="m-0 tabular-nums">
-                {formatDiagnosticDateTime(state.response.expires_at)}
-              </dd>
+              <dd className="m-0 tabular-nums">{formatDateTime(state.response.expires_at)}</dd>
             </div>
           </dl>
-          <pre className="m-0 max-h-[55vh] overflow-auto rounded-md border border-border bg-muted p-4 whitespace-pre-wrap break-words font-mono text-sm leading-relaxed">
+          <pre className="m-0 overflow-auto rounded-md border border-border bg-muted p-4 whitespace-pre-wrap break-words font-mono text-sm leading-relaxed">
             {formatBody(state.response)}
           </pre>
         </div>
@@ -105,7 +101,7 @@ export function LlmRawResponseDialog({
   readonly callId: string
 }) {
   const [open, setOpen] = useState(false)
-  const [state, setState] = useState<ViewState>({ kind: "idle" })
+  const [state, setState] = useState<ViewState>({ kind: "loading" })
 
   async function reveal(): Promise<void> {
     setOpen(true)

@@ -1,6 +1,7 @@
 "use client"
 
-import { useActionState } from "react"
+import { useActionState, useEffect, useRef } from "react"
+import { toast } from "sonner"
 
 import type { SubmitOrderFormState } from "@/app/actions/orders"
 import { FormField } from "@/components/form-field"
@@ -22,17 +23,17 @@ export function OrderRequestForm({ action, idempotencyKey }: OrderRequestFormPro
     formError: null,
     submitted: false,
   })
+  const submittedRef = useRef(state.submitted)
+
+  useEffect(() => {
+    if (state.submitted && !submittedRef.current) {
+      toast.success("订单已提交，请等待管理员确认付款")
+    }
+    submittedRef.current = state.submitted
+  }, [state.submitted])
 
   return (
     <div className="flex flex-col gap-4">
-      {state.submitted ? (
-        <Alert role="status">
-          <AlertDescription>
-            订单已提交，请等待管理员确认付款；确认后订阅将自动开通或续订。
-          </AlertDescription>
-        </Alert>
-      ) : null}
-
       <form action={formAction} className="flex flex-col gap-4" noValidate>
         {state.formError ? (
           <Alert variant="destructive">
@@ -50,6 +51,7 @@ export function OrderRequestForm({ action, idempotencyKey }: OrderRequestFormPro
           error={state.fieldErrors.amount}
           hint="单位：元，例如 199"
           id="amount"
+          inputMode="decimal"
           label="付款金额（元）"
           type="text"
         />
@@ -69,8 +71,8 @@ export function OrderRequestForm({ action, idempotencyKey }: OrderRequestFormPro
         />
 
         <div>
-          <Button type="submit" disabled={isPending}>
-            {isPending ? "提交中…" : "提交订单申请"}
+          <Button pending={isPending} type="submit">
+            提交订单申请
           </Button>
         </div>
       </form>

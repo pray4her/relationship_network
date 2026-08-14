@@ -28,11 +28,16 @@ import {
   PageTitle,
 } from "@/components/layout/page"
 import { InviteForm } from "@/components/members/invite-form"
+import {
+  invitationStatusMeta,
+  memberRoleMeta,
+  memberStatusMeta,
+} from "@/components/members/member-status"
 import { MemberStatusActions } from "@/components/members/member-status-actions"
 import { RevokeInvitationButton } from "@/components/members/revoke-invitation-button"
 import { RoleAssignment } from "@/components/members/role-assignment"
+import { StatusBadge } from "@/components/status-badge"
 import { Alert, AlertDescription } from "@/components/ui/alert"
-import { Badge } from "@/components/ui/badge"
 import { Empty, EmptyHeader, EmptyTitle } from "@/components/ui/empty"
 import {
   Table,
@@ -43,23 +48,12 @@ import {
   TableRow,
 } from "@/components/ui/table"
 import { createAuthTransport, loadAuthSession, SESSION_COOKIE_NAME } from "@/lib/auth-client"
+import { formatDateTime } from "@/lib/format"
 import { createInvitationsTransport, loadInvitations } from "@/lib/invitations-client"
-import type { InvitationStatus } from "@/lib/invitations-contract"
 import { createMembersTransport, loadMembers, loadRoles } from "@/lib/members-client"
 
 export const metadata: Metadata = {
   title: "成员管理",
-}
-
-const invitationStatusLabels: Record<InvitationStatus, string> = {
-  accepted: "已接受",
-  expired: "已过期",
-  pending: "待接受",
-  revoked: "已撤销",
-}
-
-function formatDateTime(value: string): string {
-  return new Date(value).toLocaleString("zh-CN", { hour12: false })
 }
 
 const headClassName = "font-mono text-xs tracking-wider text-muted-foreground uppercase"
@@ -70,6 +64,7 @@ function NoticePage({ children }: { readonly children: React.ReactNode }) {
       <PageHeader>
         <PageHeaderContent>
           <PageTitle>成员管理</PageTitle>
+          <PageDescription>查看成员、分配角色并管理租户邀请。</PageDescription>
         </PageHeaderContent>
       </PageHeader>
       <Alert>
@@ -181,20 +176,16 @@ export default async function MembersPage() {
                       <TableCell>{member.display_name}</TableCell>
                       <TableCell>{member.email}</TableCell>
                       <TableCell>
-                        <Badge variant={isOwner ? "default" : "secondary"}>
-                          {isOwner ? "所有者" : "成员"}
-                        </Badge>
+                        <StatusBadge {...memberRoleMeta[member.membership_role]} />
                       </TableCell>
                       <TableCell>
-                        {member.is_active ? (
-                          <Badge className="bg-success/10 text-success">正常</Badge>
-                        ) : (
-                          <Badge variant="secondary">已停用</Badge>
-                        )}
+                        <StatusBadge {...memberStatusMeta(member.is_active)} />
                       </TableCell>
                       {canManage ? (
                         <TableCell>
-                          {isOwner ? null : (
+                          {isOwner ? (
+                            <span className="text-sm text-muted-foreground">所有者不可操作</span>
+                          ) : (
                             <div className="flex flex-col items-start gap-2">
                               <MemberStatusActions
                                 action={memberStatusAction}
@@ -261,17 +252,7 @@ export default async function MembersPage() {
                     <TableRow key={invitation.id}>
                       <TableCell>{invitation.email}</TableCell>
                       <TableCell>
-                        {invitation.status === "accepted" ? (
-                          <Badge className="bg-success/10 text-success">
-                            {invitationStatusLabels[invitation.status]}
-                          </Badge>
-                        ) : (
-                          <Badge
-                            variant={invitation.status === "pending" ? "default" : "secondary"}
-                          >
-                            {invitationStatusLabels[invitation.status]}
-                          </Badge>
-                        )}
+                        <StatusBadge {...invitationStatusMeta[invitation.status]} />
                       </TableCell>
                       <TableCell className="tabular-nums">
                         {formatDateTime(invitation.expires_at)}

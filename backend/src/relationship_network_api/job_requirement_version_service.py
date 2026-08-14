@@ -6,7 +6,7 @@ import uuid
 from copy import deepcopy
 from dataclasses import dataclass
 from datetime import UTC, datetime
-from typing import TYPE_CHECKING, Final, cast, final
+from typing import TYPE_CHECKING, Final, final
 
 from sqlalchemy import func, select
 from sqlalchemy.exc import IntegrityError
@@ -117,6 +117,21 @@ async def confirm_draft(  # noqa: PLR0913
             action=ACTION_CONFIRM,
             code=blockers[0],
         )
+    pending_upgrade_items = await draft_service.pending_schema_upgrade_items(
+        session,
+        tenant_id=tenant_id,
+        draft_id=draft.id,
+    )
+    if pending_upgrade_items:
+        await _reject(
+            session,
+            tenant_id=tenant_id,
+            actor_user_id=actor_user_id,
+            target_type=TARGET_TYPE_DRAFT,
+            target_id=str(draft.id),
+            action=ACTION_CONFIRM,
+            code=draft_service.SCHEMA_UPGRADE_LOSSY_UNRESOLVED,
+        )
     try:
         validated = validate_editable_requirement_document(
             draft.result_json,
@@ -173,6 +188,9 @@ async def confirm_draft(  # noqa: PLR0913
         detail=f"version={version.version_number}",
     )
     try:
+        # updated_at is server-owned (onupdate); reload it before the commit.
+        await session.flush()
+        await session.refresh(draft)
         await session.commit()
     except IntegrityError as error:
         await session.rollback()
@@ -202,7 +220,12 @@ async def confirm_draft(  # noqa: PLR0913
             created_at=version.created_at,
             is_current=True,
         ),
-        draft=_draft_view(draft, schema=schema, read_only_reason=draft_service.READ_ONLY_STATUS),
+        draft=_draft_view(
+            draft,
+            schema=schema,
+            read_only_reason=draft_service.READ_ONLY_STATUS,
+            pending_upgrade_items=pending_upgrade_items,
+        ),
     )
 
 
@@ -237,13 +260,11 @@ async def copy_current_version(
         )
     version = (
         await session.execute(
-            select(JobRequirementVersion)
-            .where(
+            select(JobRequirementVersion).where(
                 JobRequirementVersion.id == job.current_requirement_version_id,
                 JobRequirementVersion.tenant_id == tenant_id,
                 JobRequirementVersion.job_id == job_id,
             )
-            .with_for_update()
         )
     ).scalar_one()
     existing = (
@@ -443,7 +464,7 @@ async def _next_version_number(
             )
         )
     ).scalar_one()
-    return cast("int", maximum) + 1
+    return maximum + 1
 
 
 async def _reject(  # noqa: PLR0913
@@ -537,6 +558,7 @@ def _draft_view(
     *,
     schema: JobRequirementSchemaVersion,
     read_only_reason: str | None,
+    pending_upgrade_items: list[dict[str, object]] | None = None,
 ) -> RequirementDraftView:
     return RequirementDraftView(
         id=draft.id,
@@ -554,4 +576,5 @@ def _draft_view(
         chinese_identity_values=list(schema.chinese_identity_values),
         created_at=draft.created_at,
         updated_at=draft.updated_at,
+        pending_upgrade_items=pending_upgrade_items or [],
     )

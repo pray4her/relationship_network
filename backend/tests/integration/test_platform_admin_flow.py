@@ -9,8 +9,8 @@ from relationship_network_api.config import load_app_settings
 from relationship_network_api.db import create_engine_from_settings, create_session_factory
 from relationship_network_api.main import create_app
 
+from .auth_helpers import PASSWORD, current_code, enable_mfa, register
 from .conftest import Stack, unique_email
-from .test_mfa_flow import PASSWORD, current_code, enable_mfa, register
 
 # Requires the local PostgreSQL container (127.0.0.1:15432) with `alembic upgrade head` applied.
 

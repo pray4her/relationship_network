@@ -66,6 +66,7 @@ export function MfaSetupWizard({ enableAction, startAction }: MfaSetupWizardProp
           第一步：使用身份验证器（如 Microsoft Authenticator、Google
           Authenticator）扫描下方二维码，或手动输入密钥。
         </p>
+        {/* 二维码底必须保持纯白以保证扫码对比度，属语义 token 之外的刻意例外 */}
         <div className="w-fit rounded-lg border bg-white p-3">
           <QRCodeSVG size={180} value={startState.setup.otpauthUrl} />
         </div>
@@ -86,12 +87,14 @@ export function MfaSetupWizard({ enableAction, startAction }: MfaSetupWizardProp
             error={enableState.fieldErrors.code}
             hint="第二步：输入身份验证器显示的 6 位验证码完成启用"
             id="code"
+            inputMode="numeric"
             label="验证码"
+            maxLength={6}
             type="text"
           />
           <div>
-            <Button type="submit" disabled={enablePending}>
-              {enablePending ? "启用中…" : "启用两步验证"}
+            <Button pending={enablePending} type="submit">
+              启用两步验证
             </Button>
           </div>
         </form>
@@ -110,8 +113,8 @@ export function MfaSetupWizard({ enableAction, startAction }: MfaSetupWizardProp
         启用后，登录时除密码外还需输入身份验证器验证码。
       </p>
       <div>
-        <Button type="submit" disabled={startPending}>
-          {startPending ? "生成中…" : "设置两步验证"}
+        <Button pending={startPending} type="submit">
+          设置两步验证
         </Button>
       </div>
     </form>

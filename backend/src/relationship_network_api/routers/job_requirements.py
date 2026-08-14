@@ -17,14 +17,18 @@ from pydantic import BaseModel, ConfigDict, Field, field_validator
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from relationship_network_api import job_requirement_draft_service as draft_service
+from relationship_network_api import job_requirement_history_service as history_service
 from relationship_network_api import job_requirement_service as service
 from relationship_network_api import job_requirement_version_service as version_service
+from relationship_network_api import tenant_audit_service, usage_service
 from relationship_network_api.config import load_database_settings
 from relationship_network_api.deps import (
+    PERMISSION_DENIED_DETAIL,
+    SUBSCRIPTION_READ_ONLY_DETAIL,
     TenantContext,
     get_db_session,
+    get_tenant_context,
     require_permission,
-    require_writable_permission,
 )
 from relationship_network_api.durable_task import (
     HEARTBEAT_SECONDS,
@@ -44,13 +48,51 @@ if TYPE_CHECKING:
 
 DbSession = Annotated[AsyncSession, Depends(get_db_session)]
 require_requirement_jobs_read = require_permission("jobs:read")
-require_requirement_jobs_manage = require_writable_permission("jobs:manage")
 JobsReadDep = Annotated[TenantContext, Depends(require_requirement_jobs_read)]
+TASK_EVENT_CHANNEL = "job_requirement_parsing_task_events"
+AUDIT_ACTION_WRITE_DENIED = "job_requirement.write_denied"
+AUDIT_TARGET_JOB = "job"
+
+
+async def require_requirement_jobs_manage_audited(
+    job_id: uuid.UUID,
+    session: DbSession,
+    context: Annotated[TenantContext, Depends(get_tenant_context)],
+) -> TenantContext:
+    """Require jobs:manage on a writable tenant, auditing authenticated denials.
+
+    Only denials for an authenticated member inside their own tenant are
+    recorded; anonymous requests and cross-tenant probes hidden by RLS never
+    produce audit entries that could leak target existence.
+    """
+    detail: str | None = None
+    if "jobs:manage" not in context.permissions:
+        detail = PERMISSION_DENIED_DETAIL
+    elif not await usage_service.is_tenant_writable(
+        session,
+        tenant_id=context.membership.tenant_id,
+    ):
+        detail = SUBSCRIPTION_READ_ONLY_DETAIL
+    if detail is not None:
+        tenant_audit_service.record_event(
+            session,
+            tenant_id=context.tenant_id,
+            actor_user_id=context.authentication.user.id,
+            action=AUDIT_ACTION_WRITE_DENIED,
+            target_type=AUDIT_TARGET_JOB,
+            target_id=str(job_id),
+            result=tenant_audit_service.AUDIT_RESULT_FAILURE,
+            detail=detail,
+        )
+        await session.commit()
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=detail)
+    return context
+
+
 JobsManageDep = Annotated[
     TenantContext,
-    Depends(require_requirement_jobs_manage),
+    Depends(require_requirement_jobs_manage_audited),
 ]
-TASK_EVENT_CHANNEL = "job_requirement_parsing_task_events"
 
 
 @final
@@ -180,6 +222,24 @@ class RequirementDraftResponse(BaseModel):
     chinese_identity_values: list[str]
     created_at: datetime
     updated_at: datetime
+    pending_upgrade_items: list[dict[str, object]]
+
+
+class SchemaUpgradeRecordResponse(BaseModel):
+    id: uuid.UUID
+    draft_id: uuid.UUID
+    from_schema_version_id: str
+    to_schema_version_id: str
+    converter_version: str
+    item_mappings: list[dict[str, object]]
+    lossy_resolutions: list[dict[str, object]]
+    actor_user_id: uuid.UUID | None
+    created_at: datetime
+
+
+class SchemaUpgradeResponse(BaseModel):
+    draft: RequirementDraftResponse
+    upgrade: SchemaUpgradeRecordResponse
 
 
 class RequirementVersionSummaryResponse(BaseModel):
@@ -218,6 +278,55 @@ class RequirementWorkspaceResponse(BaseModel):
     versions: list[RequirementVersionSummaryResponse]
     legacy_requirement_exempt: bool
     matching_blocked: bool
+
+
+class RequirementHistoryDraftResponse(BaseModel):
+    id: uuid.UUID
+    task_id: uuid.UUID | None
+    input_snapshot_id: uuid.UUID | None
+    source_version_id: uuid.UUID | None
+    requirement_schema_version_id: str
+    status: str
+    revision: int
+    created_by: uuid.UUID | None
+    updated_by: uuid.UUID | None
+    status_changed_at: datetime
+    created_at: datetime
+    updated_at: datetime
+
+
+class RequirementHistorySourceResponse(BaseModel):
+    snapshot_id: uuid.UUID
+    source_id: str
+    source_kind: str
+    material_id: uuid.UUID | None
+    position: int
+    original_sha256: str
+    sent_sha256: str
+    unicode_characters: int
+    edited_by: uuid.UUID | None
+    edited_at: datetime
+    body_purged_at: datetime | None
+
+
+class RequirementHistoryEventResponse(BaseModel):
+    id: uuid.UUID
+    actor_user_id: uuid.UUID | None
+    action: str
+    target_type: str
+    target_id: str
+    result: str
+    detail: str
+    created_at: datetime
+
+
+class RequirementHistoryResponse(BaseModel):
+    tasks: list[RequirementTaskResponse]
+    drafts: list[RequirementHistoryDraftResponse]
+    versions: list[RequirementVersionSummaryResponse]
+    schema_upgrades: list[SchemaUpgradeRecordResponse]
+    sources: list[RequirementHistorySourceResponse]
+    change_events: list[RequirementHistoryEventResponse]
 
 
 class ConfirmRequirementResponse(BaseModel):
@@ -276,6 +385,34 @@ class ConfirmRequirementDraftRequest(BaseModel):
     model_config: ClassVar[ConfigDict] = ConfigDict(extra="forbid")
 
     expected_revision: int = Field(ge=1)
+
+
+class UpgradeRequirementDraftSchemaRequest(BaseModel):
+    model_config: ClassVar[ConfigDict] = ConfigDict(extra="forbid")
+
+    expected_revision: int = Field(ge=1)
+
+
+class LossyResolutionRequest(BaseModel):
+    model_config: ClassVar[ConfigDict] = ConfigDict(extra="forbid")
+
+    item_id: uuid.UUID
+    resolution: str = Field(max_length=30)
+
+    @field_validator("resolution")
+    @classmethod
+    def resolution_must_be_supported(cls, value: str) -> str:
+        if value not in {draft_service.RESOLUTION_DROP, draft_service.RESOLUTION_DOWNGRADE}:
+            message = "resolution must be drop or downgrade_unsupported"
+            raise ValueError(message)
+        return value
+
+
+class ResolveSchemaUpgradeLossyRequest(BaseModel):
+    model_config: ClassVar[ConfigDict] = ConfigDict(extra="forbid")
+
+    expected_revision: int = Field(ge=1)
+    resolutions: list[LossyResolutionRequest] = Field(min_length=1, max_length=100)
 
 
 def _task_response(view: service.RequirementTaskView) -> RequirementTaskResponse:
@@ -509,6 +646,96 @@ async def confirm_requirement_draft(
     )
 
 
+@router.post(
+    "/jobs/{job_id}/requirement-drafts/{draft_id}/schema-upgrade",
+    response_model=None,
+)
+async def upgrade_requirement_draft_schema(
+    job_id: uuid.UUID,
+    draft_id: uuid.UUID,
+    body: UpgradeRequirementDraftSchemaRequest,
+    context: JobsManageDep,
+    session: DbSession,
+) -> SchemaUpgradeResponse | JSONResponse:
+    try:
+        result = await draft_service.upgrade_draft_schema(
+            session,
+            tenant_id=context.tenant_id,
+            job_id=job_id,
+            draft_id=draft_id,
+            actor_user_id=context.authentication.user.id,
+            expected_revision=body.expected_revision,
+        )
+    except JobNotFoundError as error:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=JOB_NOT_FOUND_DETAIL,
+        ) from error
+    except draft_service.RequirementDraftError as error:
+        if error.code == draft_service.DRAFT_REVISION_CONFLICT and error.latest is not None:
+            latest = _draft_response(error.latest).model_dump(mode="json")
+            return JSONResponse(
+                status_code=status.HTTP_409_CONFLICT,
+                content={"detail": error.code, "draft": latest},
+            )
+        raise HTTPException(
+            status_code=_draft_error_status(error.code),
+            detail=error.code,
+        ) from error
+    return SchemaUpgradeResponse(
+        draft=_draft_response(result.draft),
+        upgrade=SchemaUpgradeRecordResponse(**vars(result.upgrade)),
+    )
+
+
+@router.post(
+    "/jobs/{job_id}/requirement-drafts/{draft_id}/schema-upgrades/{upgrade_id}/resolve",
+    response_model=None,
+)
+async def resolve_requirement_schema_upgrade_lossy(  # noqa: PLR0913
+    job_id: uuid.UUID,
+    draft_id: uuid.UUID,
+    upgrade_id: uuid.UUID,
+    body: ResolveSchemaUpgradeLossyRequest,
+    context: JobsManageDep,
+    session: DbSession,
+) -> RequirementDraftResponse | JSONResponse:
+    try:
+        draft = await draft_service.resolve_schema_upgrade_lossy_items(
+            session,
+            tenant_id=context.tenant_id,
+            job_id=job_id,
+            draft_id=draft_id,
+            upgrade_id=upgrade_id,
+            actor_user_id=context.authentication.user.id,
+            expected_revision=body.expected_revision,
+            resolutions=[
+                draft_service.LossyResolutionSubmission(
+                    item_id=str(item.item_id),
+                    resolution=item.resolution,
+                )
+                for item in body.resolutions
+            ],
+        )
+    except JobNotFoundError as error:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=JOB_NOT_FOUND_DETAIL,
+        ) from error
+    except draft_service.RequirementDraftError as error:
+        if error.code == draft_service.DRAFT_REVISION_CONFLICT and error.latest is not None:
+            latest = _draft_response(error.latest).model_dump(mode="json")
+            return JSONResponse(
+                status_code=status.HTTP_409_CONFLICT,
+                content={"detail": error.code, "draft": latest},
+            )
+        raise HTTPException(
+            status_code=_draft_error_status(error.code),
+            detail=error.code,
+        ) from error
+    return _draft_response(draft)
+
+
 @router.post("/jobs/{job_id}/requirement-versions/copy-current", response_model=None)
 async def copy_current_requirement_version(
     job_id: uuid.UUID,
@@ -553,6 +780,47 @@ async def list_requirement_versions(
             detail=JOB_NOT_FOUND_DETAIL,
         ) from error
     return [_version_response(item) for item in versions]
+
+
+@router.get("/jobs/{job_id}/requirement-history")
+async def read_requirement_history(
+    job_id: uuid.UUID,
+    context: JobsReadDep,
+    session: DbSession,
+) -> RequirementHistoryResponse:
+    try:
+        history = await history_service.load_requirement_history(
+            session,
+            tenant_id=context.tenant_id,
+            job_id=job_id,
+        )
+    except JobNotFoundError as error:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=JOB_NOT_FOUND_DETAIL,
+        ) from error
+    return RequirementHistoryResponse(
+        tasks=[_task_response(item) for item in history.tasks],
+        drafts=[RequirementHistoryDraftResponse(**vars(item)) for item in history.drafts],
+        versions=[_version_summary_response(item) for item in history.versions],
+        schema_upgrades=[
+            SchemaUpgradeRecordResponse(**vars(item)) for item in history.schema_upgrades
+        ],
+        sources=[RequirementHistorySourceResponse(**vars(item)) for item in history.sources],
+        change_events=[
+            RequirementHistoryEventResponse(
+                id=item.id,
+                actor_user_id=item.actor_user_id,
+                action=item.action,
+                target_type=item.target_type,
+                target_id=item.target_id,
+                result=item.result,
+                detail=item.detail,
+                created_at=item.created_at,
+            )
+            for item in history.change_events
+        ],
+    )
 
 
 @router.get("/jobs/{job_id}/requirement-parsing-tasks/{task_id}/events")
@@ -655,9 +923,15 @@ def _error_status(code: str) -> int:
 
 
 def _draft_error_status(code: str) -> int:
-    if code == draft_service.DRAFT_NOT_FOUND:
+    if code in {
+        draft_service.DRAFT_NOT_FOUND,
+        draft_service.SCHEMA_UPGRADE_NOT_FOUND,
+    }:
         return status.HTTP_404_NOT_FOUND
-    if code == draft_service.DRAFT_INVALID:
+    if code in {
+        draft_service.DRAFT_INVALID,
+        draft_service.SCHEMA_UPGRADE_RESOLUTION_INVALID,
+    }:
         return status.HTTP_422_UNPROCESSABLE_CONTENT
     return status.HTTP_409_CONFLICT
 

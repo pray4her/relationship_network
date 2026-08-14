@@ -9,8 +9,11 @@ from relationship_network_api.fake_search_base import (
     SEEDED_ABSENT_PERSON_ID,
     SEEDED_FIELD_PROVENANCE,
     SEEDED_PERSON_ID,
+    SEEDED_PERSON_WITHOUT_RANKS_ID,
     SEEDED_PERSONS,
     SEEDED_PUBLICATIONS,
+    SEEDED_SEARCH_HIT_PUBLICATIONS,
+    SEEDED_SEARCH_SEMANTIC_SCORES,
     app,
     reset_fake_search_base,
     state,
@@ -29,6 +32,7 @@ from relationship_network_api.search_base_contract import (
     PersonEvidenceFound,
     SearchBaseErrorBody,
     SearchBaseHealthResponse,
+    TalentSearchResponse,
 )
 
 
@@ -295,3 +299,160 @@ async def test_person_evidence_uses_shared_auth_guard() -> None:
     assert missing.status_code == 401
     assert denied.status_code == 401
     assert SearchBaseErrorBody.model_validate(missing.json()).category == "unauthenticated"
+
+
+@pytest.mark.anyio
+async def test_talent_search_round_trips_contract_model() -> None:
+    async with httpx.AsyncClient(
+        transport=httpx.ASGITransport(app=app),
+        base_url="http://test",
+    ) as client:
+        response = await client.post(
+            "/v1/search",
+            headers=_health_headers(),
+            json={"hard_conditions": [], "research_topic_query": "人工智能"},
+        )
+
+    assert response.status_code == 200
+    payload = TalentSearchResponse.model_validate(response.json())
+    assert payload.request_id == "req-fake-1"
+    assert payload.data_version == DEFAULT_DATA_VERSION
+    assert [hit.person.canonical_person_id for hit in payload.hits] == [
+        SEEDED_PERSON_WITHOUT_RANKS_ID,
+        SEEDED_PERSON_ID,
+    ]
+    assert [hit.semantic_score for hit in payload.hits] == [
+        SEEDED_SEARCH_SEMANTIC_SCORES[SEEDED_PERSON_WITHOUT_RANKS_ID],
+        SEEDED_SEARCH_SEMANTIC_SCORES[SEEDED_PERSON_ID],
+    ]
+    _assert_no_contact_keys(response.json())
+
+
+@pytest.mark.anyio
+async def test_talent_search_hard_condition_filters_seeded_persons() -> None:
+    async with httpx.AsyncClient(
+        transport=httpx.ASGITransport(app=app),
+        base_url="http://test",
+    ) as client:
+        response = await client.post(
+            "/v1/search",
+            headers=_health_headers(),
+            json={
+                "hard_conditions": [
+                    {"field": "chinese_identity", "operator": "eq", "value": "外国人"}
+                ],
+                "research_topic_query": "历史",
+            },
+        )
+
+    assert response.status_code == 200
+    payload = TalentSearchResponse.model_validate(response.json())
+    assert [hit.person.canonical_person_id for hit in payload.hits] == [
+        SEEDED_PERSON_WITHOUT_RANKS_ID
+    ]
+
+
+@pytest.mark.anyio
+async def test_talent_search_hit_publications_are_evidence_subset() -> None:
+    async with httpx.AsyncClient(
+        transport=httpx.ASGITransport(app=app),
+        base_url="http://test",
+    ) as client:
+        response = await client.post(
+            "/v1/search",
+            headers=_health_headers(),
+            json={"hard_conditions": [], "research_topic_query": "人工智能"},
+        )
+
+    payload = TalentSearchResponse.model_validate(response.json())
+    for hit in payload.hits:
+        evidence_ids = {
+            publication.publication_id
+            for publication in SEEDED_PUBLICATIONS[hit.person.canonical_person_id]
+        }
+        assert {item.publication_id for item in hit.hit_publications} <= evidence_ids
+        assert (
+            hit.hit_publications == SEEDED_SEARCH_HIT_PUBLICATIONS[hit.person.canonical_person_id]
+        )
+        assert all(item.title and item.venue for item in hit.hit_publications)
+
+
+@pytest.mark.anyio
+async def test_talent_search_invalid_query_scenario() -> None:
+    state.invalid_query = True
+    async with httpx.AsyncClient(
+        transport=httpx.ASGITransport(app=app),
+        base_url="http://test",
+    ) as client:
+        response = await client.post(
+            "/v1/search",
+            headers=_health_headers(),
+            json={"hard_conditions": [], "research_topic_query": "人工智能"},
+        )
+
+    assert response.status_code == 400
+    assert SearchBaseErrorBody.model_validate(response.json()) == SearchBaseErrorBody(
+        category="invalid_query",
+        retryable=False,
+    )
+
+
+@pytest.mark.anyio
+async def test_talent_search_malformed_body_is_invalid_query() -> None:
+    async with httpx.AsyncClient(
+        transport=httpx.ASGITransport(app=app),
+        base_url="http://test",
+    ) as client:
+        response = await client.post(
+            "/v1/search",
+            headers=_health_headers(),
+            json={"hard_conditions": []},
+        )
+
+    assert response.status_code == 400
+    assert SearchBaseErrorBody.model_validate(response.json()).category == "invalid_query"
+
+
+@pytest.mark.anyio
+async def test_talent_search_hard_filter_only_omits_semantic_score_key() -> None:
+    async with httpx.AsyncClient(
+        transport=httpx.ASGITransport(app=app),
+        base_url="http://test",
+    ) as client:
+        response = await client.post(
+            "/v1/search",
+            headers=_health_headers(),
+            json={
+                "hard_conditions": [{"field": "h_index", "operator": "gte", "value": 1}],
+            },
+        )
+
+    assert response.status_code == 200
+    raw = response.json()
+    payload = TalentSearchResponse.model_validate(raw)
+    assert [hit.person.canonical_person_id for hit in payload.hits] == [
+        SEEDED_PERSON_ID,
+        SEEDED_PERSON_WITHOUT_RANKS_ID,
+    ]
+    assert all(hit.semantic_score is None for hit in payload.hits)
+    for hit in raw["hits"]:
+        assert "semantic_score" not in hit
+    _assert_no_contact_keys(raw)
+
+
+@pytest.mark.anyio
+async def test_talent_search_hit_limit_is_applied_after_sort() -> None:
+    async with httpx.AsyncClient(
+        transport=httpx.ASGITransport(app=app),
+        base_url="http://test",
+    ) as client:
+        response = await client.post(
+            "/v1/search",
+            headers=_health_headers(),
+            json={"hard_conditions": [], "research_topic_query": "人工智能", "hit_limit": 1},
+        )
+
+    payload = TalentSearchResponse.model_validate(response.json())
+    assert [hit.person.canonical_person_id for hit in payload.hits] == [
+        SEEDED_PERSON_WITHOUT_RANKS_ID
+    ]

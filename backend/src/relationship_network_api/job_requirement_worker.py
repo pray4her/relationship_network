@@ -64,6 +64,7 @@ if TYPE_CHECKING:
 TENANT_INVALID_OUTPUT: Final = "requirement_output_invalid"
 TENANT_TEMPORARY_FAILURE: Final = "requirement_generation_unavailable"
 TENANT_CONFIGURATION_FAILURE: Final = "requirement_configuration_unavailable"
+TENANT_INPUT_PURGED: Final = "requirement_input_purged"
 TENANT_JOB_ARCHIVED: Final = "job_archived"
 MAX_RUNNING_PER_TENANT: Final = 2
 SLOT_RETRY_SECONDS: Final = 5
@@ -373,8 +374,18 @@ async def prepare_call(
             request_timeout_seconds=configuration.request_timeout_seconds,
             input_character_limit=configuration.input_character_limit,
         )
+        sent_texts: dict[str, str] = {}
+        for source in source_rows:
+            if source.sent_text is None:
+                await _fail_locked_task(
+                    session,
+                    task=task,
+                    error_code=TENANT_INPUT_PURGED,
+                )
+                return None
+            sent_texts[source.source_id] = source.sent_text
         sources = [
-            {"content": source.sent_text, "source_id": source.source_id} for source in source_rows
+            {"content": text, "source_id": source_id} for source_id, text in sent_texts.items()
         ]
         request_payload = OpenRouterAdapter(
             OpenRouterClientConfig(api_key="not-persisted")
@@ -449,7 +460,7 @@ async def prepare_call(
             schema_id=schema.id,
             schema=schema.schema_json,
             sources=sources,
-            source_texts={source.source_id: source.sent_text for source in source_rows},
+            source_texts=sent_texts,
         )
 
 
@@ -829,16 +840,28 @@ def _record_failure_audit(
 
 
 def _assets_match(*, prompt: PromptVersion, schema: JobRequirementSchemaVersion) -> bool:
+    """Re-verify prompt and schema compatibility before any external request.
+
+    The expected schema is derived from the prompt asset's declared compatible
+    schema; nothing may point at a different schema independently.
+    """
+    try:
+        prompt_asset = manifest.prompt_asset(prompt.id)
+        schema_asset = manifest.schema_asset(schema.id)
+    except manifest.LlmAssetError:
+        return False
+    if prompt_asset.compatible_schema_version_id != schema_asset.id:
+        return False
+    if prompt.compatible_schema_version_id != schema.id:
+        return False
+    if prompt.sha256 != prompt_asset.sha256 or schema.sha256 != schema_asset.sha256:
+        return False
+    if schema_asset.editor_schema_id is None or schema_asset.editor_sha256 is None:
+        return False
     return (
-        prompt.id == manifest.JOB_REQUIREMENT_PROMPT_V2.id
-        and schema.id == manifest.JOB_REQUIREMENT_SCHEMA_V2.id
-        and prompt.compatible_schema_version_id == schema.id
-        and prompt.sha256 == manifest.JOB_REQUIREMENT_PROMPT_V2.sha256
-        and schema.sha256 == manifest.JOB_REQUIREMENT_SCHEMA_V2.sha256
-        and schema.editor_schema_id == manifest.JOB_REQUIREMENT_SCHEMA_V2.editor_schema_id
-        and schema.editor_sha256 == manifest.JOB_REQUIREMENT_SCHEMA_V2.editor_sha256
-        and schema.editor_schema_json
-        == manifest.read_requirement_editor_schema(manifest.JOB_REQUIREMENT_SCHEMA_V2.id)
+        schema.editor_schema_id == schema_asset.editor_schema_id
+        and schema.editor_sha256 == schema_asset.editor_sha256
+        and schema.editor_schema_json == manifest.read_requirement_editor_schema(schema_asset.id)
     )
 
 

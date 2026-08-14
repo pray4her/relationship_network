@@ -1,7 +1,10 @@
-import { fireEvent, render, screen } from "@testing-library/react"
+import { fireEvent, render, screen, waitFor } from "@testing-library/react"
+import { toast } from "sonner"
 import { expect, test, vi } from "vitest"
 
 import { OrderRequestForm } from "../src/components/billing/order-request-form"
+
+vi.mock("sonner", () => ({ toast: { success: vi.fn() } }))
 
 test("shows field errors returned by the action", async () => {
   // Given the action rejects the submission with a field error
@@ -43,7 +46,11 @@ test("shows the success notice once the order is submitted", async () => {
 
   fireEvent.click(screen.getByRole("button", { name: "提交订单申请" }))
 
-  expect(await screen.findByRole("status")).toHaveTextContent(/订单已提交/)
+  // 成功反馈是瞬时 toast，不再渲染常驻的 inline 通知
+  await waitFor(() =>
+    expect(toast.success).toHaveBeenCalledWith("订单已提交，请等待管理员确认付款"),
+  )
+  expect(screen.queryByRole("status")).not.toBeInTheDocument()
 })
 
 test("submits the standard plan code as a hidden field", () => {

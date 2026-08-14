@@ -43,6 +43,10 @@ describe("resolveJobDetailTab", () => {
   it("recognizes known tabs only", () => {
     expect(isJobDetailTab("overview")).toBe(true)
     expect(isJobDetailTab("requirement")).toBe(true)
+    expect(isJobDetailTab("versions")).toBe(true)
+    expect(isJobDetailTab("history")).toBe(true)
+    expect(isJobDetailTab("materials")).toBe(true)
+    expect(isJobDetailTab("events")).toBe(true)
     expect(isJobDetailTab("")).toBe(false)
     expect(isJobDetailTab("candidates")).toBe(false)
   })

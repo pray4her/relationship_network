@@ -23,8 +23,8 @@ import {
 import { MfaDisableForm } from "@/components/security/mfa-disable-form"
 import { MfaSetupWizard } from "@/components/security/mfa-setup-wizard"
 import { TenantMfaPolicyForm } from "@/components/security/tenant-mfa-policy-form"
+import { StatusBadge } from "@/components/status-badge"
 import { Alert, AlertDescription } from "@/components/ui/alert"
-import { Badge } from "@/components/ui/badge"
 import { createAuthTransport, loadAuthSession, SESSION_COOKIE_NAME } from "@/lib/auth-client"
 import { createMfaTransport, loadMfaStatus } from "@/lib/mfa-client"
 
@@ -38,6 +38,7 @@ function NoticePage({ children }: { readonly children: React.ReactNode }) {
       <PageHeader>
         <PageHeaderContent>
           <PageTitle>安全设置</PageTitle>
+          <PageDescription>管理账户两步验证与租户安全策略。</PageDescription>
         </PageHeaderContent>
       </PageHeader>
       <Alert>
@@ -103,7 +104,7 @@ export default async function SecuritySettingsPage() {
             status.status.enabled ? (
               <div className="flex flex-col gap-4">
                 <p className="flex flex-wrap items-center gap-2">
-                  <Badge className="bg-success/10 text-success">已启用</Badge>
+                  <StatusBadge label="已启用" tone="success" />
                   <span className="text-sm text-muted-foreground tabular-nums">
                     剩余恢复码 {status.status.recovery_codes_remaining} 个
                   </span>

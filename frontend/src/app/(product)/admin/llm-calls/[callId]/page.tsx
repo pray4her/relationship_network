@@ -4,6 +4,10 @@ import Link from "next/link"
 import { notFound, redirect } from "next/navigation"
 
 import { AdminGateNotice } from "@/components/admin/admin-gate-notice"
+import {
+  LlmCallMetadataStatusBadge,
+  LlmCallOutcomeBadge,
+} from "@/components/admin/admin-status-badges"
 import { LlmRawResponseDialog } from "@/components/admin/llm-raw-response-dialog"
 import {
   DataRegion,
@@ -26,17 +30,13 @@ import {
   PageSectionTitle,
   PageTitle,
 } from "@/components/layout/page"
-import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { requireAdminView } from "@/lib/admin-guard"
+import { formatDateTime } from "@/lib/format"
 import { createLlmCallTransport, loadLlmCallDetail } from "@/lib/llm-call-client"
-import type { LlmCallMetadataStatus, LlmCallOutcome } from "@/lib/llm-call-contract"
 import {
   displayValue,
   formatDiagnosticCost,
-  formatDiagnosticDateTime,
-  llmCallMetadataStatusLabels,
-  llmCallOutcomeLabels,
   llmCallScopeLabels,
   llmCallTypeLabels,
 } from "@/lib/llm-call-view"
@@ -46,18 +46,6 @@ export const metadata: Metadata = { title: "LLM 调用详情" }
 
 type LlmCallDetailPageProps = {
   readonly params: Promise<{ readonly callId: string }>
-}
-
-function OutcomeBadge({ outcome }: { readonly outcome: LlmCallOutcome }) {
-  const variant =
-    outcome === "succeeded" ? "success" : outcome === "failed" ? "destructive" : "warning"
-  return <Badge variant={variant}>{llmCallOutcomeLabels[outcome]}</Badge>
-}
-
-function MetadataBadge({ status }: { readonly status: LlmCallMetadataStatus }) {
-  const variant =
-    status === "available" ? "success" : status === "retry_scheduled" ? "secondary" : "warning"
-  return <Badge variant={variant}>{llmCallMetadataStatusLabels[status]}</Badge>
 }
 
 function JsonFact({ value }: { readonly value: Record<string, unknown> }) {
@@ -150,7 +138,7 @@ export default async function LlmCallDetailPage({ params }: LlmCallDetailPagePro
           <DescriptionItem>
             <DescriptionTerm>创建时间</DescriptionTerm>
             <DescriptionDetails className="tabular-nums">
-              {formatDiagnosticDateTime(call.created_at)}
+              {formatDateTime(call.created_at)}
             </DescriptionDetails>
           </DescriptionItem>
           <DescriptionItem>
@@ -192,8 +180,8 @@ export default async function LlmCallDetailPage({ params }: LlmCallDetailPagePro
           <DescriptionItem>
             <DescriptionTerm>原始响应到期</DescriptionTerm>
             <DescriptionDetails className="tabular-nums">
-              {call && result.detail.raw_response_expires_at
-                ? formatDiagnosticDateTime(result.detail.raw_response_expires_at)
+              {result.detail.raw_response_expires_at
+                ? formatDateTime(result.detail.raw_response_expires_at)
                 : "—"}
             </DescriptionDetails>
           </DescriptionItem>
@@ -261,12 +249,12 @@ export default async function LlmCallDetailPage({ params }: LlmCallDetailPagePro
                       className="font-mono text-sm text-muted-foreground tabular-nums"
                       dateTime={item.createdAt}
                     >
-                      {formatDiagnosticDateTime(item.createdAt)}
+                      {formatDateTime(item.createdAt)}
                     </time>
                     {item.kind === "outcome" ? (
                       <div className="flex min-w-0 flex-col gap-2">
                         <div className="flex flex-wrap items-center gap-2">
-                          <OutcomeBadge outcome={item.event.outcome} />
+                          <LlmCallOutcomeBadge outcome={item.event.outcome} />
                           <span className="font-mono text-sm">
                             结果事件 #{item.event.sequence_number}
                           </span>
@@ -283,7 +271,7 @@ export default async function LlmCallDetailPage({ params }: LlmCallDetailPagePro
                     ) : (
                       <div className="flex min-w-0 flex-col gap-2">
                         <div className="flex flex-wrap items-center gap-2">
-                          <MetadataBadge status={item.event.status} />
+                          <LlmCallMetadataStatusBadge status={item.event.status} />
                           <span className="font-mono text-sm">
                             元数据事件 #{item.event.sequence_number}
                           </span>
@@ -297,7 +285,7 @@ export default async function LlmCallDetailPage({ params }: LlmCallDetailPagePro
                         </p>
                         {item.event.next_retry_at !== null && (
                           <p className="m-0 text-sm text-muted-foreground tabular-nums">
-                            下次重试：{formatDiagnosticDateTime(item.event.next_retry_at)}
+                            下次重试：{formatDateTime(item.event.next_retry_at)}
                           </p>
                         )}
                       </div>

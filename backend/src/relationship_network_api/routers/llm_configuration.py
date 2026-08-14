@@ -22,7 +22,20 @@ from relationship_network_api.durable_task import (
     encode_sse_heartbeat,
     parse_last_event_id,
 )
-from relationship_network_api.openrouter import CandidateConfiguration
+from relationship_network_api.llm_assets.manifest import (
+    CALL_TYPE_JOB_REQUIREMENT_PARSING,
+    CALL_TYPE_SEARCH_INTERPRETATION,
+)
+from relationship_network_api.openrouter import (
+    DEFAULT_PARSING_TIMEOUT_SECONDS,
+    DEFAULT_SEARCH_TIMEOUT_SECONDS,
+    MAX_PARSING_TIMEOUT_SECONDS,
+    MAX_SEARCH_TIMEOUT_SECONDS,
+    MIN_PARSING_TIMEOUT_SECONDS,
+    MIN_SEARCH_TIMEOUT_SECONDS,
+    CallTypeBinding,
+    CandidateConfiguration,
+)
 
 router = APIRouter()
 
@@ -32,16 +45,54 @@ PlatformAdminDep = Annotated[Authentication, Depends(require_platform_admin)]
 _TERMINAL_EVENTS: Final = frozenset({"succeeded", "failed", "conflicted", "cancelled"})
 
 
+class CallBindingRequest(BaseModel):
+    model_config: ClassVar[ConfigDict] = ConfigDict(extra="forbid")
+
+    prompt_version_id: str = Field(min_length=1, max_length=100)
+    request_timeout_seconds: int
+
+    @field_validator("prompt_version_id")
+    @classmethod
+    def reject_blank_prompt(cls, value: str) -> str:
+        normalized = value.strip()
+        if not normalized:
+            message = "must not be blank"
+            raise ValueError(message)
+        return normalized
+
+
+class ParsingCallBindingRequest(CallBindingRequest):
+    request_timeout_seconds: int = Field(
+        default=DEFAULT_PARSING_TIMEOUT_SECONDS,
+        ge=MIN_PARSING_TIMEOUT_SECONDS,
+        le=MAX_PARSING_TIMEOUT_SECONDS,
+    )
+
+
+class SearchCallBindingRequest(CallBindingRequest):
+    request_timeout_seconds: int = Field(
+        default=DEFAULT_SEARCH_TIMEOUT_SECONDS,
+        ge=MIN_SEARCH_TIMEOUT_SECONDS,
+        le=MAX_SEARCH_TIMEOUT_SECONDS,
+    )
+
+
+class CallBindingsRequest(BaseModel):
+    model_config: ClassVar[ConfigDict] = ConfigDict(extra="forbid")
+
+    job_requirement_parsing: ParsingCallBindingRequest
+    search_interpretation: SearchCallBindingRequest
+
+
 class CandidateConfigurationRequest(BaseModel):
     model_config: ClassVar[ConfigDict] = ConfigDict(extra="forbid")
 
     model: str = Field(min_length=1, max_length=200)
-    prompt_version_id: str = Field(min_length=1, max_length=100)
     temperature: float = Field(default=0, ge=0, le=1)
     max_output_tokens: int = Field(default=8192, ge=1024, le=16384)
-    request_timeout_seconds: int = Field(default=180, ge=30, le=300)
+    call_bindings: CallBindingsRequest
 
-    @field_validator("model", "prompt_version_id")
+    @field_validator("model")
     @classmethod
     def reject_blank(cls, value: str) -> str:
         normalized = value.strip()
@@ -53,10 +104,24 @@ class CandidateConfigurationRequest(BaseModel):
     def candidate(self) -> CandidateConfiguration:
         return CandidateConfiguration(
             model=self.model,
-            prompt_version_id=self.prompt_version_id,
             temperature=self.temperature,
             max_output_tokens=self.max_output_tokens,
-            request_timeout_seconds=self.request_timeout_seconds,
+            bindings=(
+                CallTypeBinding(
+                    call_type=CALL_TYPE_JOB_REQUIREMENT_PARSING,
+                    prompt_version_id=self.call_bindings.job_requirement_parsing.prompt_version_id,
+                    request_timeout_seconds=(
+                        self.call_bindings.job_requirement_parsing.request_timeout_seconds
+                    ),
+                ),
+                CallTypeBinding(
+                    call_type=CALL_TYPE_SEARCH_INTERPRETATION,
+                    prompt_version_id=self.call_bindings.search_interpretation.prompt_version_id,
+                    request_timeout_seconds=(
+                        self.call_bindings.search_interpretation.request_timeout_seconds
+                    ),
+                ),
+            ),
         )
 
 
@@ -68,6 +133,11 @@ class CreateAttemptRequest(CandidateConfigurationRequest):
 @final
 class CopyAttemptRequest(BaseModel):
     expected_current_version_id: uuid.UUID
+
+
+class CallBindingResponse(BaseModel):
+    prompt_version_id: str
+    request_timeout_seconds: int
 
 
 @final
@@ -83,6 +153,7 @@ class ConfigurationVersionResponse(BaseModel):
     request_timeout_seconds: int
     input_character_limit: int
     privacy_routing: dict[str, object]
+    call_bindings: dict[str, CallBindingResponse | None]
     source_version_id: uuid.UUID | None
     source: str
     created_by: uuid.UUID | None
@@ -93,6 +164,7 @@ class ConfigurationVersionResponse(BaseModel):
 class PromptVersionResponse(BaseModel):
     id: str
     compatible_schema_version_id: str
+    call_type: str
     sha256: str
 
 
@@ -115,6 +187,7 @@ class AttemptResponse(BaseModel):
     source_version_id: uuid.UUID | None
     external_call_count: int
     structured_invalid_count: int
+    probe_progress: dict[str, object]
     next_attempt_at: datetime | None
     error_code: str | None
     created_by: uuid.UUID | None
@@ -134,7 +207,12 @@ class WorkspaceResponse(BaseModel):
 def _version_response(
     version: service.LlmConfigurationVersionView,
 ) -> ConfigurationVersionResponse:
-    return ConfigurationVersionResponse(**version.__dict__)
+    payload = dict(version.__dict__)
+    payload["call_bindings"] = {
+        call_type: None if binding is None else CallBindingResponse(**binding.__dict__)
+        for call_type, binding in version.call_bindings.items()
+    }
+    return ConfigurationVersionResponse(**payload)
 
 
 def _attempt_response(attempt: service.LlmConfigurationAttemptView) -> AttemptResponse:

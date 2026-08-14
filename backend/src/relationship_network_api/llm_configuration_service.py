@@ -9,18 +9,28 @@ from sqlalchemy.exc import IntegrityError
 
 from relationship_network_api import audit_service
 from relationship_network_api.llm_assets import manifest
+from relationship_network_api.llm_assets.manifest import (
+    CALL_TYPE_JOB_REQUIREMENT_PARSING,
+    CALL_TYPE_SEARCH_INTERPRETATION,
+)
 from relationship_network_api.models import (
     LLM_CONFIGURATION_NONTERMINAL_STATUSES,
     JobRequirementSchemaVersion,
     LlmConfigurationAttempt,
     LlmConfigurationAttemptEvent,
     LlmConfigurationAttemptStatus,
+    LlmConfigurationCallBinding,
     LlmConfigurationCurrent,
     LlmConfigurationVersion,
     PlatformOutboxEvent,
     PromptVersion,
+    SearchInterpretationSchemaVersion,
 )
-from relationship_network_api.openrouter import CandidateConfiguration
+from relationship_network_api.openrouter import (
+    DEFAULT_SEARCH_TIMEOUT_SECONDS,
+    CallTypeBinding,
+    CandidateConfiguration,
+)
 
 if TYPE_CHECKING:
     from datetime import datetime
@@ -78,7 +88,27 @@ class SchemaSummaryView:
 class PromptVersionView:
     id: str
     compatible_schema_version_id: str
+    call_type: str
     sha256: str
+
+
+@final
+@dataclass(frozen=True)
+class CallBindingView:
+    prompt_version_id: str
+    request_timeout_seconds: int
+
+
+@final
+@dataclass(frozen=True)
+class ValidatedCallBinding:
+    call_type: str
+    prompt: PromptVersion
+    catalog_schema: JobRequirementSchemaVersion
+    output_schema: dict[str, object]
+    output_schema_id: str
+    output_schema_sha256: str
+    system_prompt: str
 
 
 @final
@@ -95,6 +125,7 @@ class LlmConfigurationVersionView:
     request_timeout_seconds: int
     input_character_limit: int
     privacy_routing: dict[str, object]
+    call_bindings: dict[str, CallBindingView | None]
     source_version_id: uuid.UUID | None
     source: str
     created_by: uuid.UUID | None
@@ -111,6 +142,7 @@ class LlmConfigurationAttemptView:
     source_version_id: uuid.UUID | None
     external_call_count: int
     structured_invalid_count: int
+    probe_progress: dict[str, object]
     next_attempt_at: datetime | None
     error_code: str | None
     created_by: uuid.UUID | None
@@ -138,7 +170,20 @@ class LlmConfigurationAttemptEventView:
     created_at: datetime
 
 
-def _version_view(version: LlmConfigurationVersion) -> LlmConfigurationVersionView:
+def _binding_view(binding: LlmConfigurationCallBinding | None) -> CallBindingView | None:
+    if binding is None:
+        return None
+    return CallBindingView(
+        prompt_version_id=binding.prompt_version_id,
+        request_timeout_seconds=binding.request_timeout_seconds,
+    )
+
+
+def _version_view(
+    version: LlmConfigurationVersion,
+    bindings: dict[str, LlmConfigurationCallBinding],
+) -> LlmConfigurationVersionView:
+    parsing = bindings.get(CALL_TYPE_JOB_REQUIREMENT_PARSING)
     return LlmConfigurationVersionView(
         id=version.id,
         version_number=version.version_number,
@@ -151,6 +196,16 @@ def _version_view(version: LlmConfigurationVersion) -> LlmConfigurationVersionVi
         request_timeout_seconds=version.request_timeout_seconds,
         input_character_limit=version.input_character_limit,
         privacy_routing=version.privacy_routing,
+        call_bindings={
+            CALL_TYPE_JOB_REQUIREMENT_PARSING: _binding_view(parsing)
+            or CallBindingView(
+                prompt_version_id=version.prompt_version_id,
+                request_timeout_seconds=version.request_timeout_seconds,
+            ),
+            CALL_TYPE_SEARCH_INTERPRETATION: _binding_view(
+                bindings.get(CALL_TYPE_SEARCH_INTERPRETATION)
+            ),
+        },
         source_version_id=version.source_version_id,
         source=version.source,
         created_by=version.created_by,
@@ -169,6 +224,7 @@ def _attempt_view(attempt: LlmConfigurationAttempt) -> LlmConfigurationAttemptVi
         source_version_id=attempt.source_version_id,
         external_call_count=attempt.external_call_count,
         structured_invalid_count=attempt.structured_invalid_count,
+        probe_progress=dict(attempt.probe_progress),
         next_attempt_at=attempt.next_attempt_at,
         error_code=attempt.error_code,
         created_by=attempt.created_by,
@@ -211,14 +267,25 @@ async def load_workspace(session: AsyncSession) -> LlmConfigurationWorkspaceView
         .scalars()
         .all()
     )
+    binding_rows = list(
+        (await session.execute(select(LlmConfigurationCallBinding))).scalars().all()
+    )
+    bindings_by_version: dict[uuid.UUID, dict[str, LlmConfigurationCallBinding]] = {}
+    for binding in binding_rows:
+        bindings_by_version.setdefault(binding.configuration_version_id, {})[binding.call_type] = (
+            binding
+        )
     active = await _find_active_attempt(session)
     return LlmConfigurationWorkspaceView(
-        current=_version_view(current),
-        history=[_version_view(version) for version in versions],
+        current=_version_view(current, bindings_by_version.get(current.id, {})),
+        history=[
+            _version_view(version, bindings_by_version.get(version.id, {})) for version in versions
+        ],
         prompt_versions=[
             PromptVersionView(
                 id=prompt.id,
                 compatible_schema_version_id=prompt.compatible_schema_version_id,
+                call_type=prompt.call_type,
                 sha256=prompt.sha256,
             )
             for prompt in prompts
@@ -247,6 +314,8 @@ async def create_attempt(  # noqa: PLR0913
     source_version_id: uuid.UUID | None = None,
     audit_action: str = ATTEMPT_CREATE_ACTION,
 ) -> LlmConfigurationAttemptView:
+    if not candidate.has_declared_call_types():
+        raise IncompatibleLlmAssetsError(INCOMPATIBLE_LLM_ASSETS)
     _ = await validate_candidate_assets(session, candidate)
     pointer = (
         await session.execute(
@@ -306,13 +375,51 @@ async def copy_version_as_attempt(
     ).scalar_one_or_none()
     if version is None:
         raise LlmConfigurationVersionNotFoundError(VERSION_NOT_FOUND)
+    binding_rows = list(
+        (
+            await session.execute(
+                select(LlmConfigurationCallBinding).where(
+                    LlmConfigurationCallBinding.configuration_version_id == version.id
+                )
+            )
+        )
+        .scalars()
+        .all()
+    )
+    by_type = {binding.call_type: binding for binding in binding_rows}
+    parsing = by_type.get(CALL_TYPE_JOB_REQUIREMENT_PARSING)
+    search = by_type.get(CALL_TYPE_SEARCH_INTERPRETATION)
     candidate = CandidateConfiguration(
         model=version.model,
-        prompt_version_id=version.prompt_version_id,
         temperature=float(version.temperature),
         max_output_tokens=version.max_output_tokens,
-        request_timeout_seconds=version.request_timeout_seconds,
         input_character_limit=version.input_character_limit,
+        bindings=(
+            CallTypeBinding(
+                call_type=CALL_TYPE_JOB_REQUIREMENT_PARSING,
+                prompt_version_id=(
+                    version.prompt_version_id if parsing is None else parsing.prompt_version_id
+                ),
+                request_timeout_seconds=(
+                    version.request_timeout_seconds
+                    if parsing is None
+                    else parsing.request_timeout_seconds
+                ),
+            ),
+            CallTypeBinding(
+                call_type=CALL_TYPE_SEARCH_INTERPRETATION,
+                prompt_version_id=(
+                    manifest.SEARCH_INTERPRETATION_PROMPT_V1.id
+                    if search is None
+                    else search.prompt_version_id
+                ),
+                request_timeout_seconds=(
+                    DEFAULT_SEARCH_TIMEOUT_SECONDS
+                    if search is None
+                    else search.request_timeout_seconds
+                ),
+            ),
+        ),
     )
     return await create_attempt(
         session,
@@ -370,8 +477,10 @@ async def cancel_attempt(
         result=audit_service.AUDIT_RESULT_SUCCESS,
         detail=attempt.status,
     )
+    await session.refresh(attempt)
+    view = _attempt_view(attempt)
     await session.commit()
-    return _attempt_view(attempt)
+    return view
 
 
 async def list_attempt_events(
@@ -449,25 +558,41 @@ async def enqueue_attempt_outbox(session: AsyncSession, *, attempt_id: uuid.UUID
 async def validate_candidate_assets(
     session: AsyncSession,
     candidate: CandidateConfiguration,
-) -> tuple[PromptVersion, JobRequirementSchemaVersion]:
+) -> dict[str, ValidatedCallBinding]:
     try:
         manifest.validate_deployed_assets()
-        deployed_prompt = manifest.prompt_asset(candidate.prompt_version_id)
-        deployed_schema = manifest.schema_asset(deployed_prompt.compatible_schema_version_id)
     except manifest.LlmAssetError as error:
         raise IncompatibleLlmAssetsError(INCOMPATIBLE_LLM_ASSETS) from error
+    validated: dict[str, ValidatedCallBinding] = {}
+    for binding in candidate.bindings:
+        validated[binding.call_type] = await _validate_call_binding(session, binding)
+    return validated
+
+
+async def _validate_call_binding(
+    session: AsyncSession,
+    binding: CallTypeBinding,
+) -> ValidatedCallBinding:
+    try:
+        deployed_prompt = manifest.prompt_asset(binding.prompt_version_id)
+        deployed_catalog = manifest.schema_asset(deployed_prompt.compatible_schema_version_id)
+    except manifest.LlmAssetError as error:
+        raise IncompatibleLlmAssetsError(INCOMPATIBLE_LLM_ASSETS) from error
+    if deployed_prompt.call_type != binding.call_type:
+        raise IncompatibleLlmAssetsError(INCOMPATIBLE_LLM_ASSETS)
     prompt = (
         await session.execute(
-            select(PromptVersion).where(PromptVersion.id == candidate.prompt_version_id)
+            select(PromptVersion).where(PromptVersion.id == binding.prompt_version_id)
         )
     ).scalar_one_or_none()
     if (
         prompt is None
         or prompt.sha256 != deployed_prompt.sha256
         or prompt.compatible_schema_version_id != deployed_prompt.compatible_schema_version_id
+        or prompt.call_type != binding.call_type
     ):
         raise IncompatibleLlmAssetsError(INCOMPATIBLE_LLM_ASSETS)
-    schema = (
+    catalog = (
         await session.execute(
             select(JobRequirementSchemaVersion).where(
                 JobRequirementSchemaVersion.id == prompt.compatible_schema_version_id
@@ -475,12 +600,49 @@ async def validate_candidate_assets(
         )
     ).scalar_one_or_none()
     if (
-        schema is None
-        or schema.sha256 != deployed_schema.sha256
-        or schema.schema_id != deployed_schema.schema_id
+        catalog is None
+        or catalog.sha256 != deployed_catalog.sha256
+        or catalog.schema_id != deployed_catalog.schema_id
     ):
         raise IncompatibleLlmAssetsError(INCOMPATIBLE_LLM_ASSETS)
-    return prompt, schema
+    if binding.call_type == CALL_TYPE_SEARCH_INTERPRETATION:
+        output_id = deployed_prompt.output_schema_version_id
+        if output_id is None:
+            raise IncompatibleLlmAssetsError(INCOMPATIBLE_LLM_ASSETS)
+        try:
+            deployed_output = manifest.search_interpretation_schema_asset(output_id)
+        except manifest.LlmAssetError as error:
+            raise IncompatibleLlmAssetsError(INCOMPATIBLE_LLM_ASSETS) from error
+        output_row = (
+            await session.execute(
+                select(SearchInterpretationSchemaVersion).where(
+                    SearchInterpretationSchemaVersion.id == output_id
+                )
+            )
+        ).scalar_one_or_none()
+        if (
+            output_row is None
+            or output_row.sha256 != deployed_output.sha256
+            or output_row.schema_id != deployed_output.schema_id
+            or prompt.output_schema_version_id != output_id
+        ):
+            raise IncompatibleLlmAssetsError(INCOMPATIBLE_LLM_ASSETS)
+        output_schema = manifest.read_search_interpretation_schema(output_id)
+        output_schema_id = output_row.id
+        output_schema_sha256 = output_row.sha256
+    else:
+        output_schema = manifest.read_requirement_schema(catalog.id)
+        output_schema_id = catalog.id
+        output_schema_sha256 = catalog.sha256
+    return ValidatedCallBinding(
+        call_type=binding.call_type,
+        prompt=prompt,
+        catalog_schema=catalog,
+        output_schema=output_schema,
+        output_schema_id=output_schema_id,
+        output_schema_sha256=output_schema_sha256,
+        system_prompt=prompt.content,
+    )
 
 
 async def _find_active_attempt(session: AsyncSession) -> LlmConfigurationAttempt | None:

@@ -6,7 +6,6 @@ import type { AuthFormState } from "@/app/actions/auth"
 import { FormField } from "@/components/form-field"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Button } from "@/components/ui/button"
-import { Spinner } from "@/components/ui/spinner"
 
 type RegisterFormProps = {
   readonly action: (state: AuthFormState, formData: FormData) => Promise<AuthFormState>
@@ -56,8 +55,7 @@ export function RegisterForm({ action }: RegisterFormProps) {
         type="text"
       />
 
-      <Button className="w-full" disabled={isPending} type="submit">
-        {isPending ? <Spinner data-icon="inline-start" /> : null}
+      <Button className="w-full" pending={isPending} type="submit">
         创建账户
       </Button>
     </form>

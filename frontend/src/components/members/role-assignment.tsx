@@ -1,8 +1,10 @@
 "use client"
 
-import { useActionState } from "react"
+import { useActionState, useEffect, useRef } from "react"
+import { toast } from "sonner"
 
 import type { MemberActionState } from "@/app/actions/members"
+import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Button } from "@/components/ui/button"
 import type { RoleView } from "@/lib/members-contract"
 
@@ -20,6 +22,14 @@ export function RoleAssignment({
   roles,
 }: RoleAssignmentProps) {
   const [state, formAction, isPending] = useActionState(action, { formError: null })
+  const wasPending = useRef(false)
+
+  useEffect(() => {
+    if (wasPending.current && !isPending && state.formError === null) {
+      toast.success("角色已保存")
+    }
+    wasPending.current = isPending
+  }, [isPending, state.formError])
 
   return (
     <details className="w-full max-w-md rounded-lg border px-3 py-2">
@@ -51,14 +61,14 @@ export function RoleAssignment({
           ))}
         </div>
         <div>
-          <Button size="sm" type="submit" variant="secondary" disabled={isPending}>
-            {isPending ? "保存中…" : "保存角色"}
+          <Button size="sm" type="submit" variant="secondary" pending={isPending}>
+            保存角色
           </Button>
         </div>
         {state.formError ? (
-          <p className="text-sm text-destructive" role="alert">
-            {state.formError}
-          </p>
+          <Alert variant="destructive">
+            <AlertDescription>{state.formError}</AlertDescription>
+          </Alert>
         ) : null}
       </form>
     </details>

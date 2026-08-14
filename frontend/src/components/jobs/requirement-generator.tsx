@@ -10,6 +10,7 @@ import {
 } from "@/app/actions/job-requirements"
 import { JobRequirementDraftEditor } from "@/components/jobs/requirement-draft-editor"
 import { DataRegion, DataRegionContent, DataRegionFooter } from "@/components/layout/page"
+import { StatusBadge, type StatusTone } from "@/components/status-badge"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import {
   AlertDialog,
@@ -36,7 +37,6 @@ import {
   FieldLegend,
   FieldSet,
 } from "@/components/ui/field"
-import { Spinner } from "@/components/ui/spinner"
 import { Textarea } from "@/components/ui/textarea"
 import type {
   RequirementDraft,
@@ -450,7 +450,11 @@ function SourceEditors() {
                         }
                       >
                         原始提取文本（已折叠）
-                        <ChevronDownIcon data-icon="inline-end" />
+                        <ChevronDownIcon
+                          aria-hidden="true"
+                          data-icon="inline-end"
+                          data-slot="chevron"
+                        />
                       </CollapsibleTrigger>
                       <CollapsibleContent className="flex flex-col gap-2">
                         <Textarea
@@ -515,7 +519,7 @@ function Summary() {
           {meta.overLimit ? <Badge variant="destructive">已超限</Badge> : <Badge>未超限</Badge>}
         </div>
         {state.actionError ? (
-          <Alert>
+          <Alert variant="destructive">
             <AlertTitle>无法提交</AlertTitle>
             <AlertDescription>{state.actionError}</AlertDescription>
           </Alert>
@@ -539,11 +543,11 @@ function Summary() {
         <DataRegionFooter>
           {meta.draft === null ? (
             <Button
-              disabled={state.pending || meta.overLimit}
+              disabled={meta.overLimit}
               onClick={actions.submit}
+              pending={state.pending}
               type="button"
             >
-              {state.pending ? <Spinner aria-hidden="true" data-icon="inline-start" /> : null}
               {state.pending ? "正在提交…" : "生成职位需求草稿"}
             </Button>
           ) : (
@@ -569,12 +573,11 @@ function Summary() {
                 <AlertDialogFooter>
                   <AlertDialogCancel disabled={state.pending}>继续编辑</AlertDialogCancel>
                   <AlertDialogAction
-                    disabled={state.pending}
                     onClick={actions.submit}
+                    pending={state.pending}
                     type="button"
                     variant="destructive"
                   >
-                    {state.pending ? <Spinner aria-hidden="true" data-icon="inline-start" /> : null}
                     {state.pending ? "正在提交…" : "确认重新解析"}
                   </AlertDialogAction>
                 </AlertDialogFooter>
@@ -629,12 +632,11 @@ function CancelTaskOperation() {
         <AlertDialogFooter>
           <AlertDialogCancel disabled={state.pending}>继续等待</AlertDialogCancel>
           <AlertDialogAction
-            disabled={state.pending}
             onClick={actions.cancel}
+            pending={state.pending}
             type="button"
             variant="destructive"
           >
-            {state.pending ? <Spinner aria-hidden="true" data-icon="inline-start" /> : null}
             {state.pending ? "正在取消…" : "确认取消任务"}
           </AlertDialogAction>
         </AlertDialogFooter>
@@ -644,7 +646,7 @@ function CancelTaskOperation() {
 }
 
 function TaskStatusBadge({ status }: { readonly status: RequirementTaskStatus }) {
-  const variant =
+  const tone: StatusTone =
     status === "succeeded"
       ? "success"
       : status === "failed" || status === "cancelled"
@@ -652,7 +654,7 @@ function TaskStatusBadge({ status }: { readonly status: RequirementTaskStatus })
         : status === "retry_scheduled" || status === "cancel_requested"
           ? "warning"
           : "secondary"
-  return <Badge variant={variant}>{statusLabels[status]}</Badge>
+  return <StatusBadge label={statusLabels[status]} tone={tone} />
 }
 
 function ActiveTask() {
@@ -735,7 +737,7 @@ function TerminalTask() {
           <TaskStatusBadge status={task.status} />
         </div>
         {failure ? (
-          <Alert>
+          <Alert variant="destructive">
             <AlertTitle>生成未完成</AlertTitle>
             <AlertDescription>{failure}</AlertDescription>
           </Alert>

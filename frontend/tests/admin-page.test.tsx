@@ -90,7 +90,7 @@ test("renders the tenant table for a platform admin", async () => {
     "/admin/tenants/tenant-1",
   )
   expect(screen.getByText("共 1 个租户")).toBeInTheDocument()
-  expect(screen.getByText("暂无审计事件。")).toBeInTheDocument()
+  expect(screen.getByText("暂无审计事件")).toBeInTheDocument()
 })
 
 test("forwards the search params to the tenant search", async () => {

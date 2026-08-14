@@ -49,6 +49,8 @@ jobs:
         working-directory: backend
       - run: poetry run alembic upgrade head
         working-directory: backend
+      - run: poetry run pytest tests/integration/test_migration_roundtrip_invariants.py
+        working-directory: backend
 
   frontend:
     runs-on: ubuntu-latest
@@ -95,12 +97,29 @@ jobs:
           RN_REDIS_URL: redis://127.0.0.1:16379/0
         run: poetry run pytest tests/integration/test_runtime_dependencies.py
         working-directory: backend
+      - name: Verify fake search-base liveness
+        run: curl --fail --silent --show-error http://127.0.0.1:18081/health
       - name: Verify Celery broker, worker, and result backend
         run: >-
           docker compose exec -T worker poetry run python -c
           "from relationship_network_api.tasks import smoke;
           result = smoke.delay('ci-smoke').get(timeout=15);
           assert result == {'request_id': 'ci-smoke', 'status': 'ok'}, result"
+      - run: cp backend/.env.example backend/.env
+      - name: Run integration tests against Compose
+        env:
+          RN_DATABASE_URL: postgresql+asyncpg://relationship:replace-with-local-postgres-password@127.0.0.1:15432/relationship_network
+          RN_OBJECT_STORAGE_ACCESS_KEY: replace-with-local-minio-user
+          RN_OBJECT_STORAGE_BUCKET: relationship-network
+          RN_OBJECT_STORAGE_ENDPOINT: 127.0.0.1:9000
+          RN_OBJECT_STORAGE_SECRET_KEY: replace-with-local-minio-password
+          RN_OBJECT_STORAGE_SECURE: "false"
+          RN_REDIS_URL: redis://127.0.0.1:16379/0
+        run: |
+          docker compose stop worker outbox-dispatcher platform-scheduler llm-maintenance-worker
+          (cd backend && poetry run pytest tests/integration/)
+          docker compose start worker outbox-dispatcher platform-scheduler llm-maintenance-worker
+          docker compose exec -T worker poetry run python -c "from relationship_network_api.tasks import smoke; result = smoke.delay('ci-integration').get(timeout=15); assert result == {'request_id': 'ci-integration', 'status': 'ok'}, result"
       - run: bun ci
         working-directory: frontend/e2e
       - run: bunx playwright install --with-deps chrome msedge

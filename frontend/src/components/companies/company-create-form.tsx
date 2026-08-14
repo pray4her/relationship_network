@@ -1,6 +1,7 @@
 "use client"
 
-import { useActionState } from "react"
+import { useActionState, useEffect, useRef } from "react"
+import { toast } from "sonner"
 
 import type { CompanyFormState } from "@/app/actions/companies"
 import { FormField } from "@/components/form-field"
@@ -18,6 +19,15 @@ export function CompanyCreateForm({ action }: CompanyCreateFormProps) {
     fieldErrors: {},
     formError: null,
   })
+  const wasPending = useRef(false)
+
+  useEffect(() => {
+    const succeeded = state.formError === null && Object.keys(state.fieldErrors).length === 0
+    if (wasPending.current && !isPending && succeeded) {
+      toast.success("企业已创建")
+    }
+    wasPending.current = isPending
+  }, [isPending, state.formError, state.fieldErrors])
 
   return (
     <form action={formAction} className="flex flex-col gap-4" noValidate>
@@ -44,8 +54,8 @@ export function CompanyCreateForm({ action }: CompanyCreateFormProps) {
       </Field>
 
       <div>
-        <Button type="submit" disabled={isPending}>
-          {isPending ? "创建中…" : "创建企业"}
+        <Button pending={isPending} type="submit">
+          创建企业
         </Button>
       </div>
     </form>

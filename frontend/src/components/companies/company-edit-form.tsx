@@ -1,6 +1,7 @@
 "use client"
 
-import { useActionState } from "react"
+import { useActionState, useEffect, useRef } from "react"
+import { toast } from "sonner"
 
 import type { CompanyFormState } from "@/app/actions/companies"
 import { Alert, AlertDescription } from "@/components/ui/alert"
@@ -21,6 +22,15 @@ export function CompanyEditForm({ action, companyId, name, profileText }: Compan
     fieldErrors: {},
     formError: null,
   })
+  const wasPending = useRef(false)
+
+  useEffect(() => {
+    const succeeded = state.formError === null && Object.keys(state.fieldErrors).length === 0
+    if (wasPending.current && !isPending && succeeded) {
+      toast.success("企业已保存")
+    }
+    wasPending.current = isPending
+  }, [isPending, state.formError, state.fieldErrors])
 
   return (
     <form action={formAction} className="flex flex-col gap-4" noValidate>
@@ -58,8 +68,8 @@ export function CompanyEditForm({ action, companyId, name, profileText }: Compan
       </Field>
 
       <div>
-        <Button type="submit" disabled={isPending}>
-          {isPending ? "保存中…" : "保存更改"}
+        <Button pending={isPending} type="submit">
+          保存更改
         </Button>
       </div>
     </form>

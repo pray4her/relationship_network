@@ -187,7 +187,7 @@ test("shows the cancel action and the offline order form for a trialing manager"
   expect(screen.getByRole("heading", { name: "申请订阅（线下付款）" })).toBeInTheDocument()
   expect(screen.getByLabelText("付款凭证号")).toBeInTheDocument()
   expect(screen.getByRole("heading", { name: "我的订单" })).toBeInTheDocument()
-  expect(screen.getByText("暂无订单记录。")).toBeInTheDocument()
+  expect(screen.getByText("暂无订单记录")).toBeInTheDocument()
 })
 
 test("shows the cancellation request and hides the cancel action once requested", async () => {

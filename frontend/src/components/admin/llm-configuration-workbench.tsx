@@ -3,12 +3,18 @@
 import { RotateCcwIcon, ShieldCheckIcon, XIcon } from "lucide-react"
 import { useRouter } from "next/navigation"
 import { createContext, useContext, useEffect, useState, useTransition } from "react"
+import { toast } from "sonner"
 
 import {
   cancelLlmConfigurationAction,
   copyLlmConfigurationAction,
   submitLlmConfigurationAction,
 } from "@/app/actions/llm-configuration"
+import {
+  adminTableHeadClassName,
+  LlmAttemptStatusBadge,
+} from "@/components/admin/admin-status-badges"
+import { FilterSelect } from "@/components/admin/filter-select"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import {
   AlertDialog,
@@ -31,7 +37,15 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card"
-import { Field, FieldDescription, FieldError, FieldGroup, FieldLabel } from "@/components/ui/field"
+import {
+  Field,
+  FieldDescription,
+  FieldError,
+  FieldGroup,
+  FieldLabel,
+  FieldLegend,
+  FieldSet,
+} from "@/components/ui/field"
 import { Input } from "@/components/ui/input"
 import { Spinner } from "@/components/ui/spinner"
 import {
@@ -42,6 +56,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table"
+import { formatDateTime } from "@/lib/format"
 import {
   type LlmAttempt,
   type LlmAttemptStatus,
@@ -55,17 +70,6 @@ const terminalStatuses = new Set<LlmAttemptStatus>([
   "failed",
   "succeeded",
 ])
-
-const statusLabels: Record<LlmAttemptStatus, string> = {
-  cancel_requested: "正在取消",
-  cancelled: "已取消",
-  conflicted: "配置冲突",
-  failed: "探测失败",
-  queued: "等待执行",
-  retry_scheduled: "等待重试",
-  running: "正在探测",
-  succeeded: "已启用",
-}
 
 const errorLabels: Record<string, string> = {
   authentication_failed: "OpenRouter 凭据无效，请检查服务端环境变量。",
@@ -163,6 +167,15 @@ function WorkbenchProvider({
                 typeof parsed.data.payload["next_attempt_at"] === "string"
                   ? parsed.data.payload["next_attempt_at"]
                   : attempt.next_attempt_at,
+              probe_progress: {
+                ...attempt.probe_progress,
+                ...(Array.isArray(parsed.data.payload["succeeded_call_types"])
+                  ? { succeeded_call_types: parsed.data.payload["succeeded_call_types"] }
+                  : {}),
+                ...(typeof parsed.data.payload["probed_call_type"] === "string"
+                  ? { probed_call_type: parsed.data.payload["probed_call_type"] }
+                  : {}),
+              },
               status: parsed.data.status,
               updated_at: parsed.data.created_at,
             },
@@ -202,8 +215,14 @@ function WorkbenchProvider({
   )
 }
 
+function bindingLabel(promptId: string | undefined): string {
+  return promptId === undefined || promptId.length === 0 ? "未绑定" : promptId
+}
+
 function ConfigurationFacts({ workspace }: { readonly workspace: LlmWorkspace }) {
   const current = workspace.current
+  const parsing = current.call_bindings.job_requirement_parsing
+  const search = current.call_bindings.search_interpretation
   return (
     <dl className="grid grid-cols-2 gap-x-8 gap-y-4 max-sm:grid-cols-1">
       <div>
@@ -211,17 +230,23 @@ function ConfigurationFacts({ workspace }: { readonly workspace: LlmWorkspace })
         <dd className="m-0 font-medium">{current.model}</dd>
       </div>
       <div>
-        <dt className="text-xs text-muted-foreground">提示词版本</dt>
-        <dd className="m-0 font-mono text-sm">{current.prompt_version_id}</dd>
-      </div>
-      <div>
-        <dt className="text-xs text-muted-foreground">Temperature</dt>
-        <dd className="m-0 tabular-nums">{current.temperature}</dd>
-      </div>
-      <div>
-        <dt className="text-xs text-muted-foreground">输出 / 超时</dt>
+        <dt className="text-xs text-muted-foreground">Temperature / 输出</dt>
         <dd className="m-0 tabular-nums">
-          {current.max_output_tokens} tokens · {current.request_timeout_seconds} 秒
+          {current.temperature} · {current.max_output_tokens} tokens
+        </dd>
+      </div>
+      <div>
+        <dt className="text-xs text-muted-foreground">职位需求解析</dt>
+        <dd className="m-0 font-mono text-sm">{bindingLabel(parsing.prompt_version_id)}</dd>
+        <dd className="m-0 text-xs text-muted-foreground tabular-nums">
+          {parsing.request_timeout_seconds} 秒
+        </dd>
+      </div>
+      <div>
+        <dt className="text-xs text-muted-foreground">搜索解释</dt>
+        <dd className="m-0 font-mono text-sm">{bindingLabel(search?.prompt_version_id)}</dd>
+        <dd className="m-0 text-xs text-muted-foreground tabular-nums">
+          {search === null ? "未绑定" : `${search.request_timeout_seconds} 秒`}
         </dd>
       </div>
     </dl>
@@ -283,7 +308,9 @@ function CandidateForm() {
       <CardHeader>
         <div>
           <CardTitle>候选配置</CardTitle>
-          <CardDescription>提交后异步探测；成功时创建并启用新的不可变版本。</CardDescription>
+          <CardDescription>
+            提交后异步探测全部调用类型；全部通过时创建并启用新的不可变版本。
+          </CardDescription>
         </div>
       </CardHeader>
       <CardContent>
@@ -301,30 +328,12 @@ function CandidateForm() {
                 maxLength={200}
                 name="model"
                 required
+                spellCheck={false}
               />
               <FieldDescription>只发送这个模型 ID；同模型内仍可选择合规供应商。</FieldDescription>
               <FieldError>{fieldErrors["model"]}</FieldError>
             </Field>
-            <Field data-invalid={fieldErrors["prompt_version_id"] ? true : undefined}>
-              <FieldLabel htmlFor="prompt-version">提示词版本</FieldLabel>
-              <select
-                aria-invalid={fieldErrors["prompt_version_id"] ? true : undefined}
-                className="h-9 w-full rounded-lg border border-input bg-transparent px-3 text-sm outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 disabled:opacity-50"
-                defaultValue={current.prompt_version_id}
-                disabled={busy || pending}
-                id="prompt-version"
-                name="prompt_version_id"
-                required
-              >
-                {workspace.prompt_versions.map((prompt) => (
-                  <option key={prompt.id} value={prompt.id}>
-                    {prompt.id}
-                  </option>
-                ))}
-              </select>
-              <FieldError>{fieldErrors["prompt_version_id"]}</FieldError>
-            </Field>
-            <div className="grid grid-cols-3 gap-4 max-md:grid-cols-1">
+            <div className="grid grid-cols-2 gap-4 max-md:grid-cols-1">
               <Field data-invalid={fieldErrors["temperature"] ? true : undefined}>
                 <FieldLabel htmlFor="temperature">Temperature</FieldLabel>
                 <Input
@@ -357,27 +366,148 @@ function CandidateForm() {
                 />
                 <FieldError>{fieldErrors["max_output_tokens"]}</FieldError>
               </Field>
-              <Field data-invalid={fieldErrors["request_timeout_seconds"] ? true : undefined}>
-                <FieldLabel htmlFor="request-timeout">请求超时（秒）</FieldLabel>
-                <Input
-                  aria-invalid={fieldErrors["request_timeout_seconds"] ? true : undefined}
-                  defaultValue={current.request_timeout_seconds}
+            </div>
+            <FieldSet>
+              <FieldLegend>职位需求解析</FieldLegend>
+              <Field
+                data-invalid={
+                  fieldErrors["call_bindings.job_requirement_parsing.prompt_version_id"]
+                    ? true
+                    : undefined
+                }
+              >
+                <FieldLabel htmlFor="job-requirement-prompt-version">提示词版本</FieldLabel>
+                <FilterSelect
+                  aria-invalid={
+                    fieldErrors["call_bindings.job_requirement_parsing.prompt_version_id"]
+                      ? true
+                      : undefined
+                  }
+                  className="h-9 w-full px-3 disabled:opacity-50"
+                  defaultValue={current.call_bindings.job_requirement_parsing.prompt_version_id}
                   disabled={busy || pending}
-                  id="request-timeout"
+                  id="job-requirement-prompt-version"
+                  name="parsing_prompt_version_id"
+                  required
+                >
+                  {workspace.prompt_versions
+                    .filter((prompt) => prompt.call_type === "job_requirement_parsing")
+                    .map((prompt) => (
+                      <option key={prompt.id} value={prompt.id}>
+                        {prompt.id}
+                      </option>
+                    ))}
+                </FilterSelect>
+                <FieldError>
+                  {fieldErrors["call_bindings.job_requirement_parsing.prompt_version_id"]}
+                </FieldError>
+              </Field>
+              <Field
+                data-invalid={
+                  fieldErrors["call_bindings.job_requirement_parsing.request_timeout_seconds"]
+                    ? true
+                    : undefined
+                }
+              >
+                <FieldLabel htmlFor="job-requirement-timeout">请求超时（秒）</FieldLabel>
+                <Input
+                  aria-invalid={
+                    fieldErrors["call_bindings.job_requirement_parsing.request_timeout_seconds"]
+                      ? true
+                      : undefined
+                  }
+                  defaultValue={
+                    current.call_bindings.job_requirement_parsing.request_timeout_seconds
+                  }
+                  disabled={busy || pending}
+                  id="job-requirement-timeout"
                   max={300}
                   min={30}
-                  name="request_timeout_seconds"
+                  name="parsing_request_timeout_seconds"
                   required
                   step={1}
                   type="number"
                 />
-                <FieldError>{fieldErrors["request_timeout_seconds"]}</FieldError>
+                <FieldError>
+                  {fieldErrors["call_bindings.job_requirement_parsing.request_timeout_seconds"]}
+                </FieldError>
               </Field>
-            </div>
+            </FieldSet>
+            <FieldSet>
+              <FieldLegend>搜索解释</FieldLegend>
+              <FieldDescription>
+                将自然语言搜索原句解释为硬条件与可空研究主题，不含偏好条件或来源冲突。
+              </FieldDescription>
+              <Field
+                data-invalid={
+                  fieldErrors["call_bindings.search_interpretation.prompt_version_id"]
+                    ? true
+                    : undefined
+                }
+              >
+                <FieldLabel htmlFor="search-interpretation-prompt-version">提示词版本</FieldLabel>
+                <FilterSelect
+                  aria-invalid={
+                    fieldErrors["call_bindings.search_interpretation.prompt_version_id"]
+                      ? true
+                      : undefined
+                  }
+                  className="h-9 w-full px-3 disabled:opacity-50"
+                  defaultValue={
+                    current.call_bindings.search_interpretation?.prompt_version_id ??
+                    "search-interpretation-prompt-v1"
+                  }
+                  disabled={busy || pending}
+                  id="search-interpretation-prompt-version"
+                  name="search_prompt_version_id"
+                  required
+                >
+                  {workspace.prompt_versions
+                    .filter((prompt) => prompt.call_type === "search_interpretation")
+                    .map((prompt) => (
+                      <option key={prompt.id} value={prompt.id}>
+                        {prompt.id}
+                      </option>
+                    ))}
+                </FilterSelect>
+                <FieldError>
+                  {fieldErrors["call_bindings.search_interpretation.prompt_version_id"]}
+                </FieldError>
+              </Field>
+              <Field
+                data-invalid={
+                  fieldErrors["call_bindings.search_interpretation.request_timeout_seconds"]
+                    ? true
+                    : undefined
+                }
+              >
+                <FieldLabel htmlFor="search-interpretation-timeout">请求超时（秒）</FieldLabel>
+                <Input
+                  aria-invalid={
+                    fieldErrors["call_bindings.search_interpretation.request_timeout_seconds"]
+                      ? true
+                      : undefined
+                  }
+                  defaultValue={
+                    current.call_bindings.search_interpretation?.request_timeout_seconds ?? 15
+                  }
+                  disabled={busy || pending}
+                  id="search-interpretation-timeout"
+                  max={30}
+                  min={5}
+                  name="search_request_timeout_seconds"
+                  required
+                  step={1}
+                  type="number"
+                />
+                <FieldError>
+                  {fieldErrors["call_bindings.search_interpretation.request_timeout_seconds"]}
+                </FieldError>
+              </Field>
+            </FieldSet>
           </FieldGroup>
-          <Button disabled={busy || pending} type="submit">
-            {pending ? <Spinner aria-hidden="true" data-icon="inline-start" /> : null}
-            {busy ? "已有变更正在执行" : "提交并探测"}
+          <Button disabled={busy} pending={pending} type="submit">
+            {busy ? "已有变更正在执行" : "提交并探测全部调用类型"}
           </Button>
         </form>
       </CardContent>
@@ -398,7 +528,7 @@ function AttemptProgress() {
         <CardContent className="flex flex-col gap-4 text-sm text-muted-foreground">
           <p className="m-0">当前没有待处理的配置变更。</p>
           {formError && (
-            <Alert>
+            <Alert variant="destructive">
               <AlertTitle>操作未完成</AlertTitle>
               <AlertDescription>{formError}</AlertDescription>
             </Alert>
@@ -417,8 +547,12 @@ function AttemptProgress() {
     setActionError(null)
     startAction(async () => {
       const result = await cancelLlmConfigurationAction(activeAttempt.id)
-      if (result.kind === "ok") setActiveAttempt(result.attempt)
-      else setActionError(result.formError)
+      if (result.kind === "ok") {
+        setActiveAttempt(result.attempt)
+        toast.success("已请求取消配置变更")
+      } else {
+        setActionError(result.formError)
+      }
     })
   }
 
@@ -431,24 +565,25 @@ function AttemptProgress() {
           <CardDescription>尝试 {activeAttempt.id.slice(0, 8)}</CardDescription>
         </div>
         <CardAction>
-          <Badge variant="secondary">{statusLabels[activeAttempt.status]}</Badge>
+          <LlmAttemptStatusBadge status={activeAttempt.status} />
         </CardAction>
       </CardHeader>
       <CardContent className="flex flex-col gap-4">
         <p className="m-0 text-sm text-muted-foreground">
           已发起 {activeAttempt.external_call_count} / 3 次外部请求
           {activeAttempt.next_attempt_at
-            ? `；计划于 ${new Date(activeAttempt.next_attempt_at).toLocaleString("zh-CN")} 重试`
+            ? `；计划于 ${formatDateTime(activeAttempt.next_attempt_at)} 重试`
             : ""}
         </p>
+        <CallTypeProgress attempt={activeAttempt} />
         {error && (
-          <Alert>
+          <Alert variant="destructive">
             <AlertTitle>需要处理</AlertTitle>
             <AlertDescription>{error}</AlertDescription>
           </Alert>
         )}
         {formError && (
-          <Alert>
+          <Alert variant="destructive">
             <AlertTitle>操作未完成</AlertTitle>
             <AlertDescription>{formError}</AlertDescription>
           </Alert>
@@ -481,6 +616,31 @@ function AttemptProgress() {
   )
 }
 
+function succeededCallTypes(attempt: LlmAttempt): readonly string[] {
+  const raw = attempt.probe_progress["succeeded_call_types"]
+  return Array.isArray(raw) ? raw.filter((item): item is string => typeof item === "string") : []
+}
+
+function CallTypeProgress({ attempt }: { readonly attempt: LlmAttempt }) {
+  const succeeded = succeededCallTypes(attempt)
+  const rows = [
+    { callType: "job_requirement_parsing", label: "职位需求解析" },
+    { callType: "search_interpretation", label: "搜索解释" },
+  ] as const
+  return (
+    <ul className="m-0 flex flex-col gap-2 p-0">
+      {rows.map((row) => (
+        <li className="flex items-center justify-between gap-3 text-sm" key={row.callType}>
+          <span>{row.label}</span>
+          <Badge variant={succeeded.includes(row.callType) ? "secondary" : "outline"}>
+            {succeeded.includes(row.callType) ? "已通过" : "待探测"}
+          </Badge>
+        </li>
+      ))}
+    </ul>
+  )
+}
+
 function RestoreButton({ versionId }: { readonly versionId: string }) {
   const { busy, pending, setActionError, setActiveAttempt, startAction, workspace } = useWorkbench()
   const [open, setOpen] = useState(false)
@@ -489,8 +649,12 @@ function RestoreButton({ versionId }: { readonly versionId: string }) {
     setActionError(null)
     startAction(async () => {
       const result = await copyLlmConfigurationAction(versionId, workspace.current.id)
-      if (result.kind === "ok") setActiveAttempt(result.attempt)
-      else setActionError(result.formError)
+      if (result.kind === "ok") {
+        setActiveAttempt(result.attempt)
+        toast.success("已复制历史版本并开始探测")
+      } else {
+        setActionError(result.formError)
+      }
     })
   }
   return (
@@ -535,11 +699,12 @@ function ConfigurationHistory() {
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>版本</TableHead>
-                <TableHead>模型</TableHead>
-                <TableHead>提示词</TableHead>
-                <TableHead>创建时间</TableHead>
-                <TableHead>
+                <TableHead className={adminTableHeadClassName}>版本</TableHead>
+                <TableHead className={adminTableHeadClassName}>模型</TableHead>
+                <TableHead className={adminTableHeadClassName}>解析提示词</TableHead>
+                <TableHead className={adminTableHeadClassName}>解释提示词</TableHead>
+                <TableHead className={adminTableHeadClassName}>创建时间</TableHead>
+                <TableHead className={adminTableHeadClassName}>
                   <span className="sr-only">操作</span>
                 </TableHead>
               </TableRow>
@@ -556,9 +721,14 @@ function ConfigurationHistory() {
                     )}
                   </TableCell>
                   <TableCell>{version.model}</TableCell>
-                  <TableCell className="font-mono text-xs">{version.prompt_version_id}</TableCell>
+                  <TableCell className="font-mono text-xs">
+                    {version.call_bindings.job_requirement_parsing.prompt_version_id}
+                  </TableCell>
+                  <TableCell className="font-mono text-xs">
+                    {bindingLabel(version.call_bindings.search_interpretation?.prompt_version_id)}
+                  </TableCell>
                   <TableCell className="tabular-nums">
-                    {new Date(version.created_at).toLocaleString("zh-CN")}
+                    {formatDateTime(version.created_at)}
                   </TableCell>
                   <TableCell className="text-right">
                     <RestoreButton versionId={version.id} />

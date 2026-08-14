@@ -66,7 +66,7 @@ test("renders the members page for a freshly registered owner", async ({ page })
 
   await expect(page.getByRole("heading", { name: "成员列表" })).toBeVisible()
   await expect(page.getByRole("cell", { name: email })).toBeVisible()
-  await expect(page.getByRole("cell", { name: "所有者" })).toBeVisible()
+  await expect(page.getByRole("cell", { name: "所有者", exact: true })).toBeVisible()
   await expect(page.getByRole("heading", { name: "邀请成员" })).toBeVisible()
   await expect(page.getByRole("heading", { name: "邀请记录" })).toBeVisible()
 })
@@ -90,7 +90,9 @@ test("renders the security page with the MFA setup call-to-action", async ({ pag
   await expect(page.getByRole("heading", { name: "租户 MFA 策略" })).toBeVisible()
 })
 
-test("creates, activates, and uploads a material for a job", async ({ page }, testInfo) => {
+test("creates a job, uploads a material, and hits the activation gate", async ({
+  page,
+}, testInfo) => {
   test.skip(!(await isAuthApiAvailable()), "auth API 未部署，跳过实时职位流程")
 
   const stamp = Date.now()
@@ -121,6 +123,7 @@ test("creates, activates, and uploads a material for a job", async ({ page }, te
   await expect(page.getByText("草稿", { exact: true })).toBeVisible()
   await expect(page.getByRole("heading", { name: "编辑职位" })).toBeVisible()
 
+  await page.getByRole("tab", { name: /材料/ }).click()
   await page.setInputFiles("#file", {
     name: "jd.txt",
     mimeType: "text/plain",
@@ -135,11 +138,17 @@ test("creates, activates, and uploads a material for a job", async ({ page }, te
     page.getByRole("region", { name: "职位材料" }).getByRole("cell", { name: "jd.txt" }),
   ).toBeVisible()
   await expect(page.getByRole("link", { name: "下载" }).first()).toBeVisible()
+  await page.getByRole("tab", { name: /需求草稿/ }).click()
   const requirementRegion = page.getByRole("region", { name: "职位需求草稿" })
   await expect(requirementRegion.getByRole("group", { name: "职位描述" })).toBeVisible()
   await expect(requirementRegion.getByRole("group", { name: "jd.txt" })).toBeVisible()
-  await expect(requirementRegion.getByText("生成配置尚未就绪")).toBeVisible()
-  await expect(requirementRegion.getByRole("button", { name: "生成职位需求草稿" })).toHaveCount(0)
+  // 配置状态取决于环境：未启用时展示提示且无提交按钮；已启用时按钮可用
+  const submitDraftButton = requirementRegion.getByRole("button", { name: "生成职位需求草稿" })
+  if ((await requirementRegion.getByText("生成配置尚未就绪").count()) > 0) {
+    await expect(submitDraftButton).toHaveCount(0)
+  } else {
+    await expect(submitDraftButton.first()).toBeVisible()
+  }
   for (const width of [390, 1440]) {
     await page.setViewportSize({ width, height: 900 })
     const overflow = await page.evaluate(() => ({
@@ -159,19 +168,18 @@ test("creates, activates, and uploads a material for a job", async ({ page }, te
     )
   }
 
-  const jobDetailUrl = page.url()
-  const activationResponse = page.waitForResponse(
-    (response) =>
-      response.url() === jobDetailUrl &&
-      response.request().method() === "POST" &&
-      response.status() === 200,
-  )
+  // 未确认需求版本时，启用会被服务端门禁阻止（requirement_version_required）
+  await expect(page.getByText(/启用前检查 · 还有 \d+ 项待处理/)).toBeVisible()
+  await expect(page.getByRole("link", { name: "已确认职位需求版本" })).toBeVisible()
   await page.getByRole("button", { name: "启用职位" }).click()
-  await activationResponse
+  await page.getByRole("alertdialog").getByRole("button", { name: "启用职位" }).click()
+  await expect(page.getByText("请先确认职位需求版本，再启用职位。")).toBeVisible()
   await page.reload()
   await page.waitForLoadState("networkidle")
-  await expect(page.getByText("活跃", { exact: true })).toBeVisible()
-  await expect(page.getByRole("heading", { name: "编辑职位" })).toHaveCount(0)
+  await page.getByRole("tab", { name: "概览" }).click()
+  await expect(page.getByText("草稿", { exact: true })).toBeVisible()
+  await expect(page.getByRole("heading", { name: "编辑职位" })).toBeVisible()
+  await page.getByRole("tab", { name: /材料/ }).click()
   await expect(page.getByRole("link", { name: "下载" }).first()).toBeVisible()
 
   await page.goto("/jobs")

@@ -1,8 +1,10 @@
 "use client"
 
-import { useActionState } from "react"
+import { useActionState, useEffect, useRef } from "react"
+import { toast } from "sonner"
 
 import type { CompanyActionState } from "@/app/actions/companies"
+import { Alert, AlertDescription } from "@/components/ui/alert"
 import {
   AlertDialog,
   AlertDialogAction,
@@ -23,6 +25,14 @@ type CompanyArchiveButtonProps = {
 
 export function CompanyArchiveButton({ action, companyId }: CompanyArchiveButtonProps) {
   const [state, formAction, isPending] = useActionState(action, { formError: null })
+  const wasPending = useRef(false)
+
+  useEffect(() => {
+    if (wasPending.current && !isPending && state.formError === null) {
+      toast.success("企业已归档")
+    }
+    wasPending.current = isPending
+  }, [isPending, state.formError])
 
   return (
     <div className="flex flex-col items-start gap-2">
@@ -30,7 +40,7 @@ export function CompanyArchiveButton({ action, companyId }: CompanyArchiveButton
         <AlertDialogTrigger
           render={
             <Button type="button" variant="secondary" disabled={isPending}>
-              {isPending ? "归档中…" : "归档企业"}
+              归档企业
             </Button>
           }
         />
@@ -45,17 +55,17 @@ export function CompanyArchiveButton({ action, companyId }: CompanyArchiveButton
             <AlertDialogCancel>取消</AlertDialogCancel>
             <form action={formAction}>
               <input name="company_id" type="hidden" value={companyId} />
-              <AlertDialogAction type="submit" variant="destructive" disabled={isPending}>
-                {isPending ? "归档中…" : "归档企业"}
+              <AlertDialogAction type="submit" variant="destructive" pending={isPending}>
+                归档企业
               </AlertDialogAction>
             </form>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
       {state.formError ? (
-        <p className="text-sm text-destructive" role="alert">
-          {state.formError}
-        </p>
+        <Alert variant="destructive">
+          <AlertDescription>{state.formError}</AlertDescription>
+        </Alert>
       ) : null}
     </div>
   )

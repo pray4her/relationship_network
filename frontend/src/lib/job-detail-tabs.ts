@@ -2,6 +2,7 @@ export const JOB_DETAIL_TABS = [
   "overview",
   "requirement",
   "versions",
+  "history",
   "materials",
   "events",
 ] as const
@@ -12,6 +13,7 @@ export const JOB_DETAIL_TAB_LABELS: Readonly<Record<JobDetailTab, string>> = {
   overview: "概览",
   requirement: "需求草稿",
   versions: "需求版本",
+  history: "需求历史",
   materials: "材料",
   events: "操作记录",
 }

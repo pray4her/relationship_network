@@ -71,6 +71,66 @@ services:
         mc mb --ignore-existing "local/$${MINIO_BUCKET}"
     restart: "no"
 
+  fake-openrouter:
+    build:
+      context: ./backend
+    environment:
+      FAKE_OPENROUTER_DELAY_SECONDS: "20"
+    command:
+      [
+        "poetry",
+        "run",
+        "uvicorn",
+        "relationship_network_api.fake_openrouter:app",
+        "--host",
+        "0.0.0.0",
+        "--port",
+        "8080",
+      ]
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "python",
+          "-c",
+          "import urllib.request; urllib.request.urlopen('http://localhost:8080/health', timeout=3)",
+        ]
+      interval: 3s
+      timeout: 3s
+      retries: 20
+    ports:
+      - "127.0.0.1:18080:8080"
+    restart: unless-stopped
+
+  fake-search-base:
+    build:
+      context: ./backend
+    command:
+      [
+        "poetry",
+        "run",
+        "uvicorn",
+        "relationship_network_api.fake_search_base:app",
+        "--host",
+        "0.0.0.0",
+        "--port",
+        "8080",
+      ]
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "python",
+          "-c",
+          "import urllib.request; urllib.request.urlopen('http://localhost:8080/health', timeout=3)",
+        ]
+      interval: 3s
+      timeout: 3s
+      retries: 20
+    ports:
+      - "127.0.0.1:18081:8080"
+    restart: unless-stopped
+
   api:
     build:
       context: ./backend
@@ -87,6 +147,10 @@ services:
         condition: service_healthy
       redis:
         condition: service_healthy
+      fake-openrouter:
+        condition: service_healthy
+      fake-search-base:
+        condition: service_healthy
     environment:
       RN_DATABASE_URL: ${RN_DATABASE_URL:?Set RN_DATABASE_URL in .env}
       RN_OBJECT_STORAGE_ACCESS_KEY: ${MINIO_ROOT_USER:?Set MINIO_ROOT_USER in .env}
@@ -102,11 +166,15 @@ services:
       RN_MFA_CHALLENGE_TTL_SECONDS: ${RN_MFA_CHALLENGE_TTL_SECONDS:-300}
       RN_APP_BASE_URL: ${RN_APP_BASE_URL:-http://localhost:3000}
       RN_PLATFORM_ADMIN_EMAILS: ${RN_PLATFORM_ADMIN_EMAILS:-}
-      RN_OPENROUTER_BASE_URL: ${RN_OPENROUTER_BASE_URL:-https://openrouter.ai/api/v1}
+      RN_OPENROUTER_BASE_URL: ${RN_OPENROUTER_BASE_URL:-http://fake-openrouter:8080/api/v1}
       RN_OPENROUTER_SITE_URL: ${RN_OPENROUTER_SITE_URL:-http://localhost:3000}
       RN_OPENROUTER_SITE_NAME: ${RN_OPENROUTER_SITE_NAME:-Relationship Network}
       RN_LLM_RAW_RESPONSE_KEYS: '${RN_LLM_RAW_RESPONSE_KEYS:-{}}'
       RN_LLM_RAW_RESPONSE_ACTIVE_KEY_ID: ${RN_LLM_RAW_RESPONSE_ACTIVE_KEY_ID:-}
+      RN_SEARCH_BASE_API_KEY: ${RN_SEARCH_BASE_API_KEY:-fake-search-base-key}
+      RN_SEARCH_BASE_BASE_URL: ${RN_SEARCH_BASE_BASE_URL:-http://fake-search-base:8080}
+      RN_SEARCH_BASE_TIMEOUT_SECONDS: ${RN_SEARCH_BASE_TIMEOUT_SECONDS:-10}
+      RN_SEARCH_BASE_CONTRACT_VERSION: ${RN_SEARCH_BASE_CONTRACT_VERSION:-v1}
     healthcheck:
       test:
         [
@@ -143,6 +211,10 @@ services:
         condition: service_healthy
       redis:
         condition: service_healthy
+      fake-openrouter:
+        condition: service_healthy
+      fake-search-base:
+        condition: service_healthy
     environment:
       RN_CELERY_BROKER_URL: redis://redis:6379/1
       RN_CELERY_RESULT_BACKEND: redis://redis:6379/2
@@ -153,12 +225,16 @@ services:
       RN_OBJECT_STORAGE_SECRET_KEY: ${MINIO_ROOT_PASSWORD:?Set MINIO_ROOT_PASSWORD in .env}
       RN_OBJECT_STORAGE_SECURE: "false"
       RN_REDIS_URL: redis://redis:6379/0
-      RN_OPENROUTER_API_KEY: ${RN_OPENROUTER_API_KEY:-}
-      RN_OPENROUTER_BASE_URL: ${RN_OPENROUTER_BASE_URL:-https://openrouter.ai/api/v1}
+      RN_OPENROUTER_API_KEY: ${RN_OPENROUTER_API_KEY:-fake-openrouter-key}
+      RN_OPENROUTER_BASE_URL: ${RN_OPENROUTER_BASE_URL:-http://fake-openrouter:8080/api/v1}
       RN_OPENROUTER_SITE_URL: ${RN_OPENROUTER_SITE_URL:-http://localhost:3000}
       RN_OPENROUTER_SITE_NAME: ${RN_OPENROUTER_SITE_NAME:-Relationship Network}
       RN_LLM_RAW_RESPONSE_KEYS: '${RN_LLM_RAW_RESPONSE_KEYS:-{}}'
       RN_LLM_RAW_RESPONSE_ACTIVE_KEY_ID: ${RN_LLM_RAW_RESPONSE_ACTIVE_KEY_ID:-}
+      RN_SEARCH_BASE_API_KEY: ${RN_SEARCH_BASE_API_KEY:-fake-search-base-key}
+      RN_SEARCH_BASE_BASE_URL: ${RN_SEARCH_BASE_BASE_URL:-http://fake-search-base:8080}
+      RN_SEARCH_BASE_TIMEOUT_SECONDS: ${RN_SEARCH_BASE_TIMEOUT_SECONDS:-10}
+      RN_SEARCH_BASE_CONTRACT_VERSION: ${RN_SEARCH_BASE_CONTRACT_VERSION:-v1}
       RN_SMTP_HOST: ${RN_SMTP_HOST:-}
       RN_SMTP_PORT: ${RN_SMTP_PORT:-587}
       RN_SMTP_USERNAME: ${RN_SMTP_USERNAME:-}

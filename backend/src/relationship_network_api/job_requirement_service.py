@@ -3,7 +3,7 @@ from __future__ import annotations
 import hashlib
 import json
 import uuid
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from datetime import UTC, datetime, timedelta
 from typing import TYPE_CHECKING, Final, final
 
@@ -146,6 +146,7 @@ class RequirementDraftView:
     chinese_identity_values: list[str]
     created_at: datetime
     updated_at: datetime
+    pending_upgrade_items: list[dict[str, object]] = field(default_factory=list)
 
 
 @final
@@ -255,7 +256,17 @@ async def load_workspace(
             job=job,
             draft=draft,
         )
-        draft_view = _draft_view(draft, schema=schema, read_only_reason=reason)
+        pending = await job_requirement_draft_service.pending_schema_upgrade_items(
+            session,
+            tenant_id=tenant_id,
+            draft_id=draft.id,
+        )
+        draft_view = _draft_view(
+            draft,
+            schema=schema,
+            read_only_reason=reason,
+            pending_upgrade_items=pending,
+        )
     versions = list(
         (
             await session.execute(
@@ -792,8 +803,10 @@ async def cancel_parsing_task(
         target_id=str(task.id),
         result=tenant_audit_service.AUDIT_RESULT_SUCCESS,
     )
+    await session.refresh(task)
+    view = _task_view(task)
     await session.commit()
-    return _task_view(task)
+    return view
 
 
 async def transition_task_for_job_archive(
@@ -839,10 +852,21 @@ async def _current_configuration(session: AsyncSession) -> LlmConfigurationVersi
 
 
 def _configuration_ready(configuration: LlmConfigurationVersion) -> bool:
-    return (
-        configuration.prompt_version_id == manifest.JOB_REQUIREMENT_PROMPT_V2.id
-        and configuration.requirement_schema_version_id == manifest.JOB_REQUIREMENT_SCHEMA_V2.id
-    )
+    """Derive the task schema from the prompt bound to the current configuration.
+
+    A configuration is ready only when its prompt is a deployed asset, the
+    configuration's schema is exactly the prompt's declared compatible
+    schema, and that schema ships an editor schema. There is no independent
+    mutable schema pointer.
+    """
+    try:
+        prompt_asset = manifest.prompt_asset(configuration.prompt_version_id)
+        schema_asset = manifest.schema_asset(configuration.requirement_schema_version_id)
+    except manifest.LlmAssetError:
+        return False
+    if schema_asset.editor_schema_id is None:
+        return False
+    return prompt_asset.compatible_schema_version_id == schema_asset.id
 
 
 def _effective_request_sha256(
@@ -972,6 +996,7 @@ def _draft_view(
     *,
     schema: JobRequirementSchemaVersion,
     read_only_reason: str | None,
+    pending_upgrade_items: list[dict[str, object]] | None = None,
 ) -> RequirementDraftView:
     return RequirementDraftView(
         id=draft.id,
@@ -989,6 +1014,7 @@ def _draft_view(
         chinese_identity_values=list(schema.chinese_identity_values),
         created_at=draft.created_at,
         updated_at=draft.updated_at,
+        pending_upgrade_items=pending_upgrade_items or [],
     )
 
 

@@ -1,15 +1,21 @@
+import { ArrowLeftIcon, SearchXIcon } from "lucide-react"
 import type { Metadata } from "next"
 import Link from "next/link"
 import { redirect } from "next/navigation"
 
 import { confirmOrderAction, rejectOrderAction } from "@/app/actions/admin"
 import { AdminGateNotice } from "@/components/admin/admin-gate-notice"
+import { adminTableHeadClassName, OrderStatusBadge } from "@/components/admin/admin-status-badges"
+import { FilterSelect } from "@/components/admin/filter-select"
 import { OrderReviewAction } from "@/components/admin/order-review-action"
 import {
   DataRegion,
   DataRegionContent,
+  DataRegionHeader,
   Page,
+  PageActions,
   PageDescription,
+  PageEyebrow,
   PageHeader,
   PageHeaderContent,
   PageSection,
@@ -21,6 +27,7 @@ import {
 } from "@/components/layout/page"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
+import { Empty, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from "@/components/ui/empty"
 import { Field, FieldLabel } from "@/components/ui/field"
 import {
   Table,
@@ -32,9 +39,9 @@ import {
 } from "@/components/ui/table"
 import { createAdminTransport, listAdminOrders } from "@/lib/admin-client"
 import { requireAdminView } from "@/lib/admin-guard"
-import { formatDateTime } from "@/lib/admin-view"
+import { formatDateTime } from "@/lib/format"
 import { orderStatusSchema } from "@/lib/orders-contract"
-import { formatAmountCents, orderStatusLabels } from "@/lib/orders-view"
+import { formatAmountCents } from "@/lib/orders-view"
 
 export const metadata: Metadata = {
   title: "订单审核",
@@ -44,29 +51,8 @@ type AdminOrdersPageProps = {
   readonly searchParams: Promise<Record<string, string | string[] | undefined>>
 }
 
-const selectClassName =
-  "h-8 w-full min-w-0 rounded-md border border-input bg-transparent px-2.5 py-1 text-sm outline-none transition-colors focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50"
-
-const tableHeadClassName = "font-mono text-xs tracking-wider text-muted-foreground uppercase"
-
-const linkClassName = "font-medium underline underline-offset-4"
-
 function firstParam(value: string | string[] | undefined): string {
   return typeof value === "string" ? value : ""
-}
-
-function OrderStatusBadge({ status }: { readonly status: keyof typeof orderStatusLabels }) {
-  if (status === "confirmed") {
-    return (
-      <Badge className="bg-success/10 text-success" variant="secondary">
-        {orderStatusLabels[status]}
-      </Badge>
-    )
-  }
-  if (status === "rejected") {
-    return <Badge variant="destructive">{orderStatusLabels[status]}</Badge>
-  }
-  return <Badge variant="secondary">{orderStatusLabels[status]}</Badge>
 }
 
 export default async function AdminOrdersPage({ searchParams }: AdminOrdersPageProps) {
@@ -103,9 +89,15 @@ export default async function AdminOrdersPage({ searchParams }: AdminOrdersPageP
     <Page>
       <PageHeader>
         <PageHeaderContent>
-          <PageTitle id="orders-heading">订单审核</PageTitle>
+          <PageEyebrow>平台管理</PageEyebrow>
+          <PageTitle>订单审核</PageTitle>
           <PageDescription>审核租户提交的线下套餐订单。</PageDescription>
         </PageHeaderContent>
+        <PageActions>
+          <Button render={<Link href="/admin" />} variant="secondary">
+            <ArrowLeftIcon /> 返回平台管理
+          </Button>
+        </PageActions>
       </PageHeader>
 
       <PageSection aria-labelledby="orders-list-heading">
@@ -117,55 +109,78 @@ export default async function AdminOrdersPage({ searchParams }: AdminOrdersPageP
         <PageToolbar render={<form action="/admin/orders" method="get" />}>
           <Field className="w-full sm:w-48">
             <FieldLabel htmlFor="order-status">状态</FieldLabel>
-            <select
-              className={selectClassName}
-              defaultValue={status ?? ""}
-              id="order-status"
-              name="status"
-            >
+            <FilterSelect defaultValue={status ?? ""} id="order-status" name="status">
               <option value="">全部</option>
               <option value="pending">待确认</option>
               <option value="confirmed">已确认</option>
               <option value="rejected">已拒绝</option>
-            </select>
+            </FilterSelect>
           </Field>
           <Button type="submit" variant="secondary">
             筛选
           </Button>
+          <Button render={<Link href="/admin/orders" />} variant="ghost">
+            清除
+          </Button>
         </PageToolbar>
         <DataRegion>
+          <DataRegionHeader>
+            <p className="m-0 font-medium text-foreground">筛选结果</p>
+            <Badge variant="outline">共 {result.orders.length} 个订单</Badge>
+          </DataRegionHeader>
           <DataRegionContent>
             {result.orders.length === 0 ? (
-              <p className="m-0 p-6 text-sm text-muted-foreground">没有符合条件的订单。</p>
+              <Empty>
+                <EmptyMedia>
+                  <SearchXIcon />
+                </EmptyMedia>
+                <EmptyHeader>
+                  <EmptyTitle>没有符合条件的订单</EmptyTitle>
+                  <EmptyDescription>调整筛选条件后再试。</EmptyDescription>
+                </EmptyHeader>
+              </Empty>
             ) : (
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead className={tableHeadClassName}>租户 ID</TableHead>
-                    <TableHead className={tableHeadClassName}>套餐</TableHead>
-                    <TableHead className={tableHeadClassName}>金额</TableHead>
-                    <TableHead className={tableHeadClassName}>付款凭证号</TableHead>
-                    <TableHead className={tableHeadClassName}>状态</TableHead>
-                    <TableHead className={tableHeadClassName}>提交时间</TableHead>
-                    <TableHead className={tableHeadClassName}>操作</TableHead>
+                    <TableHead className={`${adminTableHeadClassName} max-md:hidden`}>
+                      租户 ID
+                    </TableHead>
+                    <TableHead className={adminTableHeadClassName}>套餐</TableHead>
+                    <TableHead className={adminTableHeadClassName} numeric>
+                      金额
+                    </TableHead>
+                    <TableHead className={`${adminTableHeadClassName} max-md:hidden`}>
+                      付款凭证号
+                    </TableHead>
+                    <TableHead className={adminTableHeadClassName}>状态</TableHead>
+                    <TableHead className={adminTableHeadClassName}>提交时间</TableHead>
+                    <TableHead className={adminTableHeadClassName}>审核时间</TableHead>
+                    <TableHead className={adminTableHeadClassName}>操作</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {result.orders.map((order) => (
                     <TableRow key={order.id}>
-                      <TableCell>{order.tenant_id}</TableCell>
+                      <TableCell
+                        className="max-w-40 truncate max-md:hidden"
+                        title={order.tenant_id}
+                      >
+                        {order.tenant_id}
+                      </TableCell>
                       <TableCell>
                         {order.plan_code} v{order.plan_version}
                       </TableCell>
-                      <TableCell className="tabular-nums">
-                        {formatAmountCents(order.amount_cents)}
-                      </TableCell>
-                      <TableCell>{order.payment_reference}</TableCell>
+                      <TableCell numeric>{formatAmountCents(order.amount_cents)}</TableCell>
+                      <TableCell className="max-md:hidden">{order.payment_reference}</TableCell>
                       <TableCell>
                         <OrderStatusBadge status={order.status} />
                       </TableCell>
                       <TableCell className="tabular-nums">
                         {formatDateTime(order.created_at)}
+                      </TableCell>
+                      <TableCell className="tabular-nums">
+                        {order.reviewed_at === null ? "—" : formatDateTime(order.reviewed_at)}
                       </TableCell>
                       <TableCell>
                         {order.status === "pending" ? (
@@ -174,10 +189,8 @@ export default async function AdminOrdersPage({ searchParams }: AdminOrdersPageP
                             orderId={order.id}
                             rejectAction={rejectOrderAction}
                           />
-                        ) : order.reviewed_at === null ? (
-                          "—"
                         ) : (
-                          <span className="tabular-nums">{formatDateTime(order.reviewed_at)}</span>
+                          "—"
                         )}
                       </TableCell>
                     </TableRow>
@@ -187,11 +200,6 @@ export default async function AdminOrdersPage({ searchParams }: AdminOrdersPageP
             )}
           </DataRegionContent>
         </DataRegion>
-        <p className="m-0 text-sm text-muted-foreground">
-          <Link className={linkClassName} href="/admin">
-            返回平台管理
-          </Link>
-        </p>
       </PageSection>
     </Page>
   )

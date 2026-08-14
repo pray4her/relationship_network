@@ -3,8 +3,8 @@
 from __future__ import annotations
 
 import asyncio
-from dataclasses import dataclass, fields
-from typing import Final
+from dataclasses import dataclass, field, fields
+from typing import Final, cast
 
 from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse, Response
@@ -16,10 +16,12 @@ from relationship_network_api.search_base_contract import (
     CONTRACT_VERSION_HEADER,
     EXECUTABLE_SCHEMA_VERSIONS,
     MAX_PERSON_BATCH_SIZE,
+    NUMERIC_CONDITION_FIELDS,
     REQUEST_ID_HEADER,
     SEARCH_CONTRACT_VERSION_V1,
     CanonicalPersonFields,
     FieldProvenanceClaim,
+    HardCondition,
     PersonBatchRequest,
     PersonBatchResponse,
     PersonCurrentAbsence,
@@ -29,6 +31,9 @@ from relationship_network_api.search_base_contract import (
     SearchBaseErrorBody,
     SearchBaseErrorCategory,
     SearchBaseHealthResponse,
+    SearchHit,
+    TalentSearchRequest,
+    TalentSearchResponse,
 )
 
 DEFAULT_SERVICE_API_KEY: Final = "fake-search-base-key"
@@ -39,6 +44,10 @@ SEEDED_ABSENT_PERSON_ID: Final = "cp-absent-001"
 SEEDED_PUBLICATION_ID: Final = "pub-seed-001"
 SEEDED_PUBLICATION_WITHOUT_SNIPPET_ID: Final = "pub-seed-002"
 SEEDED_SECOND_PERSON_PUBLICATION_ID: Final = "pub-seed-003"
+SEEDED_SEARCH_SEMANTIC_SCORES: Final[dict[str, float]] = {
+    SEEDED_PERSON_ID: 0.37,
+    SEEDED_PERSON_WITHOUT_RANKS_ID: 0.91,
+}
 HTTP_BAD_REQUEST: Final = 400
 HTTP_UNAUTHORIZED: Final = 401
 HTTP_FORBIDDEN: Final = 403
@@ -140,6 +149,11 @@ SEEDED_FIELD_PROVENANCE: Final[dict[str, tuple[FieldProvenanceClaim, ...]]] = {
     ),
 }
 
+SEEDED_SEARCH_HIT_PUBLICATIONS: Final[dict[str, tuple[PersonPublication, ...]]] = {
+    SEEDED_PERSON_ID: (SEEDED_PUBLICATIONS[SEEDED_PERSON_ID][0],),
+    SEEDED_PERSON_WITHOUT_RANKS_ID: SEEDED_PUBLICATIONS[SEEDED_PERSON_WITHOUT_RANKS_ID],
+}
+
 app = FastAPI(title="Fake Search Base")
 
 
@@ -155,6 +169,7 @@ class FakeSearchBaseState:
     hang_seconds: float = 0.0
     status_5xx: bool = False
     rate_limited: bool = False
+    invalid_query: bool = False
     retry_after_seconds: int | None = None
     request_count: int = 0
     last_authorization: str = ""
@@ -162,6 +177,7 @@ class FakeSearchBaseState:
     last_request_id: str = ""
     last_path: str = ""
     last_query: str = ""
+    absent_person_ids: set[str] = field(default_factory=set)
 
 
 state = FakeSearchBaseState()
@@ -170,8 +186,8 @@ state = FakeSearchBaseState()
 def reset_fake_search_base() -> None:
     """Restore scenario switches and captured headers between tests."""
     defaults = FakeSearchBaseState()
-    for field in fields(FakeSearchBaseState):
-        setattr(state, field.name, getattr(defaults, field.name))
+    for field_def in fields(FakeSearchBaseState):
+        setattr(state, field_def.name, getattr(defaults, field_def.name))
 
 
 @app.get("/health")
@@ -199,7 +215,11 @@ async def person_detail(canonical_person_id: str, request: Request) -> Response:
     guarded = await _guard(request)
     if guarded is not None:
         return guarded
-    person = SEEDED_PERSONS.get(canonical_person_id)
+    person = (
+        None
+        if canonical_person_id in state.absent_person_ids
+        else SEEDED_PERSONS.get(canonical_person_id)
+    )
     request_id = _echo_request_id()
     if person is None:
         payload: PersonDetailFound | PersonCurrentAbsence = PersonCurrentAbsence(
@@ -232,7 +252,7 @@ async def person_batch(request: Request) -> Response:
     found: list[CanonicalPersonFields] = []
     absent: list[str] = []
     for person_id in body.canonical_person_ids:
-        person = SEEDED_PERSONS.get(person_id)
+        person = None if person_id in state.absent_person_ids else SEEDED_PERSONS.get(person_id)
         if person is None:
             absent.append(person_id)
         else:
@@ -251,7 +271,11 @@ async def person_evidence(canonical_person_id: str, request: Request) -> Respons
     guarded = await _guard(request)
     if guarded is not None:
         return guarded
-    publications = SEEDED_PUBLICATIONS.get(canonical_person_id)
+    publications = (
+        None
+        if canonical_person_id in state.absent_person_ids
+        else SEEDED_PUBLICATIONS.get(canonical_person_id)
+    )
     request_id = _echo_request_id()
     if publications is None:
         payload: PersonEvidenceFound | PersonCurrentAbsence = PersonCurrentAbsence(
@@ -270,6 +294,106 @@ async def person_evidence(canonical_person_id: str, request: Request) -> Respons
             field_provenance=SEEDED_FIELD_PROVENANCE.get(canonical_person_id, ()),
         )
     return _json_payload(payload)
+
+
+@app.post("/v1/search")
+async def talent_search(request: Request) -> Response:
+    guarded = await _guard(request)
+    if guarded is not None:
+        return guarded
+    if state.invalid_query:
+        return _error_response("invalid_query", status_code=HTTP_BAD_REQUEST, retryable=False)
+    try:
+        body = TalentSearchRequest.model_validate(await request.json())
+    except (TypeError, ValueError, ValidationError):
+        return _error_response("invalid_query", status_code=HTTP_BAD_REQUEST, retryable=False)
+    payload = TalentSearchResponse(
+        request_id=_echo_request_id(),
+        data_version=state.current_data_version,
+        hits=tuple(_deterministic_search_hits(body)),
+    )
+    return _json_payload(payload)
+
+
+def _deterministic_search_hits(body: TalentSearchRequest) -> list[SearchHit]:
+    hits: list[SearchHit] = []
+    has_topic = body.has_research_topic
+    for person_id, person in SEEDED_PERSONS.items():
+        if not all(_condition_matches(person, condition) for condition in body.hard_conditions):
+            continue
+        hits.append(
+            SearchHit(
+                person=person,
+                hit_publications=SEEDED_SEARCH_HIT_PUBLICATIONS[person_id],
+                semantic_score=SEEDED_SEARCH_SEMANTIC_SCORES[person_id] if has_topic else None,
+            )
+        )
+    if has_topic:
+        hits.sort(key=lambda hit: cast("float", hit.semantic_score), reverse=True)
+    else:
+        hits.sort(key=lambda hit: (-hit.person.h_index, hit.person.canonical_person_id))
+    return hits[: body.hit_limit]
+
+
+def _condition_matches(person: CanonicalPersonFields, condition: HardCondition) -> bool:
+    if condition.field in NUMERIC_CONDITION_FIELDS:
+        return _numeric_condition_matches(person, condition)
+    if condition.field in ("chinese_identity", "country"):
+        return _enum_condition_matches(person, condition)
+    return _affiliation_condition_matches(person, condition)
+
+
+def _numeric_condition_matches(
+    person: CanonicalPersonFields,
+    condition: HardCondition,
+) -> bool:
+    actual = _numeric_field_value(person, condition.field)
+    if actual is None:
+        return False
+    if condition.operator == "gte":
+        threshold = cast("int | float", condition.value)
+        return actual >= threshold
+    if condition.operator == "lte":
+        threshold = cast("int | float", condition.value)
+        return actual <= threshold
+    bounds = cast("list[int | float]", condition.value)
+    return bounds[0] <= actual <= bounds[1]
+
+
+def _enum_condition_matches(
+    person: CanonicalPersonFields,
+    condition: HardCondition,
+) -> bool:
+    actual = _enum_field_value(person, condition.field)
+    if condition.operator == "eq":
+        return actual == cast("str", condition.value)
+    return actual in cast("list[str]", condition.value)
+
+
+def _affiliation_condition_matches(
+    person: CanonicalPersonFields,
+    condition: HardCondition,
+) -> bool:
+    needle = cast("str", condition.value).lower()
+    return needle in person.current_affiliation.lower()
+
+
+def _numeric_field_value(person: CanonicalPersonFields, field: str) -> int | None:
+    if field == "qs_top200_rank":
+        return person.qs_top200_rank
+    if field == "world_top500_rank":
+        return person.world_top500_rank
+    if field == "h_index":
+        return person.h_index
+    if field == "total_citations":
+        return person.total_citations
+    return None
+
+
+def _enum_field_value(person: CanonicalPersonFields, field: str) -> str:
+    if field == "chinese_identity":
+        return person.chinese_identity
+    return person.country
 
 
 async def _guard(request: Request) -> Response | None:
@@ -314,12 +438,24 @@ def _json_payload(
     | PersonDetailFound
     | PersonCurrentAbsence
     | PersonBatchResponse
-    | PersonEvidenceFound,
+    | PersonEvidenceFound
+    | TalentSearchResponse,
 ) -> JSONResponse:
+    content = payload.model_dump(mode="json")
+    if isinstance(payload, TalentSearchResponse):
+        content = _omit_absent_semantic_scores(content)
     return JSONResponse(
-        content=payload.model_dump(mode="json"),
+        content=content,
         headers={REQUEST_ID_HEADER: payload.request_id},
     )
+
+
+def _omit_absent_semantic_scores(content: dict[str, object]) -> dict[str, object]:
+    hits = cast("list[dict[str, object]]", content["hits"])
+    for hit in hits:
+        if "semantic_score" in hit and hit["semantic_score"] is None:
+            del hit["semantic_score"]
+    return content
 
 
 def _authentication_error(request: Request) -> JSONResponse | None:

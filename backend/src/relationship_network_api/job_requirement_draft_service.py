@@ -4,12 +4,15 @@ from __future__ import annotations
 
 import uuid
 from copy import deepcopy
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from datetime import UTC, datetime
 from typing import TYPE_CHECKING, Final, cast, final
 
 from sqlalchemy import select
 
+from relationship_network_api import (
+    job_requirement_schema_upgrade as schema_upgrade,
+)
 from relationship_network_api import tenant_audit_service, tenant_context
 from relationship_network_api.job_requirement_validation import (
     INVALID_BUSINESS_RULE,
@@ -23,8 +26,11 @@ from relationship_network_api.models import (
     JOB_STATUS_ARCHIVED,
     Job,
     JobRequirementDraft,
+    JobRequirementDraftSchemaUpgrade,
     JobRequirementParsingTask,
     JobRequirementSchemaVersion,
+    LlmConfigurationCurrent,
+    LlmConfigurationVersion,
 )
 
 if TYPE_CHECKING:
@@ -39,6 +45,10 @@ DRAFT_LOCKED: Final = "requirement_draft_locked"
 DRAFT_NOT_EDITABLE: Final = "requirement_draft_not_editable"
 DRAFT_INVALID: Final = "requirement_draft_invalid"
 JOB_ARCHIVED: Final = "job_archived"
+SCHEMA_UPGRADE_UNAVAILABLE: Final = "requirement_schema_upgrade_unavailable"
+SCHEMA_UPGRADE_NOT_FOUND: Final = "requirement_schema_upgrade_not_found"
+SCHEMA_UPGRADE_RESOLUTION_INVALID: Final = "requirement_schema_upgrade_resolution_invalid"
+SCHEMA_UPGRADE_LOSSY_UNRESOLVED: Final = "schema_upgrade_lossy_unresolved"
 
 READ_ONLY_JOB_ARCHIVED: Final = "job_archived"
 READ_ONLY_REPLACEMENT: Final = "replacement_in_progress"
@@ -46,7 +56,12 @@ READ_ONLY_STATUS: Final = "draft_not_editable"
 
 ACTION_UPDATE: Final = "job_requirement_draft.update"
 ACTION_ABANDON: Final = "job_requirement_draft.abandon"
+ACTION_SCHEMA_UPGRADE: Final = "job_requirement_draft.schema_upgrade"
+ACTION_RESOLVE_UPGRADE: Final = "job_requirement_draft.schema_upgrade_resolve"
 TARGET_TYPE: Final = "job_requirement_draft"
+
+RESOLUTION_DROP: Final = "drop"
+RESOLUTION_DOWNGRADE: Final = "downgrade_unsupported"
 
 NONTERMINAL_STATUSES: Final = ("queued", "running", "retry_scheduled", "cancel_requested")
 NUMERIC_FIELDS: Final = {
@@ -89,6 +104,35 @@ class RequirementDraftMutationView:
     chinese_identity_values: list[str]
     created_at: datetime
     updated_at: datetime
+    pending_upgrade_items: list[dict[str, object]] = field(default_factory=list)
+
+
+@final
+@dataclass(frozen=True)
+class SchemaUpgradeRecordView:
+    id: uuid.UUID
+    draft_id: uuid.UUID
+    from_schema_version_id: str
+    to_schema_version_id: str
+    converter_version: str
+    item_mappings: list[dict[str, object]]
+    lossy_resolutions: list[dict[str, object]]
+    actor_user_id: uuid.UUID | None
+    created_at: datetime
+
+
+@final
+@dataclass(frozen=True)
+class SchemaUpgradeResultView:
+    draft: RequirementDraftMutationView
+    upgrade: SchemaUpgradeRecordView
+
+
+@final
+@dataclass(frozen=True)
+class LossyResolutionSubmission:
+    item_id: str
+    resolution: str
 
 
 def merge_editable_requirement_document(  # noqa: C901, PLR0912, PLR0915
@@ -337,8 +381,16 @@ async def update_requirement_draft(  # noqa: PLR0913
         result=tenant_audit_service.AUDIT_RESULT_SUCCESS,
         detail=f"revision={draft.revision}",
     )
+    # updated_at is server-owned (onupdate); reload it before the commit.
+    await session.flush()
+    await session.refresh(draft)
     await session.commit()
-    return _view(draft, schema=schema, read_only_reason=None)
+    pending = await pending_schema_upgrade_items(
+        session,
+        tenant_id=tenant_id,
+        draft_id=draft.id,
+    )
+    return _view(draft, schema=schema, read_only_reason=None, pending_upgrade_items=pending)
 
 
 async def abandon_requirement_draft(  # noqa: PLR0913
@@ -383,8 +435,365 @@ async def abandon_requirement_draft(  # noqa: PLR0913
         result=tenant_audit_service.AUDIT_RESULT_SUCCESS,
         detail=f"revision={draft.revision}",
     )
+    # updated_at is server-owned (onupdate); reload it before the commit.
+    await session.flush()
+    await session.refresh(draft)
     await session.commit()
-    return _view(draft, schema=schema, read_only_reason=READ_ONLY_STATUS)
+    pending = await pending_schema_upgrade_items(
+        session,
+        tenant_id=tenant_id,
+        draft_id=draft.id,
+    )
+    return _view(
+        draft,
+        schema=schema,
+        read_only_reason=READ_ONLY_STATUS,
+        pending_upgrade_items=pending,
+    )
+
+
+async def pending_schema_upgrade_items(
+    session: AsyncSession,
+    *,
+    tenant_id: uuid.UUID,
+    draft_id: uuid.UUID,
+) -> list[dict[str, object]]:
+    """Return the unresolved pending upgrade items recorded for a draft."""
+    upgrades = (
+        (
+            await session.execute(
+                select(JobRequirementDraftSchemaUpgrade)
+                .where(
+                    JobRequirementDraftSchemaUpgrade.tenant_id == tenant_id,
+                    JobRequirementDraftSchemaUpgrade.draft_id == draft_id,
+                )
+                .order_by(JobRequirementDraftSchemaUpgrade.created_at)
+            )
+        )
+        .scalars()
+        .all()
+    )
+    pending: list[dict[str, object]] = []
+    for upgrade in upgrades:
+        pending.extend(
+            {
+                "item_id": entry["item_id"],
+                "kind": entry["kind"],
+                "snapshot": deepcopy(cast("dict[str, object]", entry["snapshot"])),
+            }
+            for entry in upgrade.lossy_resolutions
+            if entry["resolution"] is None
+        )
+    return pending
+
+
+async def upgrade_draft_schema(  # noqa: PLR0913
+    session: AsyncSession,
+    *,
+    tenant_id: uuid.UUID,
+    job_id: uuid.UUID,
+    draft_id: uuid.UUID,
+    actor_user_id: uuid.UUID,
+    expected_revision: int,
+) -> SchemaUpgradeResultView:
+    """Explicitly upgrade an editable draft to the current configuration's schema.
+
+    The target schema is derived from the prompt bound to the current LLM
+    configuration, and only the registered deterministic converter runs —
+    never an LLM re-interpretation of historical content.
+    """
+    job = await _load_job(session, tenant_id=tenant_id, job_id=job_id)
+    draft = await _locked_draft(
+        session,
+        tenant_id=tenant_id,
+        job_id=job_id,
+        draft_id=draft_id,
+    )
+    if draft is None:
+        raise RequirementDraftError(DRAFT_NOT_FOUND)
+    schema = await _schema(session, draft.requirement_schema_version_id)
+    await _assert_mutable(
+        session,
+        job=job,
+        draft=draft,
+        schema=schema,
+        expected_revision=expected_revision,
+        actor_user_id=actor_user_id,
+        action=ACTION_SCHEMA_UPGRADE,
+    )
+    target_schema_id = await _current_prompt_compatible_schema_id(session)
+    converter = (
+        None
+        if target_schema_id is None
+        else schema_upgrade.converter_version_for(
+            draft.requirement_schema_version_id,
+            target_schema_id,
+        )
+    )
+    if (
+        target_schema_id is None
+        or target_schema_id == draft.requirement_schema_version_id
+        or converter is None
+    ):
+        await _reject(
+            session,
+            tenant_id=tenant_id,
+            actor_user_id=actor_user_id,
+            draft_id=draft.id,
+            action=ACTION_SCHEMA_UPGRADE,
+            code=SCHEMA_UPGRADE_UNAVAILABLE,
+        )
+    conversion = schema_upgrade.convert_document(
+        draft.result_json,
+        from_schema_id=draft.requirement_schema_version_id,
+        to_schema_id=cast("str", target_schema_id),
+    )
+    try:
+        validated = validate_editable_requirement_document(
+            conversion.document,
+            schema=manifest.read_requirement_editor_schema(cast("str", target_schema_id)),
+            asset=_asset(cast("str", target_schema_id)),
+        )
+    except RequirementResultValidationError as error:
+        await _reject(
+            session,
+            tenant_id=tenant_id,
+            actor_user_id=actor_user_id,
+            draft_id=draft.id,
+            action=ACTION_SCHEMA_UPGRADE,
+            code=DRAFT_INVALID,
+        )
+        message = "unreachable"
+        raise AssertionError(message) from error
+    upgrade = JobRequirementDraftSchemaUpgrade(
+        id=uuid.uuid4(),
+        tenant_id=tenant_id,
+        job_id=job_id,
+        draft_id=draft.id,
+        from_schema_version_id=draft.requirement_schema_version_id,
+        to_schema_version_id=cast("str", target_schema_id),
+        converter_version=cast("str", converter),
+        pre_upgrade_json=deepcopy(draft.result_json),
+        item_mappings=conversion.item_mappings,
+        lossy_resolutions=[
+            {
+                "item_id": item["item_id"],
+                "kind": item["kind"],
+                "snapshot": item["snapshot"],
+                "resolution": None,
+            }
+            for item in conversion.lossy_items
+        ],
+        actor_user_id=actor_user_id,
+    )
+    session.add(upgrade)
+    draft.result_json = validated
+    draft.requirement_schema_version_id = cast("str", target_schema_id)
+    draft.revision += 1
+    draft.updated_by = actor_user_id
+    tenant_audit_service.record_event(
+        session,
+        tenant_id=tenant_id,
+        actor_user_id=actor_user_id,
+        action=ACTION_SCHEMA_UPGRADE,
+        target_type=TARGET_TYPE,
+        target_id=str(draft.id),
+        result=tenant_audit_service.AUDIT_RESULT_SUCCESS,
+        detail=(
+            f"from={upgrade.from_schema_version_id} to={upgrade.to_schema_version_id} "
+            f"converter={upgrade.converter_version} lossy={len(conversion.lossy_items)} "
+            f"revision={draft.revision}"
+        ),
+    )
+    # updated_at is server-owned (onupdate); reload it before the commit.
+    await session.flush()
+    await session.refresh(draft)
+    await session.commit()
+    target_schema = await _schema(session, cast("str", target_schema_id))
+    pending = [
+        {"item_id": item["item_id"], "kind": item["kind"], "snapshot": deepcopy(item["snapshot"])}
+        for item in conversion.lossy_items
+    ]
+    return SchemaUpgradeResultView(
+        draft=_view(
+            draft,
+            schema=target_schema,
+            read_only_reason=None,
+            pending_upgrade_items=pending,
+        ),
+        upgrade=_upgrade_view(upgrade),
+    )
+
+
+async def resolve_schema_upgrade_lossy_items(  # noqa: PLR0913
+    session: AsyncSession,
+    *,
+    tenant_id: uuid.UUID,
+    job_id: uuid.UUID,
+    draft_id: uuid.UUID,
+    upgrade_id: uuid.UUID,
+    actor_user_id: uuid.UUID,
+    expected_revision: int,
+    resolutions: list[LossyResolutionSubmission],
+) -> RequirementDraftMutationView:
+    """Apply member-chosen deterministic resolutions to pending upgrade items."""
+    job = await _load_job(session, tenant_id=tenant_id, job_id=job_id)
+    draft = await _locked_draft(
+        session,
+        tenant_id=tenant_id,
+        job_id=job_id,
+        draft_id=draft_id,
+    )
+    if draft is None:
+        raise RequirementDraftError(DRAFT_NOT_FOUND)
+    schema = await _schema(session, draft.requirement_schema_version_id)
+    await _assert_mutable(
+        session,
+        job=job,
+        draft=draft,
+        schema=schema,
+        expected_revision=expected_revision,
+        actor_user_id=actor_user_id,
+        action=ACTION_RESOLVE_UPGRADE,
+    )
+    upgrade = (
+        await session.execute(
+            select(JobRequirementDraftSchemaUpgrade)
+            .where(
+                JobRequirementDraftSchemaUpgrade.id == upgrade_id,
+                JobRequirementDraftSchemaUpgrade.tenant_id == tenant_id,
+                JobRequirementDraftSchemaUpgrade.job_id == job_id,
+                JobRequirementDraftSchemaUpgrade.draft_id == draft_id,
+            )
+            .with_for_update()
+        )
+    ).scalar_one_or_none()
+    if upgrade is None:
+        raise RequirementDraftError(SCHEMA_UPGRADE_NOT_FOUND)
+    entries = deepcopy(upgrade.lossy_resolutions)
+    by_item_id = {cast("str", entry["item_id"]): entry for entry in entries}
+    changed_at = datetime.now(UTC)
+    actor = str(actor_user_id)
+    timestamp = changed_at.isoformat()
+    document = deepcopy(draft.result_json)
+    for submission in resolutions:
+        entry = by_item_id.get(submission.item_id)
+        if (
+            entry is None
+            or entry["resolution"] is not None
+            or submission.resolution not in {RESOLUTION_DROP, RESOLUTION_DOWNGRADE}
+        ):
+            await _reject(
+                session,
+                tenant_id=tenant_id,
+                actor_user_id=actor_user_id,
+                draft_id=draft.id,
+                action=ACTION_RESOLVE_UPGRADE,
+                code=SCHEMA_UPGRADE_RESOLUTION_INVALID,
+            )
+            message = "unreachable"
+            raise AssertionError(message)
+        snapshot = cast("dict[str, object]", entry["snapshot"])
+        if submission.resolution == RESOLUTION_DROP:
+            cast("list[object]", document["removed_facts"]).append(
+                _removed_fact(
+                    snapshot,
+                    kind=cast("str", entry["kind"]),
+                    actor=actor,
+                    timestamp=timestamp,
+                )
+            )
+        else:
+            cast("list[object]", document["unsupported_conditions"]).append(
+                {
+                    "item_id": str(uuid.uuid4()),
+                    "origin": "user_added",
+                    "description": cast("str", snapshot["description"]),
+                    "evidence": [],
+                    "model_snapshot": None,
+                    "last_modified_by": actor,
+                    "last_modified_at": timestamp,
+                }
+            )
+        entry["resolution"] = {
+            "choice": submission.resolution,
+            "resolved_by": actor,
+            "resolved_at": timestamp,
+        }
+    try:
+        validated = validate_editable_requirement_document(
+            document,
+            schema=manifest.read_requirement_editor_schema(draft.requirement_schema_version_id),
+            asset=_asset(draft.requirement_schema_version_id),
+        )
+    except RequirementResultValidationError as error:
+        await _reject(
+            session,
+            tenant_id=tenant_id,
+            actor_user_id=actor_user_id,
+            draft_id=draft.id,
+            action=ACTION_RESOLVE_UPGRADE,
+            code=DRAFT_INVALID,
+        )
+        message = "unreachable"
+        raise AssertionError(message) from error
+    draft.result_json = validated
+    draft.revision += 1
+    draft.updated_by = actor_user_id
+    upgrade.lossy_resolutions = entries
+    tenant_audit_service.record_event(
+        session,
+        tenant_id=tenant_id,
+        actor_user_id=actor_user_id,
+        action=ACTION_RESOLVE_UPGRADE,
+        target_type=TARGET_TYPE,
+        target_id=str(draft.id),
+        result=tenant_audit_service.AUDIT_RESULT_SUCCESS,
+        detail=f"resolved={len(resolutions)} revision={draft.revision}",
+    )
+    # updated_at is server-owned (onupdate); reload it before the commit.
+    await session.flush()
+    await session.refresh(draft)
+    await session.commit()
+    pending = await pending_schema_upgrade_items(
+        session,
+        tenant_id=tenant_id,
+        draft_id=draft.id,
+    )
+    return _view(draft, schema=schema, read_only_reason=None, pending_upgrade_items=pending)
+
+
+async def _current_prompt_compatible_schema_id(session: AsyncSession) -> str | None:
+    configuration = (
+        await session.execute(
+            select(LlmConfigurationVersion)
+            .join(
+                LlmConfigurationCurrent,
+                LlmConfigurationCurrent.version_id == LlmConfigurationVersion.id,
+            )
+            .where(LlmConfigurationCurrent.singleton)
+        )
+    ).scalar_one_or_none()
+    if configuration is None:
+        return None
+    try:
+        return manifest.prompt_asset(configuration.prompt_version_id).compatible_schema_version_id
+    except manifest.LlmAssetError:
+        return None
+
+
+def _upgrade_view(upgrade: JobRequirementDraftSchemaUpgrade) -> SchemaUpgradeRecordView:
+    return SchemaUpgradeRecordView(
+        id=upgrade.id,
+        draft_id=upgrade.draft_id,
+        from_schema_version_id=upgrade.from_schema_version_id,
+        to_schema_version_id=upgrade.to_schema_version_id,
+        converter_version=upgrade.converter_version,
+        item_mappings=deepcopy(upgrade.item_mappings),
+        lossy_resolutions=deepcopy(upgrade.lossy_resolutions),
+        actor_user_id=upgrade.actor_user_id,
+        created_at=upgrade.created_at,
+    )
 
 
 async def read_only_reason(
@@ -549,6 +958,7 @@ def _view(
     *,
     schema: JobRequirementSchemaVersion,
     read_only_reason: str | None,
+    pending_upgrade_items: list[dict[str, object]] | None = None,
 ) -> RequirementDraftMutationView:
     return RequirementDraftMutationView(
         id=draft.id,
@@ -566,6 +976,7 @@ def _view(
         chinese_identity_values=list(schema.chinese_identity_values),
         created_at=draft.created_at,
         updated_at=draft.updated_at,
+        pending_upgrade_items=deepcopy(pending_upgrade_items or []),
     )
 
 

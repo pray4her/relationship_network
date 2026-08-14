@@ -59,9 +59,10 @@ test("completes a register, logout and login round trip", async ({ page }) => {
 
   await page.waitForURL("/")
   await expect(page.getByText("E2E 测试用户", { exact: true })).toBeVisible()
-  await expect(page.getByText("角色：租户所有者")).toBeVisible()
 
-  await page.getByRole("button", { name: "退出登录" }).click()
+  await page.getByRole("button", { name: "打开账户菜单" }).click()
+  await expect(page.getByRole("menuitem", { name: "租户所有者" })).toBeVisible()
+  await page.getByRole("menuitem", { name: "退出登录" }).click()
   await page.waitForURL("/")
   await expect(page.getByRole("link", { name: "登录" })).toBeVisible()
 

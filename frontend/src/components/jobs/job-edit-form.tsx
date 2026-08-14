@@ -58,7 +58,7 @@ export function JobEditForm({ action, jobId, title, description }: JobEditFormPr
       </Field>
 
       <div>
-        <Button type="submit" disabled={isPending}>
+        <Button pending={isPending} type="submit">
           {isPending ? "保存中…" : "保存更改"}
         </Button>
       </div>

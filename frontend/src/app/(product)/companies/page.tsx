@@ -6,6 +6,7 @@ import { redirect } from "next/navigation"
 
 import { createCompanyAction } from "@/app/actions/companies"
 import { CompanyCreateForm } from "@/components/companies/company-create-form"
+import { companyStatusMeta } from "@/components/companies/company-status"
 import {
   DataRegion,
   DataRegionContent,
@@ -24,8 +25,8 @@ import {
   PageSectionTitle,
   PageTitle,
 } from "@/components/layout/page"
+import { StatusBadge } from "@/components/status-badge"
 import { Alert, AlertDescription } from "@/components/ui/alert"
-import { Badge } from "@/components/ui/badge"
 import { Empty, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from "@/components/ui/empty"
 import {
   Table,
@@ -37,19 +38,10 @@ import {
 } from "@/components/ui/table"
 import { createAuthTransport, loadAuthSession, SESSION_COOKIE_NAME } from "@/lib/auth-client"
 import { createCompaniesTransport, loadCompanies } from "@/lib/companies-client"
-import type { CompanyStatus } from "@/lib/companies-contract"
+import { formatDateTime } from "@/lib/format"
 
 export const metadata: Metadata = {
   title: "企业管理",
-}
-
-const statusLabels: Record<CompanyStatus, string> = {
-  active: "活跃",
-  archived: "已归档",
-}
-
-function formatDateTime(value: string): string {
-  return new Date(value).toLocaleString("zh-CN", { hour12: false })
 }
 
 const linkClassName = "font-medium underline underline-offset-4"
@@ -177,13 +169,7 @@ export default async function CompaniesPage() {
                         </Link>
                       </TableCell>
                       <TableCell>
-                        {company.status === "active" ? (
-                          <Badge className="bg-success/10 text-success">
-                            {statusLabels[company.status]}
-                          </Badge>
-                        ) : (
-                          <Badge variant="secondary">{statusLabels[company.status]}</Badge>
-                        )}
+                        <StatusBadge {...companyStatusMeta[company.status]} />
                       </TableCell>
                       <TableCell className="tabular-nums">
                         {formatDateTime(company.created_at)}

@@ -8,7 +8,6 @@ import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Button } from "@/components/ui/button"
 import { Field, FieldDescription, FieldLabel } from "@/components/ui/field"
 import { Input } from "@/components/ui/input"
-import { Spinner } from "@/components/ui/spinner"
 
 type InviteRegisterFormProps = {
   readonly action: (state: AuthFormState, formData: FormData) => Promise<AuthFormState>
@@ -41,7 +40,15 @@ export function InviteRegisterForm({
 
       <Field>
         <FieldLabel htmlFor="email">邮箱</FieldLabel>
-        <Input id="email" name="email" readOnly type="email" value={email} />
+        <Input
+          aria-readonly="true"
+          className="cursor-default bg-muted"
+          id="email"
+          name="email"
+          readOnly
+          type="email"
+          value={email}
+        />
         <FieldDescription>邮箱已锁定为邀请邮箱</FieldDescription>
       </Field>
       <FormField
@@ -60,8 +67,7 @@ export function InviteRegisterForm({
         type="text"
       />
 
-      <Button className="w-full" disabled={isPending} type="submit">
-        {isPending ? <Spinner data-icon="inline-start" /> : null}
+      <Button className="w-full" pending={isPending} type="submit">
         注册并接受邀请
       </Button>
     </form>

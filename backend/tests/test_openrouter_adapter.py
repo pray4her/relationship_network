@@ -3,11 +3,16 @@ import json
 import httpx
 import pytest
 
+from relationship_network_api.llm_assets.manifest import (
+    CALL_TYPE_JOB_REQUIREMENT_PARSING,
+    JOB_REQUIREMENT_JSON_SCHEMA_NAME,
+)
 from relationship_network_api.openrouter import (
     CandidateConfiguration,
     OpenRouterAdapter,
     OpenRouterAdapterError,
     OpenRouterClientConfig,
+    OpenRouterProbeResult,
 )
 
 
@@ -18,6 +23,15 @@ def candidate() -> CandidateConfiguration:
         temperature=0,
         max_output_tokens=8192,
         request_timeout_seconds=180,
+    )
+
+
+async def _probe(adapter: OpenRouterAdapter) -> OpenRouterProbeResult:
+    return await adapter.probe(
+        candidate(),
+        call_type=CALL_TYPE_JOB_REQUIREMENT_PARSING,
+        system_prompt="system",
+        schema={"type": "object"},
     )
 
 
@@ -48,7 +62,7 @@ async def test_probe_forces_strict_non_streaming_private_same_model_request() ->
             ),
             client=client,
         )
-        result = await adapter.probe(candidate())
+        result = await _probe(adapter)
 
     body = captured["body"]
     assert isinstance(body, dict)
@@ -63,30 +77,26 @@ async def test_probe_forces_strict_non_streaming_private_same_model_request() ->
     assert body["response_format"] == {
         "type": "json_schema",
         "json_schema": {
-            "name": "relationship_network_config_probe",
+            "name": JOB_REQUIREMENT_JSON_SCHEMA_NAME,
             "strict": True,
-            "schema": {
-                "additionalProperties": False,
-                "properties": {"capability": {"const": "ok", "type": "string"}},
-                "required": ["capability"],
-                "type": "object",
-            },
+            "schema": {"type": "object"},
         },
     }
     assert result.provider_request_id == "gen-1"
     assert result.actual_provider == "example-provider"
+    assert result.content == {"capability": "ok"}
     assert result.exchange.status_code == 200
     assert b'"gen-1"' in result.exchange.raw_body
 
 
 @pytest.mark.anyio
-async def test_probe_rejects_extra_structured_output_properties() -> None:
+async def test_probe_rejects_non_object_structured_output() -> None:
     def handler(_request: httpx.Request) -> httpx.Response:
         return httpx.Response(
             200,
             json={
                 "id": "gen-invalid",
-                "choices": [{"message": {"content": '{"capability":"ok","extra":true}'}}],
+                "choices": [{"message": {"content": '"not-an-object"'}}],
             },
         )
 
@@ -96,7 +106,7 @@ async def test_probe_rejects_extra_structured_output_properties() -> None:
             client=client,
         )
         with pytest.raises(OpenRouterAdapterError) as captured:
-            _ = await adapter.probe(candidate())
+            _ = await _probe(adapter)
 
     assert captured.value.category == "invalid_structured_output"
     assert captured.value.retryable is True
@@ -183,7 +193,7 @@ async def test_probe_classifies_throttling_and_retry_after() -> None:
             client=client,
         )
         with pytest.raises(OpenRouterAdapterError) as captured:
-            _ = await adapter.probe(candidate())
+            _ = await _probe(adapter)
 
     assert captured.value.category == "rate_limited"
     assert captured.value.retryable is True
@@ -203,7 +213,7 @@ async def test_probe_classifies_authentication_as_permanent() -> None:
             client=client,
         )
         with pytest.raises(OpenRouterAdapterError) as captured:
-            _ = await adapter.probe(candidate())
+            _ = await _probe(adapter)
 
     assert captured.value.category == "authentication_failed"
     assert captured.value.retryable is False
@@ -222,7 +232,7 @@ async def test_probe_marks_transport_timeout_outcome_unknown() -> None:
             client=client,
         )
         with pytest.raises(OpenRouterAdapterError) as captured:
-            _ = await adapter.probe(candidate())
+            _ = await _probe(adapter)
 
     assert captured.value.category == "timeout"
     assert captured.value.retryable is True

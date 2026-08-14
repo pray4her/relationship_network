@@ -1,10 +1,10 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
   <title>Relationship Network</title>
-  <rect width="32" height="32" rx="8" fill="#cc785c" />
-  <g fill="#faf7f2">
+  <rect width="32" height="32" rx="8" fill="#000000" />
+  <g fill="#ffffff">
     <circle cx="10" cy="11" r="3.2" />
     <circle cx="22" cy="11" r="3.2" />
     <circle cx="16" cy="21" r="3.2" />
   </g>
-  <path d="M12.5 12.9 14.6 18.4M19.5 12.9 17.4 18.4M13.2 11h5.6" stroke="#faf7f2" stroke-width="1.6" stroke-linecap="round" />
+  <path d="M12.5 12.9 14.6 18.4M19.5 12.9 17.4 18.4M13.2 11h5.6" stroke="#ffffff" stroke-width="1.6" stroke-linecap="round" />
 </svg>

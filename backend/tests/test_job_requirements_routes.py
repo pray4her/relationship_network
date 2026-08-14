@@ -14,13 +14,18 @@ from fastapi.testclient import TestClient
 
 from relationship_network_api import (
     job_requirement_draft_service,
+    job_requirement_history_service,
     job_requirement_service,
     job_requirement_version_service,
+    tenant_audit_service,
+    usage_service,
 )
 from relationship_network_api.auth_service import Authentication, MembershipView, UserView
 from relationship_network_api.deps import TenantContext, get_db_session, get_tenant_context
+from relationship_network_api.job_service import JOB_NOT_FOUND_DETAIL, JobNotFoundError
 from relationship_network_api.main import create_app
 from relationship_network_api.routers import job_requirements
+from relationship_network_api.tenant_audit_service import TenantAuditEventView
 
 if TYPE_CHECKING:
     from collections.abc import AsyncIterator
@@ -35,6 +40,9 @@ TASK_ID = uuid.UUID("44444444-4444-4444-8444-444444444444")
 SNAPSHOT_ID = uuid.UUID("55555555-5555-4555-8555-555555555555")
 CONFIGURATION_ID = uuid.UUID("66666666-6666-4666-8666-666666666666")
 DRAFT_ID = uuid.UUID("99999999-9999-4999-8999-999999999999")
+UPGRADE_ID = uuid.UUID("aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa")
+EVENT_ID = uuid.UUID("bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb")
+RESOLUTION_ITEM_ID = uuid.UUID("cccccccc-cccc-4ccc-8ccc-cccccccccccc")
 NOW = datetime(2026, 8, 11, 8, 0, tzinfo=UTC)
 IDEMPOTENCY_KEY = "88888888-8888-4888-8888-888888888888"
 
@@ -73,17 +81,23 @@ def make_client(permissions: frozenset[str], *, writable: bool = True) -> TestCl
     app.dependency_overrides[get_tenant_context] = override_context
     if "jobs:read" in permissions:
         app.dependency_overrides[job_requirements.require_requirement_jobs_read] = override_context
-    if "jobs:manage" in permissions:
 
-        async def override_manage() -> TenantContext:
-            if not writable:
-                raise HTTPException(
-                    status_code=status.HTTP_403_FORBIDDEN,
-                    detail="subscription_read_only",
-                )
-            return context
+    async def override_manage() -> TenantContext:
+        if "jobs:manage" not in permissions:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="permission_denied",
+            )
+        if not writable:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="subscription_read_only",
+            )
+        return context
 
-        app.dependency_overrides[job_requirements.require_requirement_jobs_manage] = override_manage
+    app.dependency_overrides[job_requirements.require_requirement_jobs_manage_audited] = (
+        override_manage
+    )
     return TestClient(app)
 
 
@@ -482,6 +496,54 @@ def test_confirm_draft_requires_manage(monkeypatch: MonkeyPatch) -> None:
     assert response.status_code == status.HTTP_403_FORBIDDEN
 
 
+def test_write_denial_records_tenant_audit(monkeypatch: MonkeyPatch) -> None:
+    recorded: list[dict[str, object]] = []
+
+    def capture_audit(_session: object, **kwargs: object) -> None:
+        recorded.append(kwargs)
+
+    async def not_writable(*_args: object, **_kwargs: object) -> bool:
+        return False
+
+    monkeypatch.setattr(tenant_audit_service, "record_event", capture_audit)
+    monkeypatch.setattr(usage_service, "is_tenant_writable", not_writable)
+
+    context = make_context(frozenset({"jobs:read"}))
+    app = create_app(checks=())
+
+    async def commit() -> None:
+        return None
+
+    async def override_session() -> AsyncIterator[AsyncSession]:
+        yield cast("AsyncSession", cast("object", SimpleNamespace(commit=commit)))
+
+    async def override_context() -> TenantContext:
+        return context
+
+    app.dependency_overrides[get_db_session] = override_session
+    app.dependency_overrides[get_tenant_context] = override_context
+    client = TestClient(app)
+
+    response = client.post(
+        f"/jobs/{JOB_ID}/requirement-drafts/{DRAFT_ID}/confirm",
+        json={"expected_revision": 1},
+    )
+
+    assert response.status_code == status.HTTP_403_FORBIDDEN
+    assert response.json() == {"detail": "permission_denied"}
+    assert recorded == [
+        {
+            "tenant_id": TENANT_ID,
+            "actor_user_id": USER_ID,
+            "action": "job_requirement.write_denied",
+            "target_type": "job",
+            "target_id": str(JOB_ID),
+            "result": "failure",
+            "detail": "permission_denied",
+        }
+    ]
+
+
 def test_confirm_draft_returns_version(monkeypatch: MonkeyPatch) -> None:
     version_id = uuid.UUID("aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa")
 
@@ -581,3 +643,334 @@ def test_list_versions_returns_history(monkeypatch: MonkeyPatch) -> None:
     body = response.json()
     assert body[0]["version_number"] == 1
     assert body[0]["is_current"] is True
+
+
+def upgrade_record_view() -> job_requirement_draft_service.SchemaUpgradeRecordView:
+    return job_requirement_draft_service.SchemaUpgradeRecordView(
+        id=UPGRADE_ID,
+        draft_id=DRAFT_ID,
+        from_schema_version_id="job-requirement-schema-v1",
+        to_schema_version_id="job-requirement-schema-v2",
+        converter_version="v1-to-v2@1",
+        item_mappings=[
+            {
+                "item_id": str(RESOLUTION_ITEM_ID),
+                "kind": "hard_condition",
+                "mapping": "copied",
+                "lossless": True,
+            }
+        ],
+        lossy_resolutions=[],
+        actor_user_id=USER_ID,
+        created_at=NOW,
+    )
+
+
+def test_schema_upgrade_returns_draft_and_upgrade_record(monkeypatch: MonkeyPatch) -> None:
+    captured: dict[str, object] = {}
+
+    async def fake_upgrade(_session: object, **kwargs: object) -> object:
+        captured.update(kwargs)
+        return job_requirement_draft_service.SchemaUpgradeResultView(
+            draft=draft_view(revision=2),
+            upgrade=upgrade_record_view(),
+        )
+
+    monkeypatch.setattr(job_requirement_draft_service, "upgrade_draft_schema", fake_upgrade)
+    response = make_client(frozenset({"jobs:manage"})).post(
+        f"/jobs/{JOB_ID}/requirement-drafts/{DRAFT_ID}/schema-upgrade",
+        json={"expected_revision": 1},
+    )
+
+    assert response.status_code == status.HTTP_200_OK
+    body = response.json()
+    assert body["draft"]["revision"] == 2
+    assert body["draft"]["pending_upgrade_items"] == []
+    assert body["upgrade"]["id"] == str(UPGRADE_ID)
+    assert body["upgrade"]["from_schema_version_id"] == "job-requirement-schema-v1"
+    assert body["upgrade"]["to_schema_version_id"] == "job-requirement-schema-v2"
+    assert body["upgrade"]["converter_version"] == "v1-to-v2@1"
+    assert captured == {
+        "tenant_id": TENANT_ID,
+        "job_id": JOB_ID,
+        "draft_id": DRAFT_ID,
+        "actor_user_id": USER_ID,
+        "expected_revision": 1,
+    }
+
+
+def test_schema_upgrade_requires_manage_and_writable_tenant(monkeypatch: MonkeyPatch) -> None:
+    async def should_not_run(*_args: object, **_kwargs: object) -> object:
+        message = "service should not run"
+        raise AssertionError(message)
+
+    monkeypatch.setattr(job_requirement_draft_service, "upgrade_draft_schema", should_not_run)
+    path = f"/jobs/{JOB_ID}/requirement-drafts/{DRAFT_ID}/schema-upgrade"
+    forbidden = make_client(frozenset({"jobs:read"})).post(path, json={"expected_revision": 1})
+    read_only = make_client(frozenset({"jobs:manage"}), writable=False).post(
+        path,
+        json={"expected_revision": 1},
+    )
+
+    assert forbidden.status_code == status.HTTP_403_FORBIDDEN
+    assert forbidden.json() == {"detail": "permission_denied"}
+    assert read_only.status_code == status.HTTP_403_FORBIDDEN
+    assert read_only.json() == {"detail": "subscription_read_only"}
+
+
+@pytest.mark.parametrize(
+    ("code", "expected_status"),
+    [
+        (
+            job_requirement_draft_service.SCHEMA_UPGRADE_UNAVAILABLE,
+            status.HTTP_409_CONFLICT,
+        ),
+        (
+            job_requirement_draft_service.DRAFT_INVALID,
+            status.HTTP_422_UNPROCESSABLE_CONTENT,
+        ),
+        (job_requirement_draft_service.DRAFT_NOT_FOUND, status.HTTP_404_NOT_FOUND),
+    ],
+)
+def test_schema_upgrade_maps_stable_business_errors(
+    monkeypatch: MonkeyPatch,
+    code: str,
+    expected_status: int,
+) -> None:
+    async def reject(*_args: object, **_kwargs: object) -> object:
+        raise job_requirement_draft_service.RequirementDraftError(code)
+
+    monkeypatch.setattr(job_requirement_draft_service, "upgrade_draft_schema", reject)
+    response = make_client(frozenset({"jobs:manage"})).post(
+        f"/jobs/{JOB_ID}/requirement-drafts/{DRAFT_ID}/schema-upgrade",
+        json={"expected_revision": 1},
+    )
+
+    assert response.status_code == expected_status
+    assert response.json() == {"detail": code}
+
+
+def test_schema_upgrade_revision_conflict_returns_the_latest_draft(
+    monkeypatch: MonkeyPatch,
+) -> None:
+    async def reject(*_args: object, **_kwargs: object) -> object:
+        raise job_requirement_draft_service.RequirementDraftError(
+            job_requirement_draft_service.DRAFT_REVISION_CONFLICT,
+            latest=draft_view(revision=5),
+        )
+
+    monkeypatch.setattr(job_requirement_draft_service, "upgrade_draft_schema", reject)
+    response = make_client(frozenset({"jobs:manage"})).post(
+        f"/jobs/{JOB_ID}/requirement-drafts/{DRAFT_ID}/schema-upgrade",
+        json={"expected_revision": 1},
+    )
+
+    assert response.status_code == status.HTTP_409_CONFLICT
+    assert response.json()["detail"] == job_requirement_draft_service.DRAFT_REVISION_CONFLICT
+    assert response.json()["draft"]["revision"] == 5
+
+
+def test_resolve_schema_upgrade_applies_member_submissions(monkeypatch: MonkeyPatch) -> None:
+    captured: dict[str, object] = {}
+
+    async def fake_resolve(_session: object, **kwargs: object) -> object:
+        captured.update(kwargs)
+        return draft_view(revision=3)
+
+    monkeypatch.setattr(
+        job_requirement_draft_service,
+        "resolve_schema_upgrade_lossy_items",
+        fake_resolve,
+    )
+    response = make_client(frozenset({"jobs:manage"})).post(
+        f"/jobs/{JOB_ID}/requirement-drafts/{DRAFT_ID}/schema-upgrades/{UPGRADE_ID}/resolve",
+        json={
+            "expected_revision": 2,
+            "resolutions": [{"item_id": str(RESOLUTION_ITEM_ID), "resolution": "drop"}],
+        },
+    )
+
+    assert response.status_code == status.HTTP_200_OK
+    assert response.json()["revision"] == 3
+    assert captured["upgrade_id"] == UPGRADE_ID
+    assert captured["expected_revision"] == 2
+    assert captured["resolutions"] == [
+        job_requirement_draft_service.LossyResolutionSubmission(
+            item_id=str(RESOLUTION_ITEM_ID),
+            resolution="drop",
+        )
+    ]
+
+
+@pytest.mark.parametrize(
+    ("code", "expected_status"),
+    [
+        (
+            job_requirement_draft_service.SCHEMA_UPGRADE_RESOLUTION_INVALID,
+            status.HTTP_422_UNPROCESSABLE_CONTENT,
+        ),
+        (
+            job_requirement_draft_service.SCHEMA_UPGRADE_NOT_FOUND,
+            status.HTTP_404_NOT_FOUND,
+        ),
+    ],
+)
+def test_resolve_schema_upgrade_maps_stable_business_errors(
+    monkeypatch: MonkeyPatch,
+    code: str,
+    expected_status: int,
+) -> None:
+    async def reject(*_args: object, **_kwargs: object) -> object:
+        raise job_requirement_draft_service.RequirementDraftError(code)
+
+    monkeypatch.setattr(
+        job_requirement_draft_service,
+        "resolve_schema_upgrade_lossy_items",
+        reject,
+    )
+    response = make_client(frozenset({"jobs:manage"})).post(
+        f"/jobs/{JOB_ID}/requirement-drafts/{DRAFT_ID}/schema-upgrades/{UPGRADE_ID}/resolve",
+        json={
+            "expected_revision": 2,
+            "resolutions": [{"item_id": str(RESOLUTION_ITEM_ID), "resolution": "drop"}],
+        },
+    )
+
+    assert response.status_code == expected_status
+    assert response.json() == {"detail": code}
+
+
+def test_resolve_schema_upgrade_rejects_unknown_resolution_choice() -> None:
+    response = make_client(frozenset({"jobs:manage"})).post(
+        f"/jobs/{JOB_ID}/requirement-drafts/{DRAFT_ID}/schema-upgrades/{UPGRADE_ID}/resolve",
+        json={
+            "expected_revision": 2,
+            "resolutions": [{"item_id": str(RESOLUTION_ITEM_ID), "resolution": "keep"}],
+        },
+    )
+
+    assert response.status_code == status.HTTP_422_UNPROCESSABLE_CONTENT
+
+
+def history_view() -> job_requirement_history_service.RequirementHistoryView:
+    return job_requirement_history_service.RequirementHistoryView(
+        tasks=[task_view()],
+        drafts=[
+            job_requirement_history_service.RequirementHistoryDraftView(
+                id=DRAFT_ID,
+                task_id=TASK_ID,
+                input_snapshot_id=SNAPSHOT_ID,
+                source_version_id=None,
+                requirement_schema_version_id="job-requirement-schema-v1",
+                status="confirmed",
+                revision=2,
+                created_by=USER_ID,
+                updated_by=USER_ID,
+                status_changed_at=NOW,
+                created_at=NOW,
+                updated_at=NOW,
+            )
+        ],
+        versions=[
+            job_requirement_service.RequirementVersionSummaryView(
+                id=uuid.UUID("dddddddd-dddd-4ddd-8ddd-dddddddddddd"),
+                version_number=1,
+                requirement_schema_version_id="job-requirement-schema-v1",
+                draft_id=DRAFT_ID,
+                source_version_id=None,
+                confirmed_by=USER_ID,
+                confirmed_at=NOW,
+                created_at=NOW,
+                is_current=True,
+            )
+        ],
+        schema_upgrades=[upgrade_record_view()],
+        sources=[
+            job_requirement_history_service.RequirementHistorySourceView(
+                snapshot_id=SNAPSHOT_ID,
+                source_id="job-description",
+                source_kind="job-description",
+                material_id=None,
+                position=0,
+                original_sha256="a" * 64,
+                sent_sha256="b" * 64,
+                unicode_characters=12,
+                edited_by=USER_ID,
+                edited_at=NOW,
+                body_purged_at=NOW,
+            )
+        ],
+        change_events=[
+            TenantAuditEventView(
+                id=EVENT_ID,
+                tenant_id=TENANT_ID,
+                actor_user_id=USER_ID,
+                action="job_requirement.write_denied",
+                target_type="job",
+                target_id=str(JOB_ID),
+                result="failure",
+                detail="permission_denied",
+                created_at=NOW,
+            )
+        ],
+    )
+
+
+def test_history_returns_layers_with_source_metadata_and_change_events(
+    monkeypatch: MonkeyPatch,
+) -> None:
+    captured: dict[str, object] = {}
+
+    async def fake_history(_session: object, **kwargs: object) -> object:
+        captured.update(kwargs)
+        return history_view()
+
+    monkeypatch.setattr(
+        job_requirement_history_service,
+        "load_requirement_history",
+        fake_history,
+    )
+    response = make_client(frozenset({"jobs:read"})).get(f"/jobs/{JOB_ID}/requirement-history")
+
+    assert response.status_code == status.HTTP_200_OK
+    body = response.json()
+    assert captured == {"tenant_id": TENANT_ID, "job_id": JOB_ID}
+    assert body["tasks"][0]["id"] == str(TASK_ID)
+    assert body["drafts"][0]["id"] == str(DRAFT_ID)
+    assert body["versions"][0]["is_current"] is True
+    assert body["schema_upgrades"][0]["converter_version"] == "v1-to-v2@1"
+    source = body["sources"][0]
+    assert source["body_purged_at"] is not None
+    assert "original_text" not in source
+    assert "corrected_text" not in source
+    assert "sent_text" not in source
+    event = body["change_events"][0]
+    assert event["action"] == "job_requirement.write_denied"
+    assert event["target_id"] == str(JOB_ID)
+
+
+def test_history_requires_jobs_read(monkeypatch: MonkeyPatch) -> None:
+    async def should_not_run(*_args: object, **_kwargs: object) -> object:
+        message = "service should not run"
+        raise AssertionError(message)
+
+    monkeypatch.setattr(
+        job_requirement_history_service,
+        "load_requirement_history",
+        should_not_run,
+    )
+    response = make_client(frozenset()).get(f"/jobs/{JOB_ID}/requirement-history")
+
+    assert response.status_code == status.HTTP_403_FORBIDDEN
+    assert response.json() == {"detail": "permission_denied"}
+
+
+def test_history_unknown_job_returns_404(monkeypatch: MonkeyPatch) -> None:
+    async def not_found(*_args: object, **_kwargs: object) -> object:
+        raise JobNotFoundError
+
+    monkeypatch.setattr(job_requirement_history_service, "load_requirement_history", not_found)
+    response = make_client(frozenset({"jobs:read"})).get(f"/jobs/{JOB_ID}/requirement-history")
+
+    assert response.status_code == status.HTTP_404_NOT_FOUND
+    assert response.json() == {"detail": JOB_NOT_FOUND_DETAIL}

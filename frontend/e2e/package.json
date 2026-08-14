@@ -6,7 +6,7 @@
   "scripts": {
     "test": "playwright test",
     "test:degraded": "playwright test tests/degraded-health-page.spec.ts",
-    "test:healthy": "playwright test tests/health-page.spec.ts tests/workspace-pages.spec.ts"
+    "test:healthy": "playwright test tests/health-page.spec.ts tests/workspace-pages.spec.ts tests/llm-configuration.spec.ts tests/requirement-parsing.spec.ts tests/requirement-boundaries.spec.ts"
   },
   "devDependencies": {
     "@playwright/test": "1.61.1"

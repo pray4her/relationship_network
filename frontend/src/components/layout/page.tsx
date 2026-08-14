@@ -17,6 +17,7 @@ function Page({ className, ...props }: React.ComponentProps<"main">) {
         className,
       )}
       data-slot="page"
+      id="main-content"
       {...props}
     />
   )
@@ -62,7 +63,7 @@ function PageTitle({ className, ...props }: React.ComponentProps<"h1">) {
   return (
     <h1
       className={cn(
-        "m-0 text-[length:var(--text-heading)] leading-[var(--text-heading--line-height)] font-semibold text-foreground max-sm:text-2xl",
+        "m-0 text-[length:var(--text-heading)] leading-[var(--text-heading--line-height)] font-semibold text-pretty text-foreground max-sm:text-2xl",
         className,
       )}
       data-slot="page-title"
@@ -343,7 +344,7 @@ function AuthPanelTitle({ className, ...props }: React.ComponentProps<"h1">) {
   return (
     <h1
       className={cn(
-        "m-0 text-[length:var(--text-display)] leading-[var(--text-display--line-height)] font-bold text-foreground max-sm:text-[length:var(--text-heading)]",
+        "m-0 text-[length:var(--text-display)] leading-[var(--text-display--line-height)] font-bold text-pretty text-foreground max-sm:text-[length:var(--text-heading)]",
         className,
       )}
       data-slot="auth-panel-title"

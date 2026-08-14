@@ -190,9 +190,9 @@ async def test_job_lifecycle_quota_and_audit(  # noqa: PLR0915 (sequential lifec
     assert oversized.json() == {"detail": "document_too_large"}
 
     # Trial allows two active jobs.
-    await seed_requirement_version(stack, tenant_id=tenant_id, job_id=job_1)
-    await seed_requirement_version(stack, tenant_id=tenant_id, job_id=job_2)
-    await seed_requirement_version(stack, tenant_id=tenant_id, job_id=job_3)
+    _ = await seed_requirement_version(stack, tenant_id=tenant_id, job_id=job_1)
+    _ = await seed_requirement_version(stack, tenant_id=tenant_id, job_id=job_2)
+    _ = await seed_requirement_version(stack, tenant_id=tenant_id, job_id=job_3)
     first = await client.post(f"/jobs/{job_1}/activate")
     assert first.status_code == 200
     assert first.json()["status"] == "active"
@@ -366,7 +366,7 @@ async def test_job_guards_on_archived_company(stack: Stack, client: AsyncClient)
     tenant_id = await register_owner(stack, client)
     company_id = await create_company(client)
     draft_job = await create_draft_job(client, company_id, "归档前的草稿")
-    await seed_requirement_version(stack, tenant_id=tenant_id, job_id=draft_job)
+    _ = await seed_requirement_version(stack, tenant_id=tenant_id, job_id=draft_job)
 
     archived = await client.post(f"/companies/{company_id}/archive")
     assert archived.status_code == 200

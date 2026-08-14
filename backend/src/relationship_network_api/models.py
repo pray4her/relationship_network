@@ -7,6 +7,7 @@ from sqlalchemy import (
     CheckConstraint,
     Computed,
     DateTime,
+    Float,
     ForeignKey,
     ForeignKeyConstraint,
     Index,
@@ -84,6 +85,12 @@ JOB_STATUS_ACTIVE: Final[JobStatus] = "active"
 JOB_STATUS_CLOSED: Final[JobStatus] = "closed"
 JOB_STATUS_ARCHIVED: Final[JobStatus] = "archived"
 
+LlmPromptCallType = Literal["job_requirement_parsing", "search_interpretation"]
+"""Prompt and timeout bindings on an LLM configuration version."""
+
+CALL_TYPE_JOB_REQUIREMENT_PARSING: Final[LlmPromptCallType] = "job_requirement_parsing"
+CALL_TYPE_SEARCH_INTERPRETATION: Final[LlmPromptCallType] = "search_interpretation"
+
 LlmConfigurationAttemptStatus = Literal[
     "queued",
     "running",
@@ -127,7 +134,11 @@ LLM_CALL_RECORD_SCOPE_CHECK: Final = " ".join(  # noqa: FLY002
         "(scope = 'tenant' AND tenant_id IS NOT NULL",
         "AND call_type = 'job_requirement_parsing' AND platform_attempt_id IS NULL",
         "AND job_requirement_parsing_task_id IS NOT NULL",
-        "AND configuration_version_id IS NOT NULL AND input_snapshot_id IS NOT NULL)",
+        "AND configuration_version_id IS NOT NULL AND input_snapshot_id IS NOT NULL) OR",
+        "(scope = 'tenant' AND tenant_id IS NOT NULL",
+        "AND call_type = 'search_interpretation' AND platform_attempt_id IS NULL",
+        "AND search_run_id IS NOT NULL AND job_requirement_parsing_task_id IS NULL",
+        "AND configuration_version_id IS NOT NULL AND input_snapshot_id IS NULL)",
     )
 )
 LLM_CALL_CHILD_SCOPE_CHECK: Final = " ".join(  # noqa: FLY002
@@ -148,6 +159,9 @@ REQUIREMENT_SOURCE_LINK_CHECK: Final = (
 REQUIREMENT_TASK_STATUS_CHECK: Final = (
     f"status IN ({LLM_CONFIGURATION_NONTERMINAL_STATUS_SQL}, 'succeeded', 'failed', 'cancelled')"
 )
+JOB_ACTIVE_REQUIRES_VERSION_CHECK: Final = (
+    "status <> 'active' OR current_requirement_version_id IS NOT NULL OR legacy_requirement_exempt"
+)
 REQUIREMENT_TASK_LEASE_FIELDS_CHECK: Final = """
     ((status IN ('running', 'cancel_requested')) =
     (lease_token IS NOT NULL AND lease_expires_at IS NOT NULL
@@ -163,6 +177,37 @@ REQUIREMENT_SCHEMA_EDITOR_ASSET_CHECK: Final = """
     (editor_schema_id IS NOT NULL AND editor_asset_path IS NOT NULL
     AND editor_sha256 IS NOT NULL AND editor_schema_json IS NOT NULL)
     """
+
+ChineseIdentity = Literal["国内华人", "海外华人", "外国人"]
+"""Inferred Chinese identity classification, mirrored from the search-base contract."""
+
+TalentAvailability = Literal["available", "temporarily_unavailable"]
+"""Availability state of a local talent, driven by re-sync outcomes."""
+
+TALENT_AVAILABILITY_AVAILABLE: Final[TalentAvailability] = "available"
+TALENT_AVAILABILITY_TEMPORARILY_UNAVAILABLE: Final[TalentAvailability] = "temporarily_unavailable"
+
+TalentIdentityEventType = Literal["created", "merged", "marked_unavailable", "marked_available"]
+"""Append-only local talent identity mutation kinds."""
+
+TalentExternalIdKind = Literal["canonical_person_id", "source_id"]
+"""External identifier kinds: canonical person IDs versus historical source IDs."""
+
+NaturalLanguageSearchRunStatus = Literal["in_progress", "succeeded", "failed"]
+"""Lifecycle states of a natural-language search run; terminal states are immutable."""
+
+SEARCH_RUN_STATUS_IN_PROGRESS: Final[NaturalLanguageSearchRunStatus] = "in_progress"
+SEARCH_RUN_STATUS_SUCCEEDED: Final[NaturalLanguageSearchRunStatus] = "succeeded"
+SEARCH_RUN_STATUS_FAILED: Final[NaturalLanguageSearchRunStatus] = "failed"
+
+NaturalLanguageSearchRunFailureReason = Literal[
+    "interpretation_invalid",
+    "interpretation_error",
+    "search_base_error",
+    "search_base_timeout",
+    "quota_exceeded",
+]
+"""Terminal failure reasons for a natural-language search run."""
 
 
 class Base(DeclarativeBase):
@@ -448,15 +493,52 @@ class PromptVersion(Base):
     """Immutable deployed prompt asset with one compatible Schema version."""
 
     __tablename__ = "prompt_versions"
+    __table_args__ = (
+        CheckConstraint(
+            "call_type IN ('job_requirement_parsing', 'search_interpretation')",
+            name="ck_prompt_versions_call_type",
+        ),
+    )
 
     id: Mapped[str] = mapped_column(String(100), primary_key=True)
     compatible_schema_version_id: Mapped[str] = mapped_column(
         String(100),
         ForeignKey("job_requirement_schema_versions.id"),
     )
+    call_type: Mapped[str] = mapped_column(
+        String(40),
+        server_default="job_requirement_parsing",
+        default="job_requirement_parsing",
+    )
+    output_schema_version_id: Mapped[str | None] = mapped_column(
+        String(100),
+        ForeignKey("search_interpretation_schema_versions.id"),
+        nullable=True,
+    )
     asset_path: Mapped[str] = mapped_column(String(300), unique=True)
     sha256: Mapped[str] = mapped_column(String(64), unique=True)
     content: Mapped[str] = mapped_column(Text)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        server_default=func.now(),
+    )
+
+
+@final
+class SearchInterpretationSchemaVersion(Base):
+    """Immutable deployed search interpretation output Schema asset."""
+
+    __tablename__ = "search_interpretation_schema_versions"
+
+    id: Mapped[str] = mapped_column(String(100), primary_key=True)
+    schema_id: Mapped[str] = mapped_column(String(200), unique=True)
+    asset_path: Mapped[str] = mapped_column(String(300), unique=True)
+    sha256: Mapped[str] = mapped_column(String(64), unique=True)
+    schema_json: Mapped[dict[str, object]] = mapped_column(JSONB)
+    compatible_schema_version_id: Mapped[str] = mapped_column(
+        String(100),
+        ForeignKey("job_requirement_schema_versions.id"),
+    )
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
         server_default=func.now(),
@@ -526,6 +608,41 @@ class LlmConfigurationVersion(Base):
     )
 
 
+LLM_CALL_BINDING_TIMEOUT_CHECK: Final = """
+    (call_type = 'job_requirement_parsing' AND request_timeout_seconds BETWEEN 30 AND 300)
+    OR (call_type = 'search_interpretation' AND request_timeout_seconds BETWEEN 5 AND 30)
+    """
+
+
+@final
+class LlmConfigurationCallBinding(Base):
+    """Immutable per-call-type prompt and timeout bound to a configuration version."""
+
+    __tablename__ = "llm_configuration_call_bindings"
+    __table_args__ = (
+        CheckConstraint(
+            "call_type IN ('job_requirement_parsing', 'search_interpretation')",
+            name="ck_llm_configuration_call_bindings_type",
+        ),
+        CheckConstraint(
+            LLM_CALL_BINDING_TIMEOUT_CHECK,
+            name="ck_llm_configuration_call_bindings_timeout",
+        ),
+    )
+
+    configuration_version_id: Mapped[uuid.UUID] = mapped_column(
+        Uuid,
+        ForeignKey("llm_configuration_versions.id", ondelete="CASCADE"),
+        primary_key=True,
+    )
+    call_type: Mapped[str] = mapped_column(String(40), primary_key=True)
+    prompt_version_id: Mapped[str] = mapped_column(
+        String(100),
+        ForeignKey("prompt_versions.id"),
+    )
+    request_timeout_seconds: Mapped[int] = mapped_column(Integer)
+
+
 @final
 class LlmConfigurationCurrent(Base):
     """Singleton pointer to the current immutable LLM configuration version."""
@@ -580,6 +697,11 @@ class LlmConfigurationAttempt(Base):
         default="queued",
     )
     candidate_snapshot: Mapped[dict[str, object]] = mapped_column(JSONB)
+    probe_progress: Mapped[dict[str, object]] = mapped_column(
+        JSONB,
+        server_default=text("'{}'::jsonb"),
+        default=dict,
+    )
     expected_current_version_id: Mapped[uuid.UUID] = mapped_column(
         Uuid,
         ForeignKey("llm_configuration_versions.id"),
@@ -679,7 +801,7 @@ class LlmCallRecord(Base):
     __table_args__ = (
         CheckConstraint("scope IN ('platform', 'tenant')", name="ck_llm_call_records_scope"),
         CheckConstraint(
-            "call_type IN ('config_probe', 'job_requirement_parsing')",
+            "call_type IN ('config_probe', 'job_requirement_parsing', 'search_interpretation')",
             name="ck_llm_call_records_type",
         ),
         CheckConstraint(
@@ -703,6 +825,11 @@ class LlmCallRecord(Base):
             ["input_snapshot_id", "tenant_id"],
             ["job_requirement_input_snapshots.id", "job_requirement_input_snapshots.tenant_id"],
             name="fk_llm_call_records_tenant_snapshot",
+        ),
+        ForeignKeyConstraint(
+            ["search_run_id"],
+            ["natural_language_search_runs.id"],
+            name="fk_llm_call_records_search_run",
         ),
         Index(
             "uq_llm_call_records_tenant_task_request",
@@ -728,6 +855,7 @@ class LlmCallRecord(Base):
         nullable=True,
     )
     job_requirement_parsing_task_id: Mapped[uuid.UUID | None] = mapped_column(Uuid, nullable=True)
+    search_run_id: Mapped[uuid.UUID | None] = mapped_column(Uuid, nullable=True)
     configuration_version_id: Mapped[uuid.UUID | None] = mapped_column(
         Uuid,
         ForeignKey("llm_configuration_versions.id"),
@@ -1163,8 +1291,7 @@ class Job(Base):
             name="ck_jobs_status",
         ),
         CheckConstraint(
-            "status <> 'active' OR current_requirement_version_id IS NOT NULL "
-            "OR legacy_requirement_exempt",
+            JOB_ACTIVE_REQUIRES_VERSION_CHECK,
             name="ck_jobs_active_requires_requirement_version",
         ),
         ForeignKeyConstraint(
@@ -1343,9 +1470,9 @@ class JobRequirementInputSource(Base):
     source_kind: Mapped[str] = mapped_column(String(30))
     material_id: Mapped[uuid.UUID | None] = mapped_column(Uuid, nullable=True)
     position: Mapped[int] = mapped_column(Integer)
-    original_text: Mapped[str] = mapped_column(Text)
-    corrected_text: Mapped[str] = mapped_column(Text)
-    sent_text: Mapped[str] = mapped_column(Text)
+    original_text: Mapped[str | None] = mapped_column(Text, nullable=True)
+    corrected_text: Mapped[str | None] = mapped_column(Text, nullable=True)
+    sent_text: Mapped[str | None] = mapped_column(Text, nullable=True)
     original_sha256: Mapped[str] = mapped_column(String(64))
     sent_sha256: Mapped[str] = mapped_column(String(64))
     unicode_characters: Mapped[int] = mapped_column(Integer)
@@ -1357,6 +1484,10 @@ class JobRequirementInputSource(Base):
     edited_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
         server_default=func.now(),
+    )
+    body_purged_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True),
+        nullable=True,
     )
 
 
@@ -1687,6 +1818,59 @@ class JobRequirementVersion(Base):
 
 
 @final
+class JobRequirementDraftSchemaUpgrade(Base):
+    """Append-only record of one explicit deterministic draft schema upgrade."""
+
+    __tablename__ = "job_requirement_draft_schema_upgrades"
+    __table_args__ = (
+        ForeignKeyConstraint(
+            ["draft_id", "tenant_id", "job_id"],
+            [
+                "job_requirement_drafts.id",
+                "job_requirement_drafts.tenant_id",
+                "job_requirement_drafts.job_id",
+            ],
+            name="fk_requirement_schema_upgrades_draft_tenant_job",
+            ondelete="CASCADE",
+        ),
+        ForeignKeyConstraint(
+            ["job_id", "tenant_id"],
+            ["jobs.id", "jobs.tenant_id"],
+            name="fk_requirement_schema_upgrades_job_tenant",
+            ondelete="CASCADE",
+        ),
+        UniqueConstraint("id", "tenant_id", name="uq_requirement_schema_upgrades_id_tenant"),
+        Index("ix_requirement_schema_upgrades_tenant_draft", "tenant_id", "draft_id"),
+    )
+
+    id: Mapped[uuid.UUID] = mapped_column(Uuid, primary_key=True, default=uuid.uuid4)
+    tenant_id: Mapped[uuid.UUID] = mapped_column(Uuid, index=True)
+    job_id: Mapped[uuid.UUID] = mapped_column(Uuid, index=True)
+    draft_id: Mapped[uuid.UUID] = mapped_column(Uuid, index=True)
+    from_schema_version_id: Mapped[str] = mapped_column(
+        String(100),
+        ForeignKey("job_requirement_schema_versions.id"),
+    )
+    to_schema_version_id: Mapped[str] = mapped_column(
+        String(100),
+        ForeignKey("job_requirement_schema_versions.id"),
+    )
+    converter_version: Mapped[str] = mapped_column(String(100))
+    pre_upgrade_json: Mapped[dict[str, object]] = mapped_column(JSONB)
+    item_mappings: Mapped[list[dict[str, object]]] = mapped_column(JSONB)
+    lossy_resolutions: Mapped[list[dict[str, object]]] = mapped_column(JSONB, default=list)
+    actor_user_id: Mapped[uuid.UUID | None] = mapped_column(
+        Uuid,
+        ForeignKey("users.id", ondelete="SET NULL"),
+        nullable=True,
+    )
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        server_default=func.now(),
+    )
+
+
+@final
 class TenantOutboxEvent(Base):
     """Tenant-scoped transactional message visible only through claim functions."""
 
@@ -1803,3 +1987,241 @@ class UsageLedgerEntry(Base):
         DateTime(timezone=True),
         server_default=func.now(),
     )
+
+
+@final
+class LocalTalent(Base):
+    """Global shared master identity mirroring one canonical person.
+
+    The row carries a single latest-known header snapshot plus the data version
+    it was read from; identity history and external identifiers live in the
+    mapping and event tables. Shared across tenants, so it carries no
+    ``tenant_id`` and is written only by the sync path.
+    """
+
+    __tablename__ = "local_talents"
+    __table_args__ = (
+        CheckConstraint(
+            "availability IN ('available', 'temporarily_unavailable')",
+            name="ck_local_talents_availability",
+        ),
+        CheckConstraint(
+            "chinese_identity IN ('国内华人', '海外华人', '外国人')",
+            name="ck_local_talents_chinese_identity",
+        ),
+    )
+
+    id: Mapped[uuid.UUID] = mapped_column(Uuid, primary_key=True, default=uuid.uuid4)
+    canonical_person_id: Mapped[str] = mapped_column(String(200))
+    display_name: Mapped[str] = mapped_column(String(200))
+    current_affiliation: Mapped[str] = mapped_column(String(300))
+    country: Mapped[str] = mapped_column(String(64))
+    chinese_identity: Mapped[ChineseIdentity] = mapped_column(String(20))
+    h_index: Mapped[int] = mapped_column(Integer)
+    total_citations: Mapped[int] = mapped_column(Integer)
+    qs_top200_rank: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    world_top500_rank: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    has_contact: Mapped[bool | None] = mapped_column(Boolean, nullable=True)
+    data_version: Mapped[str] = mapped_column(String(100))
+    availability: Mapped[TalentAvailability] = mapped_column(
+        String(30),
+        server_default=TALENT_AVAILABILITY_AVAILABLE,
+        default=TALENT_AVAILABILITY_AVAILABLE,
+    )
+    last_synced_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        server_default=func.now(),
+    )
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        server_default=func.now(),
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        server_default=func.now(),
+        onupdate=func.now(),
+    )
+
+
+@final
+class TalentExternalId(Base):
+    """External identifier to local talent mapping; the reconciliation key.
+
+    Every current and historical canonical person ID and source ID is stored
+    here with a globally unique ``external_id``, so re-syncs deduplicate and
+    search-base merges surface as shared identifiers across local talents.
+    """
+
+    __tablename__ = "talent_external_ids"
+    __table_args__ = (
+        CheckConstraint(
+            "kind IN ('canonical_person_id', 'source_id')",
+            name="ck_talent_external_ids_kind",
+        ),
+    )
+
+    external_id: Mapped[str] = mapped_column(String(200), primary_key=True)
+    kind: Mapped[TalentExternalIdKind] = mapped_column(String(30))
+    local_talent_id: Mapped[uuid.UUID] = mapped_column(
+        Uuid,
+        ForeignKey("local_talents.id", ondelete="CASCADE"),
+        index=True,
+    )
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        server_default=func.now(),
+    )
+
+
+@final
+class TalentIdentityEvent(Base):
+    """Append-only record of a local talent identity mutation."""
+
+    __tablename__ = "talent_identity_events"
+    __table_args__ = (
+        CheckConstraint(
+            "event_type IN ('created', 'merged', 'marked_unavailable', 'marked_available')",
+            name="ck_talent_identity_events_event_type",
+        ),
+    )
+
+    id: Mapped[uuid.UUID] = mapped_column(Uuid, primary_key=True, default=uuid.uuid4)
+    event_type: Mapped[TalentIdentityEventType] = mapped_column(String(30))
+    local_talent_id: Mapped[uuid.UUID] = mapped_column(
+        Uuid,
+        ForeignKey("local_talents.id", ondelete="CASCADE"),
+        index=True,
+    )
+    data_version: Mapped[str] = mapped_column(String(100))
+    external_ids: Mapped[list[str]] = mapped_column(JSONB)
+    merged_from_ids: Mapped[list[str] | None] = mapped_column(JSONB, nullable=True)
+    occurred_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        server_default=func.now(),
+    )
+
+
+@final
+class NaturalLanguageSearchRun(Base):
+    """Immutable tenant-scoped record of one natural-language talent search.
+
+    The run is created before the search interpretation call and completed (or
+    moved to a recoverable terminal failure) within the same request; it is not
+    a queued asynchronous task. On success it freezes the search interpretation
+    and the resulting hit snapshots.
+    """
+
+    __tablename__ = "natural_language_search_runs"
+    __table_args__ = (
+        CheckConstraint(
+            "status IN ('in_progress', 'succeeded', 'failed')",
+            name="ck_search_runs_status",
+        ),
+        CheckConstraint(
+            "failure_reason IN ('interpretation_invalid', 'interpretation_error', 'search_base_error', 'search_base_timeout', 'quota_exceeded')",  # noqa: E501
+            name="ck_search_runs_failure_reason",
+        ),
+        CheckConstraint("utterance_length >= 0", name="ck_search_runs_utterance_length"),
+        UniqueConstraint("tenant_id", "idempotency_key", name="uq_search_runs_tenant_idempotency"),
+        Index("ix_search_runs_tenant_created", "tenant_id", "created_at"),
+        Index(
+            "uq_search_runs_tenant_nonterminal",
+            "tenant_id",
+            unique=True,
+            postgresql_where=text("status = 'in_progress'"),
+        ),
+    )
+
+    id: Mapped[uuid.UUID] = mapped_column(Uuid, primary_key=True, default=uuid.uuid4)
+    tenant_id: Mapped[uuid.UUID] = mapped_column(
+        Uuid,
+        ForeignKey("tenants.id", ondelete="CASCADE"),
+        index=True,
+    )
+    actor_user_id: Mapped[uuid.UUID | None] = mapped_column(
+        Uuid,
+        ForeignKey("users.id", ondelete="SET NULL"),
+        nullable=True,
+    )
+    status: Mapped[NaturalLanguageSearchRunStatus] = mapped_column(String(20))
+    failure_reason: Mapped[NaturalLanguageSearchRunFailureReason | None] = mapped_column(
+        String(40),
+        nullable=True,
+    )
+    utterance: Mapped[str] = mapped_column(Text)
+    utterance_sha256: Mapped[str] = mapped_column(String(64))
+    utterance_length: Mapped[int] = mapped_column(Integer)
+    idempotency_key: Mapped[str] = mapped_column(String(100))
+    idempotency_fingerprint: Mapped[str] = mapped_column(String(64))
+    llm_configuration_version_id: Mapped[uuid.UUID] = mapped_column(
+        Uuid,
+        ForeignKey("llm_configuration_versions.id"),
+    )
+    search_contract_version: Mapped[str] = mapped_column(String(20))
+    data_version: Mapped[str | None] = mapped_column(String(100), nullable=True)
+    request_id: Mapped[str | None] = mapped_column(String(200), nullable=True)
+    has_research_topic: Mapped[bool] = mapped_column(
+        Boolean,
+        server_default=false(),
+        default=False,
+    )
+    search_interpretation: Mapped[dict[str, object] | None] = mapped_column(JSONB, nullable=True)
+    usage_reservation_id: Mapped[uuid.UUID | None] = mapped_column(Uuid, nullable=True)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        server_default=func.now(),
+    )
+
+
+@final
+class SearchHitSnapshot(Base):
+    """Frozen, append-only snapshot of one search hit in a search run.
+
+    Header fields are materialized as columns so the result table can sort and
+    paginate server-side; they are frozen at insert time and never updated. The
+    ``local_talent_id`` references the stable local talent identity while
+    ``canonical_person_id`` preserves the source identifier at search time.
+    """
+
+    __tablename__ = "search_hit_snapshots"
+    __table_args__ = (
+        CheckConstraint("h_index >= 0", name="ck_search_hit_snapshots_h_index"),
+        CheckConstraint("total_citations >= 0", name="ck_search_hit_snapshots_total_citations"),
+        CheckConstraint(
+            "chinese_identity IN ('国内华人', '海外华人', '外国人')",
+            name="ck_search_hit_snapshots_chinese_identity",
+        ),
+        CheckConstraint("sort_position >= 0", name="ck_search_hit_snapshots_sort_position"),
+        Index("ix_search_hit_snapshots_run_position", "search_run_id", "sort_position"),
+    )
+
+    id: Mapped[uuid.UUID] = mapped_column(Uuid, primary_key=True, default=uuid.uuid4)
+    tenant_id: Mapped[uuid.UUID] = mapped_column(
+        Uuid,
+        ForeignKey("tenants.id", ondelete="CASCADE"),
+        index=True,
+    )
+    search_run_id: Mapped[uuid.UUID] = mapped_column(
+        Uuid,
+        ForeignKey("natural_language_search_runs.id", ondelete="CASCADE"),
+        index=True,
+    )
+    local_talent_id: Mapped[uuid.UUID] = mapped_column(
+        Uuid,
+        ForeignKey("local_talents.id"),
+        index=True,
+    )
+    canonical_person_id: Mapped[str] = mapped_column(String(200))
+    display_name: Mapped[str] = mapped_column(String(200))
+    current_affiliation: Mapped[str] = mapped_column(String(300))
+    country: Mapped[str] = mapped_column(String(64))
+    chinese_identity: Mapped[ChineseIdentity] = mapped_column(String(20))
+    h_index: Mapped[int] = mapped_column(Integer)
+    total_citations: Mapped[int] = mapped_column(Integer)
+    qs_top200_rank: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    world_top500_rank: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    has_contact: Mapped[bool | None] = mapped_column(Boolean, nullable=True)
+    data_version: Mapped[str] = mapped_column(String(100))
+    hit_publications: Mapped[list[dict[str, object]]] = mapped_column(JSONB)
+    semantic_score: Mapped[float | None] = mapped_column(Float, nullable=True)
+    sort_position: Mapped[int] = mapped_column(Integer)

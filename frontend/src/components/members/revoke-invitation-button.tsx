@@ -1,8 +1,10 @@
 "use client"
 
-import { useActionState } from "react"
+import { useActionState, useEffect, useRef } from "react"
+import { toast } from "sonner"
 
 import type { MemberActionState } from "@/app/actions/members"
+import { Alert, AlertDescription } from "@/components/ui/alert"
 import {
   AlertDialog,
   AlertDialogAction,
@@ -23,6 +25,14 @@ type RevokeInvitationButtonProps = {
 
 export function RevokeInvitationButton({ action, invitationId }: RevokeInvitationButtonProps) {
   const [state, formAction, isPending] = useActionState(action, { formError: null })
+  const wasPending = useRef(false)
+
+  useEffect(() => {
+    if (wasPending.current && !isPending && state.formError === null) {
+      toast.success("邀请已撤销")
+    }
+    wasPending.current = isPending
+  }, [isPending, state.formError])
 
   return (
     <div className="flex flex-col items-start gap-2">
@@ -45,7 +55,7 @@ export function RevokeInvitationButton({ action, invitationId }: RevokeInvitatio
             <AlertDialogCancel>取消</AlertDialogCancel>
             <form action={formAction}>
               <input name="invitation_id" type="hidden" value={invitationId} />
-              <AlertDialogAction type="submit" variant="destructive" disabled={isPending}>
+              <AlertDialogAction type="submit" variant="destructive" pending={isPending}>
                 撤销
               </AlertDialogAction>
             </form>
@@ -53,9 +63,9 @@ export function RevokeInvitationButton({ action, invitationId }: RevokeInvitatio
         </AlertDialogContent>
       </AlertDialog>
       {state.formError ? (
-        <p className="text-sm text-destructive" role="alert">
-          {state.formError}
-        </p>
+        <Alert variant="destructive">
+          <AlertDescription>{state.formError}</AlertDescription>
+        </Alert>
       ) : null}
     </div>
   )

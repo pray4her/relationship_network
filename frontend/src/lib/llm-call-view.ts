@@ -28,14 +28,6 @@ export const llmCallMetadataStatusLabels: Record<LlmCallMetadataStatus, string> 
   unavailable: "不可用",
 }
 
-export function formatDiagnosticDateTime(value: string): string {
-  return new Intl.DateTimeFormat("zh-CN", {
-    dateStyle: "medium",
-    hour12: false,
-    timeStyle: "medium",
-  }).format(new Date(value))
-}
-
 export function formatDiagnosticCost(value: number | null): string {
   if (value === null) return "—"
   return new Intl.NumberFormat("zh-CN", {

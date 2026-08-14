@@ -1,8 +1,10 @@
 "use client"
 
-import { useActionState, useId, useState } from "react"
+import { useActionState, useEffect, useId, useRef, useState } from "react"
+import { toast } from "sonner"
 
 import type { OrderReviewActionState } from "@/app/actions/admin"
+import { Alert, AlertDescription } from "@/components/ui/alert"
 import {
   AlertDialog,
   AlertDialogAction,
@@ -43,12 +45,38 @@ export function OrderReviewAction({
   })
   const [confirmOpen, setConfirmOpen] = useState(false)
   const [rejectOpen, setRejectOpen] = useState(false)
+  const confirmSubmitted = useRef(false)
+  const rejectSubmitted = useRef(false)
   const uid = useId()
   const confirmFormId = `${uid}-confirm`
   const rejectFormId = `${uid}-reject`
   const reasonInputId = `${uid}-reason`
 
-  const formError = confirmState.formError ?? rejectState.formError
+  useEffect(() => {
+    if (confirmPending) {
+      confirmSubmitted.current = true
+      return
+    }
+    if (!confirmSubmitted.current) return
+    confirmSubmitted.current = false
+    if (confirmState.formError === null) {
+      setConfirmOpen(false)
+      toast.success("已确认付款")
+    }
+  }, [confirmPending, confirmState.formError])
+
+  useEffect(() => {
+    if (rejectPending) {
+      rejectSubmitted.current = true
+      return
+    }
+    if (!rejectSubmitted.current) return
+    rejectSubmitted.current = false
+    if (rejectState.formError === null) {
+      setRejectOpen(false)
+      toast.success("已拒绝该订单")
+    }
+  }, [rejectPending, rejectState.formError])
 
   return (
     <div className="flex flex-wrap items-center gap-2">
@@ -70,13 +98,14 @@ export function OrderReviewAction({
               确定要确认该订单的付款吗？确认后将开通或续订订阅。
             </AlertDialogDescription>
           </AlertDialogHeader>
+          {confirmState.formError !== null ? (
+            <Alert variant="destructive">
+              <AlertDescription>{confirmState.formError}</AlertDescription>
+            </Alert>
+          ) : null}
           <AlertDialogFooter>
             <AlertDialogCancel>取消</AlertDialogCancel>
-            <AlertDialogAction
-              form={confirmFormId}
-              onClick={() => setConfirmOpen(false)}
-              type="submit"
-            >
+            <AlertDialogAction form={confirmFormId} pending={confirmPending} type="submit">
               确认付款
             </AlertDialogAction>
           </AlertDialogFooter>
@@ -102,28 +131,27 @@ export function OrderReviewAction({
               form={rejectFormId}
               id={reasonInputId}
               name="reason"
-              placeholder="请输入拒绝理由（可选）："
+              placeholder="例如：付款凭证无法核实"
             />
           </div>
+          {rejectState.formError !== null ? (
+            <Alert variant="destructive">
+              <AlertDescription>{rejectState.formError}</AlertDescription>
+            </Alert>
+          ) : null}
           <AlertDialogFooter>
             <AlertDialogCancel>取消</AlertDialogCancel>
             <AlertDialogAction
               form={rejectFormId}
-              onClick={() => setRejectOpen(false)}
+              pending={rejectPending}
               type="submit"
-              variant="secondary"
+              variant="destructive"
             >
               拒绝
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
-
-      {formError ? (
-        <p className="w-full text-sm text-destructive" role="alert">
-          {formError}
-        </p>
-      ) : null}
     </div>
   )
 }

@@ -13,10 +13,10 @@ import {
   PageSectionTitle,
   PageTitle,
 } from "@/components/layout/page"
+import { StatusBadge } from "@/components/status-badge"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import { Badge } from "@/components/ui/badge"
 import type { DashboardHealth, HealthResponse } from "@/lib/health-contract"
-import { cn } from "@/lib/utils"
 
 const dependencyLabels = {
   object_storage: "MinIO 对象存储",
@@ -30,18 +30,6 @@ type HealthDashboardProps = {
 
 type ConnectedDashboardProps = {
   readonly health: HealthResponse
-}
-
-function StatusLabel({ online }: { readonly online: boolean }) {
-  return (
-    <span className="inline-flex shrink-0 items-center gap-2 font-mono text-xs tracking-wide">
-      <span
-        aria-hidden="true"
-        className={cn("size-2 rounded-full", online ? "bg-success" : "bg-destructive")}
-      />
-      {online ? "ONLINE" : "OFFLINE"}
-    </span>
-  )
 }
 
 function ConnectedDashboard({ health }: ConnectedDashboardProps) {
@@ -97,7 +85,10 @@ function ConnectedDashboard({ health }: ConnectedDashboardProps) {
                     {service.status === "ok" ? "连接正常" : "暂时不可用"}
                   </p>
                 </div>
-                <StatusLabel online={service.status === "ok"} />
+                <StatusBadge
+                  label={service.status === "ok" ? "在线" : "离线"}
+                  tone={service.status === "ok" ? "success" : "destructive"}
+                />
               </article>
             ))}
           </DataRegionContent>

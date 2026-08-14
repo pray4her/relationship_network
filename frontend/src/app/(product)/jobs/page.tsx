@@ -7,6 +7,7 @@ import { Suspense } from "react"
 
 import { createJobAction } from "@/app/actions/jobs"
 import { JobCreateForm } from "@/components/jobs/job-create-form"
+import { JobStatusBadge, jobsTableHeadClassName } from "@/components/jobs/job-status-badge"
 import { JobsFilter } from "@/components/jobs/jobs-filter"
 import {
   DataRegion,
@@ -28,7 +29,6 @@ import {
   PageToolbar,
 } from "@/components/layout/page"
 import { Alert, AlertDescription } from "@/components/ui/alert"
-import { Badge } from "@/components/ui/badge"
 import { Empty, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from "@/components/ui/empty"
 import {
   Table,
@@ -40,6 +40,7 @@ import {
 } from "@/components/ui/table"
 import { createAuthTransport, loadAuthSession, SESSION_COOKIE_NAME } from "@/lib/auth-client"
 import { createCompaniesTransport, loadCompanies } from "@/lib/companies-client"
+import { formatDateTime } from "@/lib/format"
 import { createJobsTransport, loadJobs } from "@/lib/jobs-client"
 import { type JobStatus, jobStatusSchema } from "@/lib/jobs-contract"
 
@@ -47,29 +48,7 @@ export const metadata: Metadata = {
   title: "职位管理",
 }
 
-const statusLabels: Record<JobStatus, string> = {
-  draft: "草稿",
-  active: "活跃",
-  closed: "已关闭",
-  archived: "已归档",
-}
-
-function formatDateTime(value: string): string {
-  return new Date(value).toLocaleString("zh-CN", { hour12: false })
-}
-
 const linkClassName = "font-medium underline underline-offset-4"
-const headClassName = "font-mono text-xs tracking-wider text-muted-foreground uppercase"
-
-function StatusBadge({ status }: { readonly status: JobStatus }) {
-  if (status === "active") {
-    return <Badge className="bg-success/10 text-success">{statusLabels[status]}</Badge>
-  }
-  if (status === "draft") {
-    return <Badge variant="outline">{statusLabels[status]}</Badge>
-  }
-  return <Badge variant="secondary">{statusLabels[status]}</Badge>
-}
 
 function NoticePage({ children }: { readonly children: React.ReactNode }) {
   return (
@@ -206,10 +185,10 @@ export default async function JobsPage({ searchParams }: JobsPageProps) {
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead className={headClassName}>职位名称</TableHead>
-                    <TableHead className={headClassName}>所属企业</TableHead>
-                    <TableHead className={headClassName}>状态</TableHead>
-                    <TableHead className={headClassName}>创建时间</TableHead>
+                    <TableHead className={jobsTableHeadClassName}>职位名称</TableHead>
+                    <TableHead className={jobsTableHeadClassName}>所属企业</TableHead>
+                    <TableHead className={jobsTableHeadClassName}>状态</TableHead>
+                    <TableHead className={jobsTableHeadClassName}>创建时间</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -222,7 +201,7 @@ export default async function JobsPage({ searchParams }: JobsPageProps) {
                       </TableCell>
                       <TableCell>{companyNameById.get(job.company_id) ?? "—"}</TableCell>
                       <TableCell>
-                        <StatusBadge status={job.status} />
+                        <JobStatusBadge status={job.status} />
                       </TableCell>
                       <TableCell className="tabular-nums">
                         {formatDateTime(job.created_at)}

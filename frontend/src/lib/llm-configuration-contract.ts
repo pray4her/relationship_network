@@ -15,29 +15,66 @@ export const llmAttemptStatusSchema = z.enum([
   "cancelled",
 ])
 
+export const llmPromptCallTypeSchema = z.enum(["job_requirement_parsing", "search_interpretation"])
+
+const llmParsingBindingSchema = z
+  .object({
+    prompt_version_id: z.string().trim().min(1).max(100),
+    request_timeout_seconds: z.number().int().min(30).max(300),
+  })
+  .strict()
+
+const llmSearchBindingSchema = z
+  .object({
+    prompt_version_id: z.string().trim().min(1).max(100),
+    request_timeout_seconds: z.number().int().min(5).max(30),
+  })
+  .strict()
+
+export const llmCandidateCallBindingsSchema = z
+  .object({
+    job_requirement_parsing: llmParsingBindingSchema,
+    search_interpretation: llmSearchBindingSchema,
+  })
+  .strict()
+
 export const llmCandidateSchema = z
   .object({
+    call_bindings: llmCandidateCallBindingsSchema,
     input_character_limit: z.literal(100_000).optional(),
     max_output_tokens: z.number().int().min(1024).max(16384),
     model: z.string().trim().min(1).max(200),
-    prompt_version_id: z.string().trim().min(1).max(100),
-    request_timeout_seconds: z.number().int().min(30).max(300),
+    prompt_version_id: z.string().trim().min(1).max(100).optional(),
+    request_timeout_seconds: z.number().int().min(30).max(300).optional(),
     temperature: z.number().min(0).max(1),
   })
   .strict()
 
-export const llmConfigurationVersionSchema = llmCandidateSchema.extend({
-  created_at: z.iso.datetime({ offset: true }),
-  created_by: databaseUuidSchema.nullable(),
-  id: databaseUuidSchema,
-  input_character_limit: z.literal(100_000),
-  privacy_routing: z.record(z.string(), z.unknown()),
-  provider: z.string(),
-  requirement_schema_version_id: z.string(),
-  source: z.string(),
-  source_version_id: databaseUuidSchema.nullable(),
-  version_number: z.number().int().positive(),
-})
+export const llmConfigurationVersionSchema = z
+  .object({
+    call_bindings: z
+      .object({
+        job_requirement_parsing: llmParsingBindingSchema,
+        search_interpretation: llmSearchBindingSchema.nullable(),
+      })
+      .strict(),
+    created_at: z.iso.datetime({ offset: true }),
+    created_by: databaseUuidSchema.nullable(),
+    id: databaseUuidSchema,
+    input_character_limit: z.literal(100_000),
+    max_output_tokens: z.number().int().min(1024).max(16384),
+    model: z.string().trim().min(1).max(200),
+    privacy_routing: z.record(z.string(), z.unknown()),
+    prompt_version_id: z.string().trim().min(1).max(100),
+    provider: z.string(),
+    request_timeout_seconds: z.number().int().min(30).max(300),
+    requirement_schema_version_id: z.string(),
+    source: z.string(),
+    source_version_id: databaseUuidSchema.nullable(),
+    temperature: z.number().min(0).max(1),
+    version_number: z.number().int().positive(),
+  })
+  .strict()
 
 export const llmAttemptSchema = z.object({
   candidate: llmCandidateSchema,
@@ -48,6 +85,7 @@ export const llmAttemptSchema = z.object({
   external_call_count: z.number().int().min(0).max(3),
   id: databaseUuidSchema,
   next_attempt_at: z.iso.datetime({ offset: true }).nullable(),
+  probe_progress: z.record(z.string(), z.unknown()),
   source_version_id: databaseUuidSchema.nullable(),
   status: llmAttemptStatusSchema,
   structured_invalid_count: z.number().int().min(0).max(2),
@@ -55,6 +93,7 @@ export const llmAttemptSchema = z.object({
 })
 
 export const llmPromptVersionSchema = z.object({
+  call_type: llmPromptCallTypeSchema,
   compatible_schema_version_id: z.string(),
   id: z.string(),
   sha256: z.string().length(64),
@@ -94,4 +133,5 @@ export type LlmAttemptEventData = z.infer<typeof llmAttemptEventDataSchema>
 export type LlmAttemptStatus = z.infer<typeof llmAttemptStatusSchema>
 export type LlmCandidate = z.infer<typeof llmCandidateSchema>
 export type LlmConfigurationVersion = z.infer<typeof llmConfigurationVersionSchema>
+export type LlmPromptCallType = z.infer<typeof llmPromptCallTypeSchema>
 export type LlmWorkspace = z.infer<typeof llmWorkspaceSchema>

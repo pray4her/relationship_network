@@ -50,9 +50,15 @@ export async function AppShell({ children }: { readonly children: ReactNode }) {
 
   return (
     <div className="min-h-dvh bg-background">
+      <a
+        className="sr-only focus:not-sr-only focus:absolute focus:z-50 focus:bg-background focus:px-4 focus:py-2 focus:text-sm focus:underline"
+        href="#main-content"
+      >
+        跳到主内容
+      </a>
       <AppNavbar account={state.account} />
       {state.mfaGateActive ? (
-        <div className="mx-auto w-full max-w-[1400px] px-6 pt-4">
+        <div className="mx-auto w-full max-w-[1400px] px-6 pt-4 max-sm:px-4">
           <Alert variant="destructive">
             <AlertDescription>
               租户已要求成员启用两步验证。请前往安全设置完成配置后再继续写入操作。

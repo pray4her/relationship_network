@@ -20,6 +20,7 @@ type JobDetailTabsProps = {
   readonly overview: ReactNode
   readonly requirement: ReactNode
   readonly versions: ReactNode
+  readonly history: ReactNode
   readonly materials: ReactNode
   readonly events: ReactNode
 }
@@ -41,6 +42,7 @@ export function JobDetailTabs({
   overview,
   requirement,
   versions,
+  history,
   materials,
   events,
 }: JobDetailTabsProps) {
@@ -82,6 +84,9 @@ export function JobDetailTabs({
             {JOB_DETAIL_TAB_LABELS.versions}
             <TabCount value={counts?.versions} />
           </TabsTrigger>
+          <TabsTrigger className="gap-2 px-3" value="history">
+            {JOB_DETAIL_TAB_LABELS.history}
+          </TabsTrigger>
           <TabsTrigger className="gap-2 px-3" value="materials">
             {JOB_DETAIL_TAB_LABELS.materials}
             <TabCount value={counts?.materials} />
@@ -101,6 +106,9 @@ export function JobDetailTabs({
       </TabsContent>
       <TabsContent className="min-w-0 outline-none" value="versions">
         {versions}
+      </TabsContent>
+      <TabsContent className="min-w-0 outline-none" value="history">
+        {history}
       </TabsContent>
       <TabsContent className="min-w-0 outline-none" value="materials">
         {materials}

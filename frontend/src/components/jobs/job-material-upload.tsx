@@ -34,7 +34,7 @@ export function JobMaterialUpload({ action, jobId }: JobMaterialUploadProps) {
         />
       </Field>
       <div>
-        <Button type="submit" disabled={isPending}>
+        <Button pending={isPending} type="submit">
           {isPending ? "上传中…" : "上传材料"}
         </Button>
       </div>

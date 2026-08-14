@@ -44,6 +44,16 @@ def attempt_view(
         id=ATTEMPT_ID,
         status=status,
         candidate={
+            "call_bindings": {
+                "job_requirement_parsing": {
+                    "prompt_version_id": "job-requirement-prompt-v1",
+                    "request_timeout_seconds": 180,
+                },
+                "search_interpretation": {
+                    "prompt_version_id": "search-interpretation-prompt-v1",
+                    "request_timeout_seconds": 15,
+                },
+            },
             "model": "x-ai/grok-4.5",
             "prompt_version_id": "job-requirement-prompt-v1",
             "temperature": 0,
@@ -54,6 +64,7 @@ def attempt_view(
         source_version_id=None,
         external_call_count=0,
         structured_invalid_count=0,
+        probe_progress={},
         next_attempt_at=None,
         error_code=None,
         created_by=ADMIN_ID,
@@ -78,11 +89,19 @@ def client() -> TestClient:
 
 def candidate_payload() -> dict[str, object]:
     return {
+        "call_bindings": {
+            "job_requirement_parsing": {
+                "prompt_version_id": "job-requirement-prompt-v1",
+                "request_timeout_seconds": 180,
+            },
+            "search_interpretation": {
+                "prompt_version_id": "search-interpretation-prompt-v1",
+                "request_timeout_seconds": 15,
+            },
+        },
         "expected_current_version_id": str(CURRENT_ID),
         "max_output_tokens": 8192,
         "model": "x-ai/grok-4.5",
-        "prompt_version_id": "job-requirement-prompt-v1",
-        "request_timeout_seconds": 180,
         "temperature": 0,
     }
 
@@ -113,6 +132,16 @@ def test_create_attempt_returns_202_and_only_the_explicit_candidate(
     assert response.status_code == 202
     assert response.json()["status"] == "queued"
     assert captured["candidate"] == {
+        "call_bindings": {
+            "job_requirement_parsing": {
+                "prompt_version_id": "job-requirement-prompt-v1",
+                "request_timeout_seconds": 180,
+            },
+            "search_interpretation": {
+                "prompt_version_id": "search-interpretation-prompt-v1",
+                "request_timeout_seconds": 15,
+            },
+        },
         "max_output_tokens": 8192,
         "model": "x-ai/grok-4.5",
         "prompt_version_id": "job-requirement-prompt-v1",
@@ -211,3 +240,27 @@ def test_sse_replays_after_last_event_id_and_closes_on_terminal(
     assert "id: 3\nevent: succeeded\n" in response.text
     data_line = next(line for line in response.text.splitlines() if line.startswith("data: "))
     assert json.loads(data_line.removeprefix("data: "))["status"] == "succeeded"
+
+
+def test_create_attempt_rejects_parsing_timeout_below_minimum() -> None:
+    payload = candidate_payload()
+    cast("dict[str, object]", payload["call_bindings"])["job_requirement_parsing"] = {
+        "prompt_version_id": "job-requirement-prompt-v1",
+        "request_timeout_seconds": 29,
+    }
+
+    response = client().post("/admin/llm-configuration-attempts", json=payload)
+
+    assert response.status_code == 422
+
+
+def test_create_attempt_rejects_search_timeout_above_maximum() -> None:
+    payload = candidate_payload()
+    cast("dict[str, object]", payload["call_bindings"])["search_interpretation"] = {
+        "prompt_version_id": "search-interpretation-prompt-v1",
+        "request_timeout_seconds": 31,
+    }
+
+    response = client().post("/admin/llm-configuration-attempts", json=payload)
+
+    assert response.status_code == 422

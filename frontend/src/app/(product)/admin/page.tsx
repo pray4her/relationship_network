@@ -1,14 +1,19 @@
+import { SearchXIcon } from "lucide-react"
 import type { Metadata } from "next"
 import Link from "next/link"
 import { redirect } from "next/navigation"
 
 import { AdminGateNotice } from "@/components/admin/admin-gate-notice"
+import { adminTableHeadClassName, TenantStatusBadge } from "@/components/admin/admin-status-badges"
+import { FilterSelect } from "@/components/admin/filter-select"
 import {
   DataRegion,
   DataRegionContent,
+  DataRegionHeader,
   Page,
   PageActions,
   PageDescription,
+  PageEyebrow,
   PageHeader,
   PageHeaderContent,
   PageSection,
@@ -21,6 +26,7 @@ import {
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
+import { Empty, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from "@/components/ui/empty"
 import { Field, FieldLabel } from "@/components/ui/field"
 import { Input } from "@/components/ui/input"
 import {
@@ -34,8 +40,7 @@ import {
 import { createAdminTransport, loadAdminAuditEvents, searchAdminTenants } from "@/lib/admin-client"
 import { tenantStatusSchema } from "@/lib/admin-contract"
 import { requireAdminView } from "@/lib/admin-guard"
-import { formatDateTime, tenantStatusLabels } from "@/lib/admin-view"
-import { cn } from "@/lib/utils"
+import { formatDateTime } from "@/lib/format"
 
 export const metadata: Metadata = {
   title: "平台管理",
@@ -45,23 +50,10 @@ type AdminPageProps = {
   readonly searchParams: Promise<Record<string, string | string[] | undefined>>
 }
 
-const selectClassName =
-  "h-8 w-full min-w-0 rounded-md border border-input bg-transparent px-2.5 py-1 text-sm outline-none transition-colors focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50"
-
-const tableHeadClassName = "font-mono text-xs tracking-wider text-muted-foreground uppercase"
-
 const linkClassName = "font-medium underline underline-offset-4"
 
 function firstParam(value: string | string[] | undefined): string {
   return typeof value === "string" ? value : ""
-}
-
-function TenantStatusBadge({ status }: { readonly status: keyof typeof tenantStatusLabels }) {
-  return (
-    <Badge className={cn(status === "active" && "bg-success/10 text-success")} variant="secondary">
-      {tenantStatusLabels[status]}
-    </Badge>
-  )
 }
 
 export default async function AdminPage({ searchParams }: AdminPageProps) {
@@ -112,7 +104,8 @@ export default async function AdminPage({ searchParams }: AdminPageProps) {
     <Page>
       <PageHeader>
         <PageHeaderContent>
-          <PageTitle id="tenants-heading">租户管理</PageTitle>
+          <PageEyebrow>平台管理</PageEyebrow>
+          <PageTitle>租户管理</PageTitle>
           <PageDescription>检索租户、查看状态，并跳转到订单与 LLM 管理。</PageDescription>
         </PageHeaderContent>
         <PageActions>
@@ -147,35 +140,44 @@ export default async function AdminPage({ searchParams }: AdminPageProps) {
           </Field>
           <Field className="w-full sm:w-48">
             <FieldLabel htmlFor="tenant-status">状态</FieldLabel>
-            <select
-              className={selectClassName}
-              defaultValue={status ?? ""}
-              id="tenant-status"
-              name="status"
-            >
+            <FilterSelect defaultValue={status ?? ""} id="tenant-status" name="status">
               <option value="">全部</option>
               <option value="active">正常</option>
               <option value="suspended">已暂停</option>
-            </select>
+            </FilterSelect>
           </Field>
           <Button type="submit" variant="secondary">
-            搜索
+            筛选
+          </Button>
+          <Button render={<Link href="/admin" />} variant="ghost">
+            清除
           </Button>
         </PageToolbar>
-        <p className="m-0 text-sm text-muted-foreground">共 {tenantsResult.total} 个租户</p>
         <DataRegion>
+          <DataRegionHeader>
+            <p className="m-0 font-medium text-foreground">检索结果</p>
+            <Badge variant="outline">共 {tenantsResult.total} 个租户</Badge>
+          </DataRegionHeader>
           <DataRegionContent>
             {tenantsResult.tenants.length === 0 ? (
-              <p className="m-0 p-6 text-sm text-muted-foreground">没有符合条件的租户。</p>
+              <Empty>
+                <EmptyMedia>
+                  <SearchXIcon />
+                </EmptyMedia>
+                <EmptyHeader>
+                  <EmptyTitle>没有符合条件的租户</EmptyTitle>
+                  <EmptyDescription>调整筛选条件后再试。</EmptyDescription>
+                </EmptyHeader>
+              </Empty>
             ) : (
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead className={tableHeadClassName}>名称</TableHead>
-                    <TableHead className={tableHeadClassName}>标识</TableHead>
-                    <TableHead className={tableHeadClassName}>状态</TableHead>
-                    <TableHead className={tableHeadClassName}>成员数</TableHead>
-                    <TableHead className={tableHeadClassName}>创建时间</TableHead>
+                    <TableHead className={adminTableHeadClassName}>名称</TableHead>
+                    <TableHead className={adminTableHeadClassName}>标识</TableHead>
+                    <TableHead className={adminTableHeadClassName}>状态</TableHead>
+                    <TableHead className={adminTableHeadClassName}>成员数</TableHead>
+                    <TableHead className={adminTableHeadClassName}>创建时间</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -218,15 +220,19 @@ export default async function AdminPage({ searchParams }: AdminPageProps) {
                 </Alert>
               </div>
             ) : auditResult.events.length === 0 ? (
-              <p className="m-0 p-6 text-sm text-muted-foreground">暂无审计事件。</p>
+              <Empty>
+                <EmptyHeader>
+                  <EmptyTitle>暂无审计事件</EmptyTitle>
+                </EmptyHeader>
+              </Empty>
             ) : (
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead className={tableHeadClassName}>操作</TableHead>
-                    <TableHead className={tableHeadClassName}>目标</TableHead>
-                    <TableHead className={tableHeadClassName}>结果</TableHead>
-                    <TableHead className={tableHeadClassName}>时间</TableHead>
+                    <TableHead className={adminTableHeadClassName}>操作</TableHead>
+                    <TableHead className={adminTableHeadClassName}>目标</TableHead>
+                    <TableHead className={adminTableHeadClassName}>结果</TableHead>
+                    <TableHead className={adminTableHeadClassName}>时间</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>

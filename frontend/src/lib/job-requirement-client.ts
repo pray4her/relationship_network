@@ -8,13 +8,18 @@ import {
   type RequirementDraft,
   type RequirementDraftSubmission,
   type RequirementErrorDetail,
+  type RequirementHistory,
   type RequirementTask,
   type RequirementWorkspace,
   requirementDraftRevisionConflictSchema,
   requirementDraftSchema,
   requirementErrorSchema,
+  requirementHistorySchema,
   requirementTaskSchema,
   requirementWorkspaceSchema,
+  type SchemaUpgradeRecord,
+  type SchemaUpgradeResolutionInput,
+  schemaUpgradeResponseSchema,
 } from "@/lib/job-requirement-contract"
 
 const apiUrlSchema = z.url()
@@ -53,6 +58,21 @@ export interface RequirementTransport {
     expectedRevision: number,
   ): Promise<RequirementTransportResponse>
   copyCurrentVersion(session: string, jobId: string): Promise<RequirementTransportResponse>
+  loadHistory(session: string, jobId: string): Promise<RequirementTransportResponse>
+  upgradeSchema(
+    session: string,
+    jobId: string,
+    draftId: string,
+    expectedRevision: number,
+  ): Promise<RequirementTransportResponse>
+  resolveSchemaUpgrade(
+    session: string,
+    jobId: string,
+    draftId: string,
+    upgradeId: string,
+    expectedRevision: number,
+    resolutions: readonly SchemaUpgradeResolutionInput[],
+  ): Promise<RequirementTransportResponse>
 }
 
 export class RequirementTransportError extends Error {}
@@ -140,6 +160,44 @@ class KyRequirementTransport implements RequirementTransport {
       method: "POST",
       session,
     })
+  }
+
+  loadHistory(session: string, jobId: string): Promise<RequirementTransportResponse> {
+    return this.#request(`/jobs/${jobId}/requirement-history`, {
+      method: "GET",
+      session,
+    })
+  }
+
+  upgradeSchema(
+    session: string,
+    jobId: string,
+    draftId: string,
+    expectedRevision: number,
+  ): Promise<RequirementTransportResponse> {
+    return this.#request(`/jobs/${jobId}/requirement-drafts/${draftId}/schema-upgrade`, {
+      method: "POST",
+      session,
+      json: { expected_revision: expectedRevision },
+    })
+  }
+
+  resolveSchemaUpgrade(
+    session: string,
+    jobId: string,
+    draftId: string,
+    upgradeId: string,
+    expectedRevision: number,
+    resolutions: readonly SchemaUpgradeResolutionInput[],
+  ): Promise<RequirementTransportResponse> {
+    return this.#request(
+      `/jobs/${jobId}/requirement-drafts/${draftId}/schema-upgrades/${upgradeId}/resolve`,
+      {
+        method: "POST",
+        session,
+        json: { expected_revision: expectedRevision, resolutions },
+      },
+    )
   }
 
   async #request(
@@ -397,6 +455,110 @@ export async function copyCurrentRequirementVersion(
     const response = await transport.copyCurrentVersion(session, jobId)
     if (response.status === 200) {
       return { kind: "ok", draft: requirementDraftSchema.parse(response.body) }
+    }
+    const access = accessFailure(response)
+    if (access) return access
+    const detail = errorDetail(response.body)
+    return detail === null ? { kind: "unreachable" } : { kind: "businessError", detail }
+  } catch (error) {
+    if (expectedError(error)) return { kind: "unreachable" }
+    throw error
+  }
+}
+
+export type RequirementHistoryResult =
+  | { readonly kind: "ok"; readonly history: RequirementHistory }
+  | { readonly kind: "notFound" }
+  | AccessFailure
+  | { readonly kind: "unreachable" }
+
+export async function loadRequirementHistory(
+  transport: RequirementTransport,
+  session: string,
+  jobId: string,
+): Promise<RequirementHistoryResult> {
+  try {
+    const response = await transport.loadHistory(session, jobId)
+    if (response.status === 200) {
+      return { kind: "ok", history: requirementHistorySchema.parse(response.body) }
+    }
+    if (response.status === 404) return { kind: "notFound" }
+    return accessFailure(response) ?? { kind: "unreachable" }
+  } catch (error) {
+    if (expectedError(error)) return { kind: "unreachable" }
+    throw error
+  }
+}
+
+export type UpgradeRequirementDraftSchemaResult =
+  | {
+      readonly kind: "ok"
+      readonly draft: RequirementDraft
+      readonly upgrade: SchemaUpgradeRecord
+    }
+  | { readonly kind: "revisionConflict"; readonly draft: RequirementDraft }
+  | { readonly kind: "businessError"; readonly detail: RequirementErrorDetail }
+  | AccessFailure
+  | { readonly kind: "unreachable" }
+
+export async function upgradeRequirementDraftSchema(
+  transport: RequirementTransport,
+  session: string,
+  jobId: string,
+  draftId: string,
+  expectedRevision: number,
+): Promise<UpgradeRequirementDraftSchemaResult> {
+  try {
+    const response = await transport.upgradeSchema(session, jobId, draftId, expectedRevision)
+    if (response.status === 200) {
+      const parsed = schemaUpgradeResponseSchema.parse(response.body)
+      return { kind: "ok", draft: parsed.draft, upgrade: parsed.upgrade }
+    }
+    if (response.status === 409) {
+      const conflict = requirementDraftRevisionConflictSchema.safeParse(response.body)
+      if (conflict.success) return { kind: "revisionConflict", draft: conflict.data.draft }
+    }
+    const access = accessFailure(response)
+    if (access) return access
+    const detail = errorDetail(response.body)
+    return detail === null ? { kind: "unreachable" } : { kind: "businessError", detail }
+  } catch (error) {
+    if (expectedError(error)) return { kind: "unreachable" }
+    throw error
+  }
+}
+
+export type ResolveSchemaUpgradeLossyItemsResult =
+  | { readonly kind: "ok"; readonly draft: RequirementDraft }
+  | { readonly kind: "revisionConflict"; readonly draft: RequirementDraft }
+  | { readonly kind: "businessError"; readonly detail: RequirementErrorDetail }
+  | AccessFailure
+  | { readonly kind: "unreachable" }
+
+export async function resolveSchemaUpgradeLossyItems(
+  transport: RequirementTransport,
+  session: string,
+  jobId: string,
+  draftId: string,
+  upgradeId: string,
+  expectedRevision: number,
+  resolutions: readonly SchemaUpgradeResolutionInput[],
+): Promise<ResolveSchemaUpgradeLossyItemsResult> {
+  try {
+    const response = await transport.resolveSchemaUpgrade(
+      session,
+      jobId,
+      draftId,
+      upgradeId,
+      expectedRevision,
+      resolutions,
+    )
+    if (response.status === 200) {
+      return { kind: "ok", draft: requirementDraftSchema.parse(response.body) }
+    }
+    if (response.status === 409) {
+      const conflict = requirementDraftRevisionConflictSchema.safeParse(response.body)
+      if (conflict.success) return { kind: "revisionConflict", draft: conflict.data.draft }
     }
     const access = accessFailure(response)
     if (access) return access

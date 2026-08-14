@@ -2,7 +2,7 @@
 
 import Link from "next/link"
 import { usePathname } from "next/navigation"
-import { useState } from "react"
+import { Fragment, useEffect, useRef, useState } from "react"
 
 import { logoutAction } from "@/app/actions/auth"
 import { BrandMark } from "@/components/brand-mark"
@@ -35,6 +35,7 @@ const navigationItems = [
   { href: "/members", label: "成员", permission: "members:read" },
   { href: "/companies", label: "企业", permission: "companies:read" },
   { href: "/jobs", label: "职位", permission: "jobs:read" },
+  { href: "/search", label: "搜索", permission: "search:read" },
   { href: "/usage", label: "用量与套餐", permission: "billing:read" },
   { href: "/settings/security", label: "安全设置" },
   { admin: true, href: "/admin", label: "平台管理" },
@@ -53,13 +54,14 @@ function isCurrentPath(pathname: string, href: string): boolean {
   return href === "/" ? pathname === href : pathname.startsWith(href)
 }
 
-function initialFor(displayName: string): string {
-  return displayName.trim().slice(0, 1).toUpperCase() || "账"
+function initialFor(displayName: string, email: string): string {
+  return displayName.trim().slice(0, 1).toUpperCase() || email.slice(0, 1).toUpperCase() || "?"
 }
 
 export function AppNavbar({ account }: { readonly account: AppNavbarAccount | null }) {
   const pathname = usePathname()
   const [menuOpen, setMenuOpen] = useState(false)
+  const navbarRef = useRef<HTMLElement>(null)
   const adminMode = account?.isPlatformAdmin === true && pathname.startsWith("/admin")
   const availableItems = navigationItems.filter((item) => {
     if (
@@ -75,30 +77,95 @@ export function AppNavbar({ account }: { readonly account: AppNavbarAccount | nu
     return item.href === "/" || account !== null
   })
 
+  // 移动端菜单：Escape 或点击外部时关闭
+  useEffect(() => {
+    if (!menuOpen) {
+      return
+    }
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        setMenuOpen(false)
+      }
+    }
+    const handlePointerDown = (event: PointerEvent) => {
+      const target = event.target
+      if (navbarRef.current && target instanceof Node && !navbarRef.current.contains(target)) {
+        setMenuOpen(false)
+      }
+    }
+    document.addEventListener("keydown", handleKeyDown)
+    document.addEventListener("pointerdown", handlePointerDown)
+    return () => {
+      document.removeEventListener("keydown", handleKeyDown)
+      document.removeEventListener("pointerdown", handlePointerDown)
+    }
+  }, [menuOpen])
+
+  // 菜单打开后将焦点移入第一个链接，保证键盘可达
+  useEffect(() => {
+    if (menuOpen) {
+      navbarRef.current?.querySelector<HTMLElement>("#primary-navigation a")?.focus()
+    }
+  }, [menuOpen])
+
   return (
-    <Navbar menuOpen={menuOpen} sticky>
+    <Navbar menuOpen={menuOpen} ref={navbarRef} sticky>
       <NavbarInner>
         <NavbarBrand
           render={
             <Link href="/">
-              <BrandMark />
+              <span className="lg:hidden">
+                <BrandMark compact />
+              </span>
+              <span className="max-lg:hidden">
+                <BrandMark />
+              </span>
             </Link>
           }
         />
         <NavbarPrimary id="primary-navigation">
           <NavbarList>
             {availableItems.map((item) => (
-              <li key={item.href}>
-                <NavbarItem
-                  aria-current={isCurrentPath(pathname, item.href) ? "page" : undefined}
-                  render={
-                    <Link href={item.href} onClick={() => setMenuOpen(false)}>
-                      {item.label}
-                    </Link>
-                  }
-                />
-              </li>
+              <Fragment key={item.href}>
+                {"admin" in item && item.admin ? (
+                  <li aria-hidden="true" className="mx-1 h-4 w-px bg-border max-md:hidden" />
+                ) : null}
+                <li>
+                  <NavbarItem
+                    aria-current={isCurrentPath(pathname, item.href) ? "page" : undefined}
+                    render={
+                      <Link href={item.href} onClick={() => setMenuOpen(false)}>
+                        {item.label}
+                      </Link>
+                    }
+                  />
+                </li>
+              </Fragment>
             ))}
+            {account === null ? (
+              <>
+                <li className="md:hidden">
+                  <NavbarItem
+                    aria-current={isCurrentPath(pathname, "/login") ? "page" : undefined}
+                    render={
+                      <Link href="/login" onClick={() => setMenuOpen(false)}>
+                        登录
+                      </Link>
+                    }
+                  />
+                </li>
+                <li className="md:hidden">
+                  <NavbarItem
+                    aria-current={isCurrentPath(pathname, "/register") ? "page" : undefined}
+                    render={
+                      <Link href="/register" onClick={() => setMenuOpen(false)}>
+                        注册
+                      </Link>
+                    }
+                  />
+                </li>
+              </>
+            ) : null}
           </NavbarList>
         </NavbarPrimary>
 
@@ -122,7 +189,9 @@ export function AppNavbar({ account }: { readonly account: AppNavbarAccount | nu
                 render={
                   <Button aria-label="打开账户菜单" size="sm" variant="ghost">
                     <Avatar aria-hidden="true" size="sm">
-                      <AvatarFallback>{initialFor(account.displayName)}</AvatarFallback>
+                      <AvatarFallback>
+                        {initialFor(account.displayName, account.email)}
+                      </AvatarFallback>
                     </Avatar>
                     <span className="max-w-32 truncate max-md:sr-only">{account.displayName}</span>
                   </Button>

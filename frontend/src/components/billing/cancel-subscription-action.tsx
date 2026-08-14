@@ -1,8 +1,10 @@
 "use client"
 
-import { useActionState } from "react"
+import { useActionState, useEffect, useRef } from "react"
+import { toast } from "sonner"
 
 import type { CancelSubscriptionActionState } from "@/app/actions/orders"
+import { Alert, AlertDescription } from "@/components/ui/alert"
 import {
   AlertDialog,
   AlertDialogAction,
@@ -25,6 +27,14 @@ type CancelSubscriptionActionProps = {
 
 export function CancelSubscriptionAction({ action }: CancelSubscriptionActionProps) {
   const [state, formAction, isPending] = useActionState(action, { formError: null })
+  const wasPending = useRef(false)
+
+  useEffect(() => {
+    if (wasPending.current && !isPending && state.formError === null) {
+      toast.success("已申请取消订阅，将在当前周期结束后生效")
+    }
+    wasPending.current = isPending
+  }, [isPending, state.formError])
 
   return (
     <div className="flex flex-col items-start gap-2">
@@ -46,7 +56,7 @@ export function CancelSubscriptionAction({ action }: CancelSubscriptionActionPro
           <AlertDialogFooter>
             <AlertDialogCancel>返回</AlertDialogCancel>
             <form action={formAction}>
-              <AlertDialogAction type="submit" variant="destructive" disabled={isPending}>
+              <AlertDialogAction type="submit" variant="destructive" pending={isPending}>
                 取消订阅
               </AlertDialogAction>
             </form>
@@ -54,9 +64,9 @@ export function CancelSubscriptionAction({ action }: CancelSubscriptionActionPro
         </AlertDialogContent>
       </AlertDialog>
       {state.formError ? (
-        <p className="text-sm text-destructive" role="alert">
-          {state.formError}
-        </p>
+        <Alert variant="destructive">
+          <AlertDescription>{state.formError}</AlertDescription>
+        </Alert>
       ) : null}
     </div>
   )

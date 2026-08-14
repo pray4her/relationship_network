@@ -1,9 +1,11 @@
+import { ArrowLeftIcon } from "lucide-react"
 import type { Metadata } from "next"
 import Link from "next/link"
 import { redirect } from "next/navigation"
 
 import { tenantStatusAction } from "@/app/actions/admin"
 import { AdminGateNotice } from "@/components/admin/admin-gate-notice"
+import { TenantStatusBadge } from "@/components/admin/admin-status-badges"
 import { TenantStatusAction } from "@/components/admin/tenant-status-action"
 import {
   DescriptionDetails,
@@ -11,7 +13,9 @@ import {
   DescriptionList,
   DescriptionTerm,
   Page,
+  PageActions,
   PageDescription,
+  PageEyebrow,
   PageHeader,
   PageHeaderContent,
   PageSection,
@@ -20,11 +24,10 @@ import {
   PageSectionTitle,
   PageTitle,
 } from "@/components/layout/page"
-import { Badge } from "@/components/ui/badge"
+import { Button } from "@/components/ui/button"
 import { createAdminTransport, loadAdminTenant } from "@/lib/admin-client"
 import { requireAdminView } from "@/lib/admin-guard"
-import { formatDateTime, tenantStatusLabels } from "@/lib/admin-view"
-import { cn } from "@/lib/utils"
+import { formatDateTime } from "@/lib/format"
 
 export const metadata: Metadata = {
   title: "租户详情",
@@ -78,9 +81,15 @@ export default async function AdminTenantPage({ params }: AdminTenantPageProps) 
     <Page>
       <PageHeader>
         <PageHeaderContent>
-          <PageTitle id="tenant-heading">{tenant.name}</PageTitle>
+          <PageEyebrow>平台管理</PageEyebrow>
+          <PageTitle>{tenant.name}</PageTitle>
           <PageDescription>查看租户状态并执行暂停或恢复操作。</PageDescription>
         </PageHeaderContent>
+        <PageActions>
+          <Button render={<Link href="/admin" />} variant="secondary">
+            <ArrowLeftIcon /> 返回租户列表
+          </Button>
+        </PageActions>
       </PageHeader>
 
       <PageSection aria-labelledby="tenant-facts-heading">
@@ -97,16 +106,11 @@ export default async function AdminTenantPage({ params }: AdminTenantPageProps) 
           <DescriptionItem>
             <DescriptionTerm>状态</DescriptionTerm>
             <DescriptionDetails>
-              <Badge
-                className={cn(tenant.status === "active" && "bg-success/10 text-success")}
-                variant="secondary"
-              >
-                {tenantStatusLabels[tenant.status]}
-              </Badge>
+              <TenantStatusBadge status={tenant.status} />
             </DescriptionDetails>
           </DescriptionItem>
           <DescriptionItem>
-            <DescriptionTerm>强制 MFA</DescriptionTerm>
+            <DescriptionTerm>强制两步验证</DescriptionTerm>
             <DescriptionDetails>{tenant.mfa_required ? "已开启" : "未开启"}</DescriptionDetails>
           </DescriptionItem>
           <DescriptionItem>
@@ -125,11 +129,6 @@ export default async function AdminTenantPage({ params }: AdminTenantPageProps) 
           status={tenant.status}
           tenantId={tenant.id}
         />
-        <p className="m-0 text-sm text-muted-foreground">
-          <Link className={linkClassName} href="/admin">
-            返回租户列表
-          </Link>
-        </p>
       </PageSection>
     </Page>
   )

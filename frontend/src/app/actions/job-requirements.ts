@@ -11,7 +11,10 @@ import {
   copyCurrentRequirementVersion,
   createRequirementTask,
   createRequirementTransport,
+  loadRequirementHistory,
+  resolveSchemaUpgradeLossyItems,
   updateRequirementDraft,
+  upgradeRequirementDraftSchema,
 } from "@/lib/job-requirement-client"
 import {
   abandonRequirementDraftInputSchema,
@@ -23,7 +26,10 @@ import {
   type RequirementErrorDetail,
   type RequirementTask,
   type RequirementVersion,
+  resolveSchemaUpgradeLossyItemsInputSchema,
+  type SchemaUpgradeResolutionInput,
   updateRequirementDraftInputSchema,
+  upgradeRequirementDraftSchemaInputSchema,
 } from "@/lib/job-requirement-contract"
 
 export type GenerateRequirementActionResult =
@@ -74,6 +80,11 @@ const errorMessages: Record<RequirementErrorDetail, string> = {
   requirement_creation_rate_limited: "本小时新建任务已达上限，请稍后再试。",
   requirement_task_not_found: "职位需求解析任务不存在或你无权访问。",
   requirement_task_terminal: "任务已经结束，不能再取消。请刷新查看最新状态。",
+  requirement_schema_upgrade_unavailable: "当前没有可升级的目标 Schema 版本。",
+  requirement_schema_upgrade_not_found: "Schema 升级记录不存在或你无权访问。",
+  requirement_schema_upgrade_resolution_invalid: "升级项处理方式无效，请刷新后重试。",
+  schema_upgrade_lossy_unresolved: "请先处理所有待解决升级项。",
+  requirement_input_purged: "输入正文已按保留策略清理，无法重新解析该任务。",
   subscription_read_only: "订阅已过期，当前只能查看已有内容。",
   permission_denied: "你没有生成职位需求草稿的权限。",
   mfa_required: "租户要求两步验证，请先完成安全设置。",
@@ -359,6 +370,116 @@ export async function copyCurrentRequirementVersionAction(
   if (response.kind === "ok") {
     revalidatePath(`/jobs/${parsed.data.jobId}`)
     return { kind: "ok", draft: response.draft, message: "已复制当前版本为新草稿。" }
+  }
+  return draftActionError(response)
+}
+
+export async function upgradeSchemaAction(
+  jobId: string,
+  draftId: string,
+  expectedRevision: number,
+): Promise<RequirementDraftActionState> {
+  const parsed = upgradeRequirementDraftSchemaInputSchema.safeParse({
+    jobId,
+    draftId,
+    expectedRevision,
+  })
+  if (!parsed.success) {
+    return { kind: "error", code: "invalid_submission", message: "草稿修订号无效。" }
+  }
+  const store = await cookies()
+  const session = store.get(SESSION_COOKIE_NAME)?.value
+  if (!session) {
+    return { kind: "error", code: "not_authenticated", message: errorMessages.not_authenticated }
+  }
+  const response = await upgradeRequirementDraftSchema(
+    createRequirementTransport(),
+    session,
+    parsed.data.jobId,
+    parsed.data.draftId,
+    parsed.data.expectedRevision,
+  )
+  if (response.kind === "ok") {
+    revalidatePath(`/jobs/${parsed.data.jobId}`)
+    return {
+      kind: "ok",
+      draft: response.draft,
+      message: `已升级草稿 Schema 至 ${response.upgrade.to_schema_version_id}。`,
+    }
+  }
+  if (response.kind === "revisionConflict") {
+    revalidatePath(`/jobs/${parsed.data.jobId}`)
+    return {
+      kind: "revisionConflict",
+      draft: response.draft,
+      message: errorMessages.requirement_draft_revision_conflict,
+    }
+  }
+  return draftActionError(response)
+}
+
+export async function resolveUpgradeLossyItemsAction(
+  jobId: string,
+  draftId: string,
+  expectedRevision: number,
+  resolutions: readonly SchemaUpgradeResolutionInput[],
+): Promise<RequirementDraftActionState> {
+  const parsed = resolveSchemaUpgradeLossyItemsInputSchema.safeParse({
+    jobId,
+    draftId,
+    expectedRevision,
+    resolutions,
+  })
+  if (!parsed.success) {
+    return { kind: "error", code: "invalid_submission", message: "升级项处理选择无效。" }
+  }
+  const store = await cookies()
+  const session = store.get(SESSION_COOKIE_NAME)?.value
+  if (!session) {
+    return { kind: "error", code: "not_authenticated", message: errorMessages.not_authenticated }
+  }
+  const transport = createRequirementTransport()
+  const history = await loadRequirementHistory(transport, session, parsed.data.jobId)
+  if (history.kind !== "ok") {
+    return draftActionError(
+      history.kind === "notFound" ? { kind: "unreachable" as const } : history,
+    )
+  }
+  const submittedItemIds = new Set(parsed.data.resolutions.map((item) => item.item_id))
+  const upgrade = history.history.schema_upgrades.find(
+    (record) =>
+      record.draft_id === parsed.data.draftId &&
+      record.lossy_resolutions.some(
+        (entry) => entry.resolution === null && submittedItemIds.has(entry.item_id),
+      ),
+  )
+  if (!upgrade) {
+    return {
+      kind: "error",
+      code: "requirement_schema_upgrade_not_found",
+      message: errorMessages.requirement_schema_upgrade_not_found,
+    }
+  }
+  const response = await resolveSchemaUpgradeLossyItems(
+    transport,
+    session,
+    parsed.data.jobId,
+    parsed.data.draftId,
+    upgrade.id,
+    parsed.data.expectedRevision,
+    parsed.data.resolutions,
+  )
+  if (response.kind === "ok") {
+    revalidatePath(`/jobs/${parsed.data.jobId}`)
+    return { kind: "ok", draft: response.draft, message: "升级项处理已保存。" }
+  }
+  if (response.kind === "revisionConflict") {
+    revalidatePath(`/jobs/${parsed.data.jobId}`)
+    return {
+      kind: "revisionConflict",
+      draft: response.draft,
+      message: errorMessages.requirement_draft_revision_conflict,
+    }
   }
   return draftActionError(response)
 }

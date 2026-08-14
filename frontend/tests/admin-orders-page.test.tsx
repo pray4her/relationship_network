@@ -115,7 +115,7 @@ test("forwards the status filter to the admin client", async () => {
     "session-token",
     "confirmed",
   )
-  expect(screen.getByText("没有符合条件的订单。")).toBeInTheDocument()
+  expect(screen.getByText("没有符合条件的订单")).toBeInTheDocument()
 })
 
 test("denies the page to a non-admin user without calling the admin API", async () => {

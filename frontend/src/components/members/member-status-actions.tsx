@@ -1,8 +1,10 @@
 "use client"
 
-import { useActionState } from "react"
+import { useActionState, useEffect, useRef } from "react"
+import { toast } from "sonner"
 
 import type { MemberActionState } from "@/app/actions/members"
+import { Alert, AlertDescription } from "@/components/ui/alert"
 import {
   AlertDialog,
   AlertDialogAction,
@@ -22,8 +24,26 @@ type MemberStatusActionsProps = {
   readonly isActive: boolean
 }
 
+type Intent = "activate" | "deactivate" | "remove"
+
+const intentSuccessMessages: Record<Intent, string> = {
+  activate: "成员已启用",
+  deactivate: "成员已停用",
+  remove: "成员已移除",
+}
+
 export function MemberStatusActions({ action, isActive, membershipId }: MemberStatusActionsProps) {
   const [state, formAction, isPending] = useActionState(action, { formError: null })
+  const lastIntent = useRef<Intent | null>(null)
+  const wasPending = useRef(false)
+
+  useEffect(() => {
+    if (wasPending.current && !isPending && state.formError === null && lastIntent.current) {
+      toast.success(intentSuccessMessages[lastIntent.current])
+      lastIntent.current = null
+    }
+    wasPending.current = isPending
+  }, [isPending, state.formError])
 
   return (
     <div className="flex flex-wrap items-center gap-2">
@@ -45,10 +65,10 @@ export function MemberStatusActions({ action, isActive, membershipId }: MemberSt
             </AlertDialogHeader>
             <AlertDialogFooter>
               <AlertDialogCancel>取消</AlertDialogCancel>
-              <form action={formAction}>
+              <form action={formAction} onSubmit={() => (lastIntent.current = "deactivate")}>
                 <input name="membership_id" type="hidden" value={membershipId} />
                 <input name="intent" type="hidden" value="deactivate" />
-                <AlertDialogAction type="submit" variant="destructive" disabled={isPending}>
+                <AlertDialogAction type="submit" variant="destructive" pending={isPending}>
                   停用
                 </AlertDialogAction>
               </form>
@@ -56,10 +76,10 @@ export function MemberStatusActions({ action, isActive, membershipId }: MemberSt
           </AlertDialogContent>
         </AlertDialog>
       ) : (
-        <form action={formAction}>
+        <form action={formAction} onSubmit={() => (lastIntent.current = "activate")}>
           <input name="membership_id" type="hidden" value={membershipId} />
           <input name="intent" type="hidden" value="activate" />
-          <Button size="sm" type="submit" variant="secondary" disabled={isPending}>
+          <Button size="sm" type="submit" variant="secondary" pending={isPending}>
             启用
           </Button>
         </form>
@@ -79,10 +99,10 @@ export function MemberStatusActions({ action, isActive, membershipId }: MemberSt
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>取消</AlertDialogCancel>
-            <form action={formAction}>
+            <form action={formAction} onSubmit={() => (lastIntent.current = "remove")}>
               <input name="membership_id" type="hidden" value={membershipId} />
               <input name="intent" type="hidden" value="remove" />
-              <AlertDialogAction type="submit" variant="destructive" disabled={isPending}>
+              <AlertDialogAction type="submit" variant="destructive" pending={isPending}>
                 移除
               </AlertDialogAction>
             </form>
@@ -90,9 +110,9 @@ export function MemberStatusActions({ action, isActive, membershipId }: MemberSt
         </AlertDialogContent>
       </AlertDialog>
       {state.formError ? (
-        <p className="text-sm text-destructive" role="alert">
-          {state.formError}
-        </p>
+        <Alert className="w-full" variant="destructive">
+          <AlertDescription>{state.formError}</AlertDescription>
+        </Alert>
       ) : null}
     </div>
   )
